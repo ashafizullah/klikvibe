@@ -22,6 +22,7 @@
 - Right-click in the code editor for Cut, Copy, Paste, Select all, Find and Go to line, plus Save, the file's changes, its path and Reveal; in a diff for Copy, Select all, the layout switch and the file.
 - Search in the Files panel: by name (`⌘P`), with words, `*`, `**` and `?` patterns and `!` to leave out, or in file contents (`⌘⇧F`), optionally only in files like `*.ts`; a result opens the file at that line. Both follow `.gitignore`.
 - Shortcuts no longer fire on Ctrl in the terminal: on macOS they use ⌘ only, elsewhere Ctrl+letter goes to the shell while the terminal has the keyboard (Ctrl+W no longer closes a file tab).
+- File icons follow the kind of file: code by language colour, JSON, config, lockfiles, `.env`, images, video, audio, archives, `package.json`, `Cargo.toml`, `Dockerfile`, README and LICENSE each have their own, in the tree, search results and tabs.
 
 ## 0.1.0
 

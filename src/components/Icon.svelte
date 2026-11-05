@@ -43,6 +43,20 @@
     SquareTerminal,
     TextWrap,
     X,
+    BookOpen,
+    Braces,
+    Container,
+    Database,
+    FileArchive,
+    FileCog,
+    FileImage,
+    FileKey,
+    FileLock,
+    FileSpreadsheet,
+    FileTerminal,
+    FileType,
+    Package,
+    Scale,
     type LucideIcon,
   } from "@lucide/svelte";
 
@@ -89,12 +103,33 @@
     terminal: SquareTerminal,
     wrap: TextWrap,
     close: X,
+    book: BookOpen,
+    braces: Braces,
+    container: Container,
+    database: Database,
+    "file-archive": FileArchive,
+    "file-cog": FileCog,
+    "file-image": FileImage,
+    "file-key": FileKey,
+    "file-lock": FileLock,
+    "file-spreadsheet": FileSpreadsheet,
+    "file-terminal": FileTerminal,
+    "file-type": FileType,
+    package: Package,
+    scale: Scale,
+    "file-text": FileText,
   };
 </script>
 
 <script lang="ts">
-  let { name, size = 16, stroke = 2, class: className = "" }: { name: string; size?: number; stroke?: number; class?: string } = $props();
+  let {
+    name,
+    size = 16,
+    stroke = 2,
+    class: className = "",
+    color,
+  }: { name: string; size?: number; stroke?: number; class?: string; color?: string } = $props();
   const Glyph = $derived(ICONS[name] ?? File);
 </script>
 
-<Glyph {size} strokeWidth={stroke} class={className} aria-hidden="true" />
+<Glyph {size} strokeWidth={stroke} class={className} {color} aria-hidden="true" />

@@ -6,7 +6,7 @@
   import { useProject, workspace } from "../lib/project.svelte";
   import { errorText, ipc, type TextMatch, type TextSearch } from "../lib/ipc";
   import { matchNames } from "../lib/search";
-  import { mediaKind } from "../lib/media";
+  import { fileIcon } from "../lib/fileIcons";
   import { join } from "../lib/paths";
   import { mod, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -194,7 +194,7 @@
       {:else}
         {#each names as n, i (n.path)}
           <button class="result" class:on={i === cursor} data-result={i} onclick={() => open(n.path)} title={n.path}>
-            <Icon name={mediaKind(n.name) ?? "code"} size={13} />
+            <Icon name={fileIcon(n.name).icon} color={fileIcon(n.name).color} size={13} />
             <span class="name">
               {#if n.mark}{n.name.slice(0, n.mark[0])}<mark>{n.name.slice(n.mark[0], n.mark[1])}</mark>{n.name.slice(n.mark[1])}{:else}{n.name}{/if}
             </span>
@@ -215,7 +215,7 @@
       {/if}
       {#each groups as g (g.path)}
         <div class="group" title={g.path}>
-          <Icon name={mediaKind(g.name) ?? "code"} size={13} />
+          <Icon name={fileIcon(g.name).icon} color={fileIcon(g.name).color} size={13} />
           <span class="name">{g.name}</span>
           <span class="dir">{g.dir}</span>
           <span class="count">{g.matches.length}</span>

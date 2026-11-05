@@ -2,6 +2,7 @@
   import type { Entry } from "../lib/ipc";
   import { useProject } from "../lib/project.svelte";
   import { mediaKind } from "../lib/media";
+  import { fileIcon } from "../lib/fileIcons";
   import { errorText, ipc } from "../lib/ipc";
   import { relative } from "../lib/paths";
   import { copyText, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
@@ -66,7 +67,8 @@
     <Icon name={open ? "open" : "folder"} size={14} class="kind dir" />
   {:else}
     <span class="chev-space"></span>
-    <Icon name={mediaKind(entry.name) ?? "code"} size={14} class="kind" />
+    {@const fi = fileIcon(entry.name)}
+    <Icon name={fi.icon} color={fi.color} size={14} class="kind" />
   {/if}
   <span class="label-text {change?.kind ?? ''}" class:inside={changedInside}>{entry.name}</span>
   {#if fresh}<span class="fresh-dot" aria-hidden="true"></span>{/if}

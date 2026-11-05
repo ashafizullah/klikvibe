@@ -11,6 +11,7 @@
   import MediaView from "./MediaView.svelte";
   import { errorText, ipc } from "../lib/ipc";
   import { hasSource } from "../lib/media";
+  import { fileIcon } from "../lib/fileIcons";
 
   const project = useProject();
   const tab = $derived(project.activeTab());
@@ -25,7 +26,7 @@
     }
   }
 
-  const tabIcon = (tb: Tab) => (tb.kind === "file" && tb.media ? tb.media : ICON[tb.kind]);
+  const tabIcon = (tb: Tab) => (tb.kind === "file" ? fileIcon(tb.title) : { icon: ICON[tb.kind], color: undefined });
 
   function tabMenu(e: MouseEvent, tb: Tab) {
     const i = project.tabs.indexOf(tb);
@@ -66,7 +67,7 @@
       {#each project.tabs as tb (tb.id)}
         <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1">
           <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
-            <Icon name={tabIcon(tb)} size={13} />
+            <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
             <span class="tab-name">{tb.title}</span>
           </button>
           <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
