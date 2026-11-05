@@ -300,7 +300,8 @@ export class ProjectState {
     return { tab: this.tabs[this.tabs.length - 1], fresh: true };
   }
 
-  private async readInto(tab: Tab) {
+  /** `quiet`: a file that can't be read just closes (restoring a session). */
+  private async readInto(tab: Tab, quiet = false) {
     try {
       const file = await ipc.readFile(tab.path);
       tab.binary = file.binary;
@@ -309,19 +310,19 @@ export class ProjectState {
       tab.changedOnDisk = false;
       tab.revision++;
     } catch (e) {
-      toast(errorText(e), "error");
+      if (!quiet) toast(errorText(e), "error");
       this.closeTab(tab.id, true);
     } finally {
       tab.loading = false;
     }
   }
 
-  async openFile(path: string) {
+  async openFile(path: string, quiet = false) {
     const { tab, fresh } = this.show(newTab("file", `file:${path}`, baseName(path), path));
     if (!fresh) return;
     tab.media = mediaKind(path);
     if (tab.media) tab.loading = false;
-    else await this.readInto(tab);
+    else await this.readInto(tab, quiet);
   }
 
   /** Scrolls a file tab to `line` (through `endLine`) and selects those lines, now or once its editor appears. */

@@ -21,6 +21,7 @@
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
   import { seen } from "./lib/attention.svelte";
+  import { restoreSession, saveSession } from "./lib/session.svelte";
   import { treeKey } from "./lib/grid";
 
   const project = $derived(currentProject());
@@ -28,11 +29,17 @@
   onMount(() => {
     document.documentElement.lang = i18n.locale;
     const off = listen<Project>("open-project", (e) => openProject(e.payload));
-    ipc.takeLaunchProject().then((p) => p && openProject(p));
+    // The last session first, then a folder from the launch arguments in front of it.
+    restoreSession()
+      .then(() => ipc.takeLaunchProject())
+      .then((p) => p && openProject(p));
     initUpdates();
     if (settings.mcpEnabled) startMcp();
     return () => off.then((f) => f());
   });
+
+  // Remember the open projects and file tabs for the next launch.
+  $effect(saveSession);
 
   // Looking at a project clears its "an agent is waiting" dot.
   $effect(() => {
