@@ -28,6 +28,8 @@ interface Stored {
   fontSize: number;
   wrap: boolean;
   updateMode: UpdateMode;
+  /** Diffs side by side (old left, new right) or in one column. */
+  diffView: "split" | "unified";
   /** The history (and its graph) shows every branch, not only the current one. */
   historyAll: boolean;
   /** The version that last ran, to show what's new once after an update. */
@@ -57,6 +59,7 @@ function load(): Stored {
     wrap: false,
     updateMode: "auto",
     historyAll: false,
+    diffView: "split",
     lastVersion: "",
   };
   try {

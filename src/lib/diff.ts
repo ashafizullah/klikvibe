@@ -54,3 +54,59 @@ export function stats(rows: Row[]): DiffStats {
   }
   return { added, removed };
 }
+
+/** One side of a side-by-side row. */
+export interface Half {
+  kind: "add" | "del" | "ctx";
+  no: number;
+  text: string;
+  /** The changed part of an edited line (between an unchanged start and end), to highlight. */
+  changed?: [number, number];
+}
+
+export type SplitRow = { kind: "file" | "meta" | "hunk"; text: string } | { kind: "pair"; left?: Half; right?: Half };
+
+/** The part of `a` that differs from `b`, after their common start and before their common end. */
+function changedPart(a: string, b: string): [number, number] {
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) start++;
+  let end = 0;
+  while (end < a.length - start && end < b.length - start && a[a.length - 1 - end] === b[b.length - 1 - end]) end++;
+  return [start, a.length - end];
+}
+
+/** Unified rows as side-by-side rows: removed lines on the left, added on the right, an edit's two versions on one row. */
+export function splitDiff(rows: Row[]): SplitRow[] {
+  const out: SplitRow[] = [];
+  let dels: Row[] = [];
+  let adds: Row[] = [];
+  const flush = () => {
+    for (let i = 0; i < Math.max(dels.length, adds.length); i++) {
+      const d = dels[i];
+      const a = adds[i];
+      const left: Half | undefined = d && { kind: "del", no: d.old!, text: d.text };
+      const right: Half | undefined = a && { kind: "add", no: a.new!, text: a.text };
+      if (left && right) {
+        left.changed = changedPart(d.text, a.text);
+        right.changed = changedPart(a.text, d.text);
+      }
+      out.push({ kind: "pair", left, right });
+    }
+    dels = [];
+    adds = [];
+  };
+  for (const r of rows) {
+    if (r.kind === "del") {
+      // A removal after additions starts a new edit.
+      if (adds.length) flush();
+      dels.push(r);
+    } else if (r.kind === "add") adds.push(r);
+    else {
+      flush();
+      if (r.kind === "ctx") out.push({ kind: "pair", left: { kind: "ctx", no: r.old!, text: r.text }, right: { kind: "ctx", no: r.new!, text: r.text } });
+      else out.push({ kind: r.kind, text: r.text });
+    }
+  }
+  flush();
+  return out;
+}

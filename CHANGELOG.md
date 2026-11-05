@@ -16,6 +16,7 @@
 - The welcome card stays behind the terminal when the terminal is dragged up.
 - Tooltips on every button: hover an icon to see what it does and its shortcut.
 - A commit graph in the Git history: branch and merge lines, branch and tag labels, the checked-out commit marked, and a switch between this branch and all branches. Click a commit to list the files it changed (with lines added and removed) and open each one's diff; the whole commit is one click further.
+- Diffs side by side: the old version on the left, the new on the right, an edited line's two versions on one row with the changed part highlighted. A switch in the diff header goes back to one column.
 
 ## 0.1.0
 

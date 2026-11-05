@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { parseDiff, stats } from "../lib/diff";
+  import { parseDiff, splitDiff, stats, type Half } from "../lib/diff";
+  import { persist, settings } from "../lib/settings.svelte";
   import { useProject, type Tab } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -9,7 +10,32 @@
 
   const rows = $derived(parseDiff(tab.text));
   const count = $derived(stats(rows));
+  const split = $derived(settings.diffView === "split");
+  const pairs = $derived(split ? splitDiff(rows) : []);
+
+  function setView(view: "split" | "unified") {
+    settings.diffView = view;
+    persist();
+  }
+
+  const SIGN = { add: "+", del: "−", ctx: " " } as const;
 </script>
+
+{#snippet half(h: Half | undefined)}
+  {#if h}
+    <div class="half {h.kind}">
+      <span class="no">{h.no}</span>
+      <span class="sign">{SIGN[h.kind]}</span>
+      {#if h.changed && h.changed[1] > h.changed[0]}
+        <span class="text">{h.text.slice(0, h.changed[0])}<mark>{h.text.slice(h.changed[0], h.changed[1])}</mark>{h.text.slice(h.changed[1])}</span>
+      {:else}
+        <span class="text">{h.text}</span>
+      {/if}
+    </div>
+  {:else}
+    <div class="half empty"></div>
+  {/if}
+{/snippet}
 
 <div class="diff grain-free">
   <div class="head">
@@ -18,6 +44,10 @@
     <span class="stat add">+{count.added}</span>
     <span class="stat del">−{count.removed}</span>
     <div class="spacer"></div>
+    <div class="view" role="radiogroup" aria-label={t("diff.view")}>
+      <button class:on={split} role="radio" aria-checked={split} onclick={() => setView("split")} title={t("diff.split")}><Icon name="columns" size={13} /></button>
+      <button class:on={!split} role="radio" aria-checked={!split} onclick={() => setView("unified")} title={t("diff.unified")}><Icon name="rows" size={13} /></button>
+    </div>
     {#if tab.kind === "diff"}
       <button class="btn ghost small" onclick={() => project.openFile(tab.path)}><Icon name="code" size={13} />{t("diff.openFile")}</button>
     {/if}
@@ -28,6 +58,22 @@
     {:else if !rows.length}
       <p class="empty-note">{t("diff.none")}</p>
     {/if}
+    {#if split}
+      {#each pairs as row, i (i)}
+        {#if row.kind === "file"}
+          <div class="file"><Icon name="code" size={13} />{row.text}</div>
+        {:else if row.kind === "meta"}
+          <div class="meta">{row.text}</div>
+        {:else if row.kind === "hunk"}
+          <div class="hunk">{row.text}</div>
+        {:else if row.kind === "pair"}
+          <div class="pair">
+            {@render half(row.left)}
+            {@render half(row.right)}
+          </div>
+        {/if}
+      {/each}
+    {:else}
     {#each rows as row, i (i)}
       {#if row.kind === "file"}
         <div class="file"><Icon name="code" size={13} />{row.text}</div>
@@ -44,6 +90,7 @@
         </div>
       {/if}
     {/each}
+    {/if}
   </div>
 </div>
 
@@ -148,5 +195,70 @@
   }
   .text {
     padding-right: 24px;
+  }
+  .view {
+    display: flex;
+    gap: 1px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .view button {
+    width: 24px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--muted);
+  }
+  .view button.on {
+    background: var(--panel-2);
+    color: var(--text);
+  }
+  /* Side by side: two equal halves; long lines wrap so both sides stay level. */
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .half {
+    display: flex;
+    min-width: 0;
+  }
+  .half + .half {
+    border-left: 1px solid var(--line);
+  }
+  .half .text {
+    flex: 1;
+    min-width: 0;
+    padding-right: 12px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .half.add {
+    background: color-mix(in srgb, var(--ok) 13%, transparent);
+  }
+  .half.del {
+    background: color-mix(in srgb, var(--danger) 13%, transparent);
+  }
+  .half.add .sign {
+    color: var(--ok);
+  }
+  .half.del .sign {
+    color: var(--danger);
+  }
+  .half.empty {
+    background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--line) 45%, transparent) 6px 7px);
+  }
+  mark {
+    color: inherit;
+    border-radius: 2px;
+  }
+  .half.add mark {
+    background: color-mix(in srgb, var(--ok) 38%, transparent);
+  }
+  .half.del mark {
+    background: color-mix(in srgb, var(--danger) 38%, transparent);
   }
 </style>

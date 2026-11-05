@@ -78,6 +78,9 @@ const en = {
 
   "diff.changes": "Changes in {name}",
   "diff.commit": "Commit {hash}",
+  "diff.view": "Diff layout",
+  "diff.split": "Side by side: old on the left, new on the right",
+  "diff.unified": "In one column",
   "diff.none": "No changes.",
   "diff.openFile": "Open file",
 

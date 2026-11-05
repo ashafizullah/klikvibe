@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { parseDiff, stats } from "./diff";
+import { parseDiff, splitDiff, stats } from "./diff";
 import { join, relative, baseName } from "./paths";
 import { languageName } from "./languages";
 
@@ -27,6 +27,20 @@ test("parses a unified diff with line numbers", () => {
     ["ctx", 3, 4],
   ]);
   expect(stats(rows)).toEqual({ added: 2, removed: 1 });
+});
+
+test("splits a diff into side-by-side rows, pairing an edit's two versions", () => {
+  const pairs = splitDiff(parseDiff(DIFF)).filter((r) => r.kind === "pair");
+  expect(pairs.map((r) => (r.kind === "pair" ? [r.left?.kind, r.left?.no, r.right?.kind, r.right?.no] : []))).toEqual([
+    ["ctx", 1, "ctx", 1],
+    ["del", 2, "add", 2],
+    [undefined, undefined, "add", 3],
+    ["ctx", 3, "ctx", 4],
+  ]);
+  const edit = pairs[1];
+  // "const a = 1;" → "const a = 2;": only the digit changed.
+  expect(edit.kind === "pair" && edit.left?.changed).toEqual([10, 11]);
+  expect(edit.kind === "pair" && edit.right?.changed).toEqual([10, 11]);
 });
 
 test("joins and relativizes paths on both systems", () => {

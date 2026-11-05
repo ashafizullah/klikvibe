@@ -16,6 +16,7 @@
 - Kartu sambutan tetap di belakang terminal saat terminal ditarik ke atas.
 - Tooltip di semua tombol: arahkan kursor ke ikon untuk melihat fungsinya dan pintasannya.
 - Graph commit di riwayat Git: garis branch dan merge, label branch dan tag, penanda commit yang sedang dipakai, dan pilihan antara branch ini atau semua branch. Klik commit untuk melihat daftar file yang diubah (dengan jumlah baris ditambah dan dihapus) dan membuka diff tiap file; commit lengkapnya tinggal satu klik lagi.
+- Diff berdampingan: versi lama di kiri, versi baru di kanan, dua versi baris yang diedit sejajar dengan bagian yang berubah disorot. Tombol di header diff mengembalikan ke satu kolom.
 
 ## 0.1.0
 

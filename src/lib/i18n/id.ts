@@ -80,6 +80,9 @@ const id: Record<Key, string> = {
 
   "diff.changes": "Perubahan di {name}",
   "diff.commit": "Commit {hash}",
+  "diff.view": "Tampilan diff",
+  "diff.split": "Berdampingan: lama di kiri, baru di kanan",
+  "diff.unified": "Dalam satu kolom",
   "diff.none": "Tidak ada perubahan.",
   "diff.openFile": "Buka file",
 
