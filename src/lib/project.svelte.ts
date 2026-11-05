@@ -82,6 +82,10 @@ export class ProjectState {
   gitBusy = $state<string | null>(null);
   /** Files changed on disk lately (path → when), shown as fresh in the tree. */
   readonly fresh = new SvelteMap<string, number>();
+  /** Every file in the project (relative paths), for search by name; loaded on first search. */
+  allFiles = $state.raw<string[] | null>(null);
+  allFilesTruncated = $state(false);
+  private filesTimer: ReturnType<typeof setTimeout> | null = null;
   /** The history commit showing its files, if any. */
   expandedCommit = $state<string | null>(null);
   /** The files of commits opened in the history (commits don't change, so they stay). */
@@ -124,6 +128,7 @@ export class ProjectState {
   dispose() {
     this.closed = true;
     if (this.dirTimer) clearTimeout(this.dirTimer);
+    if (this.filesTimer) clearTimeout(this.filesTimer);
     if (this.gitTimer) clearTimeout(this.gitTimer);
     ipc.unwatchProject(this.root).catch(() => {});
   }
@@ -139,6 +144,18 @@ export class ProjectState {
       this.tree.delete(path);
       this.expanded.delete(path);
       if (path === this.root) toast(errorText(e), "error");
+    }
+  }
+
+  /** Lists every file for search by name (again when the disk changed). */
+  async loadAllFiles() {
+    try {
+      const list = await ipc.listFiles(this.root);
+      if (this.closed) return;
+      this.allFiles = list.files;
+      this.allFilesTruncated = list.truncated;
+    } catch (e) {
+      toast(errorText(e), "error");
     }
   }
 
@@ -323,6 +340,8 @@ export class ProjectState {
 
   onChanged(e: FsChanged) {
     if (e.git) this.refreshGit(this.gitTab === "history");
+    // Files may have come or gone: list them again (soon, once) if a search uses the list.
+    if (this.allFiles && !this.filesTimer) this.filesTimer = setTimeout(() => ((this.filesTimer = null), this.loadAllFiles()), 600);
     const now = Date.now();
     const changed = e.many ? null : new Set(e.paths);
     if (changed) {

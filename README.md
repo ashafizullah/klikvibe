@@ -96,6 +96,8 @@ A running KlikVibe also opens a folder passed to a second launch (`klikvibe <fol
 | Close tab | ⌘W | Ctrl+W |
 | Files panel | ⌘B | Ctrl+B |
 | Code panel | ⌘⇧E | Ctrl+Shift+E |
+| Find a file by name | ⌘P | Ctrl+P |
+| Search in files | ⌘⇧F | Ctrl+Shift+F |
 | Git panel | ⌘⇧G | Ctrl+Shift+G |
 | Terminal | Ctrl+` | Ctrl+` |
 | Commit (in the message box) | ⌘↵ | Ctrl+Enter |

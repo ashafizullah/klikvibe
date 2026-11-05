@@ -13,6 +13,22 @@ export interface Entry {
   path: string;
   dir: boolean;
 }
+export interface FileList {
+  files: string[];
+  truncated: boolean;
+}
+export interface TextMatch {
+  path: string;
+  line: number;
+  text: string;
+  /** The match's byte range in `text` (equal to the character range for ASCII). */
+  start: number;
+  end: number;
+}
+export interface TextSearch {
+  matches: TextMatch[];
+  truncated: boolean;
+}
 export interface FileText {
   text: string | null;
   size: number;
@@ -93,6 +109,8 @@ export const ipc = {
 
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
   readFile: (path: string) => invoke<FileText>("read_file", { path }),
+  listFiles: (root: string) => invoke<FileList>("list_files", { root }),
+  searchText: (root: string, query: string, include: string | null) => invoke<TextSearch>("search_text", { root, query, include }),
   writeFile: (path: string, text: string) => invoke<void>("write_file", { path, text }),
   openExternally: (path: string) => invoke<void>("open_externally", { path }),
   clipboardText: () => invoke<string>("clipboard_text"),

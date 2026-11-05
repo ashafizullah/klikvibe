@@ -4,8 +4,8 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { errorText, ipc, type Project } from "./lib/ipc";
   import { currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
-  import { settings } from "./lib/settings.svelte";
-  import { toast, ui } from "./lib/ui.svelte";
+  import { persist, settings } from "./lib/settings.svelte";
+  import { isMac, toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
   import { initUpdates } from "./lib/updates.svelte";
   import Home from "./components/Home.svelte";
@@ -19,6 +19,7 @@
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
+  import { treeKey } from "./lib/grid";
 
   const project = $derived(currentProject());
 
@@ -48,8 +49,19 @@
     }
   }
 
+  /** Shows the file tree and puts the cursor in its search (names or contents). */
+  function openSearch(mode: "names" | "text") {
+    settings.showCode = true;
+    settings[treeKey(settings)] = true;
+    persist();
+    window.dispatchEvent(new CustomEvent("klikvibe:search", { detail: mode }));
+  }
+
   function onKeydown(e: KeyboardEvent) {
-    const mod = e.metaKey || e.ctrlKey;
+    // ⌘ on macOS, Ctrl elsewhere: on a Mac, Ctrl+W or Ctrl+B belong to the shell.
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    // Elsewhere Ctrl+letter is the shell's too while the terminal has the keyboard (Ctrl+W, Ctrl+B, Ctrl+P…).
+    const inTerminal = !isMac && !!(e.target as Element | null)?.closest?.(".xterm");
     const key = e.key.toLowerCase();
     if (e.ctrlKey && e.key === "`") {
       e.preventDefault();
@@ -64,6 +76,8 @@
         e.preventDefault();
         showProject(p.root);
       }
+    } else if (inTerminal && !e.shiftKey) {
+      return;
     } else if (mod && !e.shiftKey && key === "o") {
       e.preventDefault();
       pick();
@@ -87,6 +101,12 @@
     } else if (mod && e.shiftKey && key === "e") {
       e.preventDefault();
       togglePanel("showCode");
+    } else if (mod && !e.shiftKey && key === "p") {
+      e.preventDefault();
+      openSearch("names");
+    } else if (mod && e.shiftKey && key === "f") {
+      e.preventDefault();
+      openSearch("text");
     }
   }
 

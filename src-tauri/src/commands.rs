@@ -1,7 +1,7 @@
 //! What the window can ask for. Every path is checked against the open
 //! projects (see projects.rs); slow work runs off the main thread.
 use crate::error::{AppError, AppResult};
-use crate::files::{self, Entry, FileText};
+use crate::files::{self, Entry, FileList, FileText, TextSearch};
 use crate::git::{self, Commit, CommitFile, Status};
 use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
@@ -75,6 +75,20 @@ pub fn unwatch_project(projects: State<'_, Projects>, watchers: State<'_, Watche
 pub async fn list_dir(projects: State<'_, Projects>, path: String) -> AppResult<Vec<Entry>> {
     let dir = projects.existing(&path)?;
     blocking(move || files::list(&dir)).await
+}
+
+/// Every file in an open project (`.gitignore` applied), for search by name.
+#[tauri::command]
+pub async fn list_files(projects: State<'_, Projects>, root: String) -> AppResult<FileList> {
+    let root = projects.root(&root)?;
+    blocking(move || files::list_all(&root)).await
+}
+
+/// Lines containing `query` in an open project's text files, optionally only in files matching `include` globs.
+#[tauri::command]
+pub async fn search_text(projects: State<'_, Projects>, root: String, query: String, include: Option<String>) -> AppResult<TextSearch> {
+    let root = projects.root(&root)?;
+    blocking(move || files::search_text(&root, &query, include.as_deref())).await
 }
 
 #[tauri::command]

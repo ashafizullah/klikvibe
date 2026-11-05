@@ -20,6 +20,8 @@
 - Questions such as "Discard changes?" use KlikVibe's own dialog instead of the system one; for anything that can't be undone the button is red and Cancel has the focus.
 - The faint film-grain texture over the window is gone: it was barely visible and cost about 40 MB of graphics memory while KlikVibe is in front.
 - Right-click in the code editor for Cut, Copy, Paste, Select all, Find and Go to line, plus Save, the file's changes, its path and Reveal; in a diff for Copy, Select all, the layout switch and the file.
+- Search in the Files panel: by name (`⌘P`), with words, `*`, `**` and `?` patterns and `!` to leave out, or in file contents (`⌘⇧F`), optionally only in files like `*.ts`; a result opens the file at that line. Both follow `.gitignore`.
+- Shortcuts no longer fire on Ctrl in the terminal: on macOS they use ⌘ only, elsewhere Ctrl+letter goes to the shell while the terminal has the keyboard (Ctrl+W no longer closes a file tab).
 
 ## 0.1.0
 

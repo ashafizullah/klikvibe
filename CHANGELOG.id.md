@@ -20,6 +20,8 @@
 - Pertanyaan seperti "Buang perubahan?" memakai dialog KlikVibe sendiri, bukan dialog sistem; untuk tindakan yang tidak bisa dibatalkan tombolnya merah dan fokus ada di Batal.
 - Tekstur butiran film tipis di atas jendela dihapus: hampir tidak terlihat dan memakan sekitar 40 MB memori grafis saat KlikVibe di depan.
 - Klik kanan di editor kode untuk Potong, Salin, Tempel, Pilih semua, Cari dan Ke baris, plus Simpan, perubahan file, path dan Tampilkan di Finder; di diff untuk Salin, Pilih semua, ganti tampilan dan file-nya.
+- Pencarian di panel Files: berdasarkan nama (`⌘P`), dengan kata, pola `*`, `**`, `?`, dan `!` untuk mengecualikan, atau di isi file (`⌘⇧F`), bisa dibatasi ke file seperti `*.ts`; hasil membuka file di baris itu. Keduanya mengikuti `.gitignore`.
+- Pintasan tidak lagi terpicu oleh Ctrl di terminal: di macOS hanya memakai ⌘, di sistem lain Ctrl+huruf diteruskan ke shell selama terminal menerima ketikan (Ctrl+W tidak lagi menutup tab file).
 
 ## 0.1.0
 
