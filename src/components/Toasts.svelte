@@ -1,5 +1,6 @@
 <script lang="ts">
   import { dismissToast, ui } from "../lib/ui.svelte";
+  import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
 </script>
 
@@ -10,7 +11,7 @@
       {#if toast.action}
         <button class="btn small" onclick={() => (toast.action!.run(), dismissToast(toast.id))}>{toast.action.label}</button>
       {/if}
-      <button class="icon-btn close" onclick={() => dismissToast(toast.id)} aria-label="Close"><Icon name="close" size={12} /></button>
+      <button class="icon-btn close" onclick={() => dismissToast(toast.id)} title={t("tabs.close")} aria-label={t("tabs.close")}><Icon name="close" size={12} /></button>
     </div>
   {/each}
 </div>

@@ -13,6 +13,7 @@
   import ProjectView from "./components/ProjectView.svelte";
   import Toasts from "./components/Toasts.svelte";
   import ContextMenu from "./components/ContextMenu.svelte";
+  import Tooltip from "./components/Tooltip.svelte";
   import McpDialog from "./components/McpDialog.svelte";
   import AboutDialog from "./components/AboutDialog.svelte";
   import AlertDialog from "./components/AlertDialog.svelte";
@@ -119,6 +120,7 @@
   <AlertDialog />
   <Toasts />
   <ContextMenu />
+  <Tooltip />
 </div>
 
 <style>

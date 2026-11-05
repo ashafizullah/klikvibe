@@ -41,6 +41,9 @@ export interface Commit {
   date: string;
   subject: string;
   local: boolean;
+  parents: string[];
+  /** Full decorations, e.g. "HEAD -> refs/heads/main" (see refLabels in graph.ts). */
+  refs: string[];
 }
 export interface FsChanged {
   root: string;
@@ -86,7 +89,7 @@ export const ipc = {
   openExternally: (path: string) => invoke<void>("open_externally", { path }),
 
   gitStatus: (root: string) => invoke<GitStatus>("git_status", { root }),
-  gitLog: (root: string, limit = 200) => invoke<Commit[]>("git_log", { root, limit }),
+  gitLog: (root: string, all: boolean, limit = 200) => invoke<Commit[]>("git_log", { root, limit, all }),
   gitDiff: (root: string, path: string) => invoke<string>("git_diff", { root, path }),
   gitShow: (root: string, hash: string) => invoke<string>("git_show", { root, hash }),
   gitCommit: (root: string, message: string) => invoke<string>("git_commit", { root, message }),

@@ -81,7 +81,7 @@
     <div class="shells">
       {#each shells as s, i (s.id)}
         <div class="shell" class:on={s.id === active} class:exited={s.exited}>
-          <button class="shell-main" onclick={() => (active = s.id)}>{i + 1}</button>
+          <button class="shell-main" onclick={() => (active = s.id)} title={t("terminal.shell", { n: i + 1 })}>{i + 1}</button>
           {#if shells.length > 1}
             <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
           {/if}

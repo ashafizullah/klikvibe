@@ -7,6 +7,9 @@
   import { join } from "../lib/paths";
   import Icon from "./Icon.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
+  import { layoutGraph, refLabels } from "../lib/graph";
+  import { persist, settings } from "../lib/settings.svelte";
+  import GraphCell, { graphWidth } from "./GraphCell.svelte";
 
   const project = useProject();
 
@@ -46,6 +49,16 @@
       { label: t("menu.copyRelative"), run: () => copyText(c.path) },
       { label: revealLabel(), disabled: gone, run: () => reveal(abs) },
     ]);
+  }
+
+  const graph = $derived(layoutGraph(project.log));
+  /** One width for the whole column, so the text lines up; very wide graphs are cut at 8 lanes. */
+  const graphW = $derived(graphWidth(Math.min(8, Math.max(1, ...graph.map((r) => r.width)))));
+
+  function setScope(all: boolean) {
+    settings.historyAll = all;
+    persist();
+    project.refreshGit(true);
   }
 
   function commitMenu(e: MouseEvent, c: Commit) {
@@ -133,13 +146,26 @@
         {/each}
       </div>
     {:else}
+      <div class="scope" role="radiogroup" aria-label={t("git.history")}>
+        <button class:on={!settings.historyAll} role="radio" aria-checked={!settings.historyAll} onclick={() => setScope(false)}>{t("git.thisBranch")}</button>
+        <button class:on={settings.historyAll} role="radio" aria-checked={settings.historyAll} onclick={() => setScope(true)}>{t("git.allBranches")}</button>
+      </div>
       <div class="list">
-        {#each project.log as c (c.hash)}
+        {#each project.log as c, i (c.hash)}
+          {@const refs = refLabels(c.refs)}
           <button class="commit-row" onclick={() => project.openCommit(c)} oncontextmenu={(e) => commitMenu(e, c)} title={c.hash}>
-            <span class="subject">{c.subject}</span>
-            <span class="meta">
-              {#if c.local}<span class="local" title={t("git.notPushed")}><Icon name="arrow-up" size={10} /></span>{/if}
-              <span class="mono">{c.short}</span> · {c.author} · {ago(c.date, i18n.locale)}
+            {#if graph[i]}<GraphCell row={graph[i]} width={graphW} merge={c.parents.length > 1} head={refs.some((r) => r.current)} />{/if}
+            <span class="commit-text">
+              <span class="subject-line">
+                {#each refs as r (r.kind + r.name)}
+                  <span class="ref {r.kind}" class:current={r.current} title={t(`git.ref.${r.kind}`)}>{r.name}</span>
+                {/each}
+                <span class="subject">{c.subject}</span>
+              </span>
+              <span class="meta">
+                {#if c.local}<span class="local" title={t("git.notPushed")}><Icon name="arrow-up" size={10} /></span>{/if}
+                <span class="mono">{c.short}</span> · {c.author} · {ago(c.date, i18n.locale)}
+              </span>
             </span>
           </button>
         {:else}
@@ -277,16 +303,80 @@
   }
   .commit-row {
     width: 100%;
+    height: 46px;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 7px 12px;
+    align-items: center;
+    gap: 4px;
+    padding: 0 12px 0 2px;
     border: none;
-    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
     background: none;
     text-align: left;
   }
+  .commit-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .subject-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .ref {
+    flex: none;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    font: 10px/16px var(--mono);
+    color: var(--muted);
+  }
+  .ref.branch {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--text);
+  }
+  .ref.current,
+  .ref.head {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    border-color: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .ref.tag {
+    border-style: dashed;
+  }
+  .scope {
+    flex: none;
+    display: flex;
+    gap: 2px;
+    margin: 8px 12px 4px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--bg);
+  }
+  .scope button {
+    flex: 1;
+    height: 22px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+  .scope button.on {
+    background: var(--panel-2);
+    color: var(--text);
+  }
   .subject {
+    flex: 1;
+    min-width: 0;
     font-size: 12.5px;
     overflow: hidden;
     text-overflow: ellipsis;

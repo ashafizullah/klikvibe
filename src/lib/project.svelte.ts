@@ -11,6 +11,7 @@ import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
 import { toast } from "./ui.svelte";
+import { settings } from "./settings.svelte";
 
 export type TabKind = "file" | "diff" | "commit";
 
@@ -324,7 +325,7 @@ export class ProjectState {
         const status = await ipc.gitStatus(this.root);
         if (this.closed) return;
         this.git = status;
-        if (log && status.repo) this.log = await ipc.gitLog(this.root);
+        if (log && status.repo) this.log = await ipc.gitLog(this.root, settings.historyAll);
       } catch (e) {
         if (this.closed) return;
         this.git = null;

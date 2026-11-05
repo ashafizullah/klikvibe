@@ -165,29 +165,42 @@ pub struct Commit {
     pub subject: String,
     /// Not on the upstream branch yet.
     pub local: bool,
+    /// Parent hashes: none for the first commit, two or more for a merge.
+    pub parents: Vec<String>,
+    /// Refs pointing here, in full as Git decorates them: "HEAD -> refs/heads/main",
+    /// "refs/remotes/origin/main", "tag: refs/tags/v0.1.0".
+    pub refs: Vec<String>,
 }
 
-const LOG_FORMAT: &str = "--pretty=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1e";
+const LOG_FORMAT: &str = "--pretty=format:%H%x1f%h%x1f%an%x1f%aI%x1f%s%x1f%P%x1f%D%x1e";
 
 pub fn parse_log(out: &str, local: &[&str]) -> Vec<Commit> {
     out.split('\x1e')
         .filter_map(|rec| {
             let f: Vec<&str> = rec.trim_start_matches('\n').split('\x1f').collect();
-            (f.len() == 5).then(|| Commit {
+            (f.len() == 7).then(|| Commit {
                 local: local.contains(&f[0]),
                 hash: f[0].into(),
                 short: f[1].into(),
                 author: f[2].into(),
                 date: f[3].into(),
                 subject: f[4].into(),
+                parents: f[5].split_whitespace().map(String::from).collect(),
+                refs: f[6].split(", ").filter(|r| !r.is_empty()).map(String::from).collect(),
             })
         })
         .collect()
 }
 
-pub fn log(root: &Path, limit: u32) -> AppResult<Vec<Commit>> {
+/// The newest commits of the current branch, or of every branch and tag with `all`,
+/// newest first and children before their parents (for the graph).
+pub fn log(root: &Path, limit: u32, all: bool) -> AppResult<Vec<Commit>> {
     let n = format!("-n{}", limit.clamp(1, 1000));
-    let out = match run(root, &["log", &n, LOG_FORMAT]) {
+    let mut args = vec!["log", "--date-order", "--decorate=full", &n, LOG_FORMAT];
+    if all {
+        args.extend(["--branches", "--remotes", "--tags", "HEAD"]);
+    }
+    let out = match run(root, &args) {
         Ok(out) => out,
         // A repository without commits yet.
         Err(e) if e.to_string().contains("does not have any commits") => return Ok(Vec::new()),
@@ -335,11 +348,15 @@ mod tests {
 
     #[test]
     fn parses_log_and_marks_unpushed() {
-        let out = "aaa111\x1faaa\x1fAdam\x1f2026-11-05T10:00:00+07:00\x1fAdd tree\x1e\nbbb222\x1fbbb\x1fAdam\x1f2026-11-04T09:00:00+07:00\x1fFirst\x1e";
+        let out = "aaa111\x1faaa\x1fAdam\x1f2026-11-05T10:00:00+07:00\x1fMerge feature\x1fbbb222 ccc333\x1fHEAD -> refs/heads/main, refs/remotes/origin/main, tag: refs/tags/v0.2.0\x1e\n\
+                   bbb222\x1fbbb\x1fAdam\x1f2026-11-04T09:00:00+07:00\x1fFirst\x1f\x1f\x1e";
         let log = parse_log(out, &["aaa111"]);
         assert_eq!(log.len(), 2);
         assert!(log[0].local && !log[1].local);
         assert_eq!(log[1].subject, "First");
+        assert_eq!(log[0].parents, ["bbb222", "ccc333"]);
+        assert_eq!(log[0].refs, ["HEAD -> refs/heads/main", "refs/remotes/origin/main", "tag: refs/tags/v0.2.0"]);
+        assert!(log[1].parents.is_empty() && log[1].refs.is_empty());
     }
 
     #[test]
@@ -355,7 +372,7 @@ mod tests {
         commit(&dir, "First").unwrap();
         std::fs::write(dir.join("a.txt"), "two\n").unwrap();
         assert!(diff(&dir, "a.txt").unwrap().contains("+two"));
-        let log = log(&dir, 10).unwrap();
+        let log = log(&dir, 10, true).unwrap();
         assert_eq!(log[0].subject, "First");
         assert!(show(&dir, &log[0].hash).unwrap().contains("a.txt"));
         assert!(show(&dir, "HEAD; rm -rf /").is_err());

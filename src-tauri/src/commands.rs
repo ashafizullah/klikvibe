@@ -113,9 +113,9 @@ pub async fn git_status(projects: State<'_, Projects>, root: String) -> AppResul
 }
 
 #[tauri::command]
-pub async fn git_log(projects: State<'_, Projects>, root: String, limit: u32) -> AppResult<Vec<Commit>> {
+pub async fn git_log(projects: State<'_, Projects>, root: String, limit: u32, all: bool) -> AppResult<Vec<Commit>> {
     let root = root_of(&projects, &root)?;
-    blocking(move || git::log(&root, limit)).await
+    blocking(move || git::log(&root, limit, all)).await
 }
 
 #[tauri::command]

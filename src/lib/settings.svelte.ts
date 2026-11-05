@@ -28,6 +28,8 @@ interface Stored {
   fontSize: number;
   wrap: boolean;
   updateMode: UpdateMode;
+  /** The history (and its graph) shows every branch, not only the current one. */
+  historyAll: boolean;
   /** The version that last ran, to show what's new once after an update. */
   lastVersion: string;
 }
@@ -54,6 +56,7 @@ function load(): Stored {
     fontSize: 13,
     wrap: false,
     updateMode: "auto",
+    historyAll: false,
     lastVersion: "",
   };
   try {
