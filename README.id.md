@@ -25,9 +25,11 @@
 
 ## Fitur
 
-- **Terminal lebih dulu.** Shell terbuka di folder proyek, sebanyak yang Anda perlukan (agen di satu terminal, dev server di terminal lain). Tombol *Jalankan agen* mengetikkan `claude`, `codex`, atau `gemini` untuk Anda; Anda tinggal menekan Enter.
+- **Terminal lebih dulu.** Shell terbuka di folder proyek, sebanyak yang Anda perlukan (agen di satu terminal, dev server di terminal lain). Tombol *Jalankan agen* mengetikkan perintah agen Anda (Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI, atau Aider); Anda tinggal menekan Enter.
+- **Beberapa proyek sekaligus,** masing-masing di tab sendiri dengan file, panel Git, dan terminalnya sendiri, jadi agen tetap bekerja di satu proyek saat Anda melihat proyek lain.
+- **Agen melihat apa yang Anda lihat (MCP).** Aktifkan server MCP lokal dan tambahkan ke agen Anda dengan satu perintah: agen bisa membaca file dan kode yang sedang Anda pilih, melihat editan yang belum disimpan, serta membuka file dan diff di KlikVibe untuk Anda periksa.
 - **Pekerjaan agen terlihat langsung.** Pohon file, file yang terbuka, dan panel Git mengikuti isi disk saat file berubah. File yang baru disentuh berkedip di pohon file, dan file yang terbuka dimuat ulang sendiri, kecuali ada editan yang belum Anda simpan di sana.
-- **Kode saat Anda butuh.** CodeMirror 6 dengan pewarnaan sintaks untuk bahasa-bahasa umum, pencarian, dan edit lalu simpan (`⌘S` / `Ctrl+S`). File biner dan file yang sangat besar tidak dibuka.
+- **Kode saat Anda butuh.** CodeMirror 6 dengan pewarnaan sintaks untuk bahasa-bahasa umum, pencarian, dan edit lalu simpan (`⌘S` / `Ctrl+S`). Gambar, video, audio, dan PDF tampil sebagai pratinjau; file biner lain dan file yang sangat besar tidak dibuka.
 - **Git tanpa pindah aplikasi.**
   - Daftar perubahan, masing-masing dengan diff.
   - Commit semua dengan pesan (`⌘↵`).
@@ -36,7 +38,7 @@
   - `git init` untuk folder baru.
 
   KlikVibe menjalankan `git` milik Anda sendiri, jadi kredensial, kunci SSH, dan hook bekerja sama seperti di terminal.
-- **Kecil dan offline.** Tauri 2 + Svelte 5 + Rust. Tanpa akun, tanpa telemetri, tanpa server.
+- **Kecil dan offline.** Tauri 2 + Svelte 5 + Rust. Tanpa akun, tanpa telemetri, tanpa cloud: server MCP (opsional) hanya mendengarkan di komputer Anda sendiri.
 - Bahasa Inggris dan Bahasa Indonesia.
 
 ## Instal

@@ -3,6 +3,7 @@
 use crate::error::{AppError, AppResult};
 use crate::files::{self, Entry, FileText};
 use crate::git::{self, Commit, Status};
+use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
 use crate::terminal::{TerminalEvent, Terminals};
 use crate::updater;
@@ -206,6 +207,33 @@ pub fn terminal_resize(terminals: State<'_, Terminals>, id: String, cols: u16, r
 #[tauri::command]
 pub fn terminal_close(terminals: State<'_, Terminals>, id: String) {
     terminals.close(&id)
+}
+
+// ---- MCP ----
+
+#[tauri::command]
+pub async fn mcp_start(
+    mcp: State<'_, Mcp>,
+    tools: serde_json::Value,
+    instructions: String,
+    on_call: Channel<McpCall>,
+) -> AppResult<McpInfo> {
+    mcp.start(tools, instructions, on_call).await
+}
+
+#[tauri::command]
+pub fn mcp_stop(mcp: State<'_, Mcp>) {
+    mcp.stop()
+}
+
+#[tauri::command]
+pub fn mcp_link(mcp: State<'_, Mcp>) -> McpLink {
+    mcp.link()
+}
+
+#[tauri::command]
+pub fn mcp_reply(mcp: State<'_, Mcp>, id: u64, result: serde_json::Value) {
+    mcp.reply(id, result)
 }
 
 // ---- updates ----

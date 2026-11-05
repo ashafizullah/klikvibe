@@ -1,5 +1,6 @@
 // Interface state shared across components: toasts, the busy indicator and
 // the right-click menu.
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { t } from "./i18n/index.svelte";
 
 export interface Toast {
@@ -16,6 +17,8 @@ export const ui = $state({
   busy: null as string | null,
   toasts: [] as Toast[],
   menu: null as { x: number; y: number; items: MenuItem[] } | null,
+  /** The modal on screen, if any. */
+  dialog: null as "mcp" | null,
 });
 
 /** Shows a right-click menu at the pointer. */
@@ -27,6 +30,11 @@ export function openMenu(e: MouseEvent, items: MenuItem[]) {
 
 export function closeMenu() {
   ui.menu = null;
+}
+
+/** Shows a file or folder in Finder / Explorer. */
+export function reveal(path: string) {
+  revealItemInDir(path).catch((e) => toast(e instanceof Error ? e.message : String(e), "error"));
 }
 
 export async function copyText(text: string) {

@@ -33,7 +33,14 @@ notify = "8"
 notify-debouncer-mini = "0.7"
 # Decoding file paths in media:// URLs.
 percent-encoding = "2"
+# The local MCP server for the user's agent (see mcp.rs).
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+futures = "0.3"
 tauri-plugin-updater = "2"
+
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 
 # Debug builds keep line numbers for backtraces but not full debug info.
 [profile.dev]

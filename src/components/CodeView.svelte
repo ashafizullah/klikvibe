@@ -44,12 +44,16 @@
         ],
       }),
     });
+    project.attachView(tab.id, view);
     loadLanguage(tab.title).then((lang) => {
       if (lang && view) view.dispatch({ effects: language.reconfigure(lang) });
     });
   });
 
-  onDestroy(() => view?.destroy());
+  onDestroy(() => {
+    if (view) project.detachView(tab.id, view);
+    view?.destroy();
+  });
 
   // A reload from disk (an agent's edit): swap the text in, keeping the cursor near where it was.
   $effect(() => {

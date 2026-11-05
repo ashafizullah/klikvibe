@@ -1,14 +1,6 @@
 // Layout preferences, kept in the webview's local storage. The recent
 // projects list lives on the Rust side, which decides what may be opened.
 
-export type Agent = "claude" | "codex" | "gemini";
-
-export const AGENTS: { id: Agent; label: string; command: string }[] = [
-  { id: "claude", label: "Claude Code", command: "claude" },
-  { id: "codex", label: "Codex", command: "codex" },
-  { id: "gemini", label: "Gemini CLI", command: "gemini" },
-];
-
 interface Stored {
   showTree: boolean;
   showGit: boolean;
@@ -16,8 +8,10 @@ interface Stored {
   treeWidth: number;
   gitWidth: number;
   terminalHeight: number;
-  /** The agent the terminal's quick button types. */
-  agent: Agent;
+  /** The agent the terminal's quick button types and the MCP setup is shown for (an id from agents.ts). */
+  agent: string;
+  /** Run the local MCP server for the user's agent. */
+  mcpEnabled: boolean;
   fontSize: number;
   wrap: boolean;
 }
@@ -33,6 +27,7 @@ function load(): Stored {
     gitWidth: 320,
     terminalHeight: 280,
     agent: "claude",
+    mcpEnabled: false,
     fontSize: 13,
     wrap: false,
   };

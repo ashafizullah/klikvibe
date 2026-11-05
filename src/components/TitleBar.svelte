@@ -1,11 +1,10 @@
 <script lang="ts">
   import { closeProject, currentProject, showProject, workspace, type ProjectState } from "../lib/project.svelte";
-  import { revealItemInDir } from "@tauri-apps/plugin-opener";
-  import { errorText } from "../lib/ipc";
   import { persist, settings } from "../lib/settings.svelte";
-  import { copyText, isMac, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
+  import { copyText, isMac, mod, openMenu, reveal, revealLabel } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
+  import McpBadge from "./McpBadge.svelte";
 
   const project = $derived(currentProject());
   const git = $derived(project?.git);
@@ -28,7 +27,7 @@
       { label: t("menu.closeAllProjects"), run: () => closeMany([...workspace.projects]) },
       "sep",
       { label: t("menu.copyPath"), run: () => copyText(p.root) },
-      { label: revealLabel(), run: () => revealItemInDir(p.root).catch((err) => toast(errorText(err), "error")) },
+      { label: revealLabel(), run: () => reveal(p.root) },
     ]);
   }
 
@@ -70,13 +69,14 @@
     </button>
   {/if}
   <div class="spacer" data-tauri-drag-region></div>
+  <McpBadge />
   {#if project}
     <div class="toggles">
       <button class="icon-btn" class:on={settings.showTree} onclick={() => toggle("showTree")} title={`${t("bar.files")} (${mod}B)`} aria-label={t("bar.files")} aria-pressed={settings.showTree}>
         <Icon name="panel-left" size={15} />
       </button>
       <button class="icon-btn" class:on={settings.showTerminal} onclick={() => toggle("showTerminal")} title={t("bar.terminal") + " (Ctrl+`)"} aria-label={t("bar.terminal")} aria-pressed={settings.showTerminal}>
-        <Icon name="panel-bottom" size={15} />
+        <Icon name="terminal" size={15} />
       </button>
       <button class="icon-btn" class:on={settings.showGit} onclick={() => toggle("showGit")} title={`${t("bar.git")} (${mod}⇧G)`} aria-label={t("bar.git")} aria-pressed={settings.showGit}>
         <Icon name="panel-right" size={15} />

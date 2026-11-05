@@ -3,8 +3,8 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { errorText, ipc, type RecentProject } from "../lib/ipc";
   import { openProject, workspace } from "../lib/project.svelte";
-  import { AGENTS } from "../lib/settings.svelte";
-  import { isMac, mod, toast } from "../lib/ui.svelte";
+  import { AGENTS } from "../lib/agents";
+  import { copyText, isMac, mod, openMenu, reveal, revealLabel, toast, ui } from "../lib/ui.svelte";
   import { checkForUpdates, updates } from "../lib/updates.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -44,6 +44,17 @@
     }
   }
 
+  function menu(e: MouseEvent, r: RecentProject) {
+    openMenu(e, [
+      { label: t("menu.open"), disabled: !r.exists, run: () => reopen(r) },
+      "sep",
+      { label: t("menu.copyPath"), run: () => copyText(r.root) },
+      { label: revealLabel(), disabled: !r.exists, run: () => reveal(r.root) },
+      "sep",
+      { label: t("home.forget"), run: () => forget(r) },
+    ]);
+  }
+
   async function forget(r: RecentProject) {
     await ipc.forgetRecent(r.root).catch(() => {});
     load();
@@ -67,12 +78,19 @@
           <span class="nav-hint">{mod}O</span>
         </span>
       </button>
+      <button class="nav-item" onclick={() => (ui.dialog = "mcp")}>
+        <Icon name="plug" size={15} />
+        <span class="nav-text">
+          <span>{t("mcp.title")}</span>
+          <span class="nav-hint">{t("mcp.navHint")}</span>
+        </span>
+      </button>
     </nav>
 
     <span class="label section">{t("home.agents")}</span>
     <ul class="agents">
       {#each AGENTS as a (a.id)}
-        <li><Icon name="sparkles" size={13} /><span>{a.label}</span><code>{a.command}</code></li>
+        <li title={a.command}>{a.label}</li>
       {/each}
     </ul>
     <p class="agents-hint">{t("home.agentsHint")}</p>
@@ -110,7 +128,7 @@
         {#if recent.length}
           <div class="list">
             {#each recent as r, i (r.root)}
-              <div class="row rise" class:missing={!r.exists} style:animation-delay="{Math.min(i, 12) * 40}ms">
+              <div class="row rise" class:missing={!r.exists} role="listitem" oncontextmenu={(e) => menu(e, r)} style:animation-delay="{Math.min(i, 12) * 40}ms">
                 <button class="row-main" onclick={() => reopen(r)} disabled={!r.exists} title={r.root}>
                   <Icon name="project" size={16} />
                   <span class="name">{r.name}</span>
@@ -217,25 +235,15 @@
     margin: 0;
     padding: 2px 16px;
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 12px;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 11px;
   }
   .agents li {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .agents :global(svg) {
-    color: var(--accent);
-    flex: none;
-  }
-  .agents span {
-    flex: 1;
-  }
-  .agents code {
-    font: 10.5px var(--mono);
-    color: var(--muted);
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--text);
   }
   .agents-hint {
     margin: 8px 16px 0;

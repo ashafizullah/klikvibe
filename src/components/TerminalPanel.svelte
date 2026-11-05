@@ -1,7 +1,8 @@
 <script lang="ts">
   // Shells in the project folder: one for the agent, more for a dev server or tests.
   import { useProject } from "../lib/project.svelte";
-  import { AGENTS, persist, settings, type Agent } from "../lib/settings.svelte";
+  import { persist, settings } from "../lib/settings.svelte";
+  import { AGENTS, agentById } from "../lib/agents";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
@@ -19,7 +20,7 @@
   let active = $state(1);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
-  const agent = $derived(AGENTS.find((a) => a.id === settings.agent) ?? AGENTS[0]);
+  const agent = $derived(agentById(settings.agent));
 
   function add() {
     const id = nextId++;
@@ -41,7 +42,7 @@
   }
 
   function setAgent(e: Event) {
-    settings.agent = (e.currentTarget as HTMLSelectElement).value as Agent;
+    settings.agent = (e.currentTarget as HTMLSelectElement).value;
     persist();
   }
 
@@ -58,6 +59,18 @@
     window.addEventListener("pointerup", up);
   }
 </script>
+
+{#if !settings.showTerminal}
+  <!-- Hidden terminals keep running; this strip brings them back. -->
+  <button class="collapsed" onclick={() => ((settings.showTerminal = true), persist())} title={`${t("terminal.show")} (Ctrl+\`)`}>
+    <Icon name="terminal" size={13} />
+    <span>{t("terminal.title")}</span>
+    {#if shells.length > 1}<span class="count">{shells.length}</span>{/if}
+    <span class="spacer"></span>
+    <span class="kbd">Ctrl+`</span>
+    <Icon name="up" size={13} />
+  </button>
+{/if}
 
 <section class="terminal" class:hidden={!settings.showTerminal} style:height="{settings.terminalHeight}px" aria-label={t("terminal.title")}>
   <div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>
@@ -105,6 +118,38 @@
   }
   .terminal.hidden {
     display: none;
+  }
+  .collapsed {
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 10px 0 12px;
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--panel);
+    color: var(--muted);
+    font-size: 12px;
+    text-align: left;
+  }
+  .collapsed:hover {
+    color: var(--text);
+    background: var(--panel-2);
+  }
+  .collapsed:hover :global(svg) {
+    color: var(--accent);
+  }
+  .count {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: var(--panel-2);
+    font: 10px var(--mono);
   }
   .grip {
     position: absolute;

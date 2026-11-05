@@ -25,9 +25,11 @@
 
 ## What it does
 
-- **Terminal first.** Shells open in the project folder, as many as you need (the agent in one, the dev server in another). *Start agent* types `claude`, `codex` or `gemini` for you; you press Enter.
+- **Terminal first.** Shells open in the project folder, as many as you need (the agent in one, the dev server in another). *Start agent* types the command of your agent (Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI or Aider) for you; you press Enter.
+- **Several projects at once,** each in its own tab with its own files, Git panel and terminals, so an agent keeps working in one while you look at another.
+- **Your agent sees what you see (MCP).** Turn on the local MCP server and add it to your agent with one command: it can then read the file and the code you have selected, see unsaved edits, and open files and diffs in KlikVibe for you to review.
 - **Live view of the agent's work.** The file tree, open files and the Git panel follow the disk as files change. Files touched in the last moments pulse in the tree, and open files reload by themselves unless you have unsaved edits there.
-- **Code when you want it.** CodeMirror 6 with syntax highlighting for the common languages, search, and editing with save (`⌘S` / `Ctrl+S`). Binary and very large files are not opened.
+- **Code when you want it.** CodeMirror 6 with syntax highlighting for the common languages, search, and editing with save (`⌘S` / `Ctrl+S`). Images, video, audio and PDFs open as a preview; other binary files and very large files are not opened.
 - **Git without leaving.**
   - Changes, each with a diff.
   - Commit all with a message (`⌘↵`).
@@ -36,7 +38,7 @@
   - `git init` for a new folder.
 
   It runs your own `git`, so your credentials, SSH keys and hooks work as in a terminal.
-- **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no server.
+- **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no cloud: the optional MCP server only listens on your own computer.
 - English and Bahasa Indonesia.
 
 ## Install

@@ -6,6 +6,10 @@
 - Gambar, video, audio dan PDF tampil sebagai pratinjau, bukan "file biner", dan ikut diperbarui saat filenya berubah. SVG bisa dialihkan ke kodenya, dan semua pratinjau bisa dibuka di aplikasi bawaan.
 - Klik kanan tab file untuk menutupnya, menutup tab lain, tab di kanannya, tab yang sudah disimpan atau semuanya, menyalin path, atau menampilkannya di Finder atau Explorer. Tab proyek punya menu yang sama untuk proyek.
 - Klik kanan perubahan di panel Git untuk membukanya, membuang perubahannya (atau menghapus file baru), menambahkannya atau foldernya ke .gitignore, menyalin path, atau menampilkannya di Finder. Klik kanan commit untuk menyalin hash atau pesannya.
+- Klik kanan file dan folder di pohon file, serta proyek di daftar terakhir, untuk menu serupa.
+- Server MCP lokal (nonaktif secara bawaan) untuk agen yang kamu pakai: agen bisa membaca file dan teks yang sedang kamu pilih serta editan yang belum disimpan, dan membuka file dan diff di KlikVibe. Ada langkah setup untuk Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, dan Cursor CLI.
+- *Jalankan agen* mengenal lebih banyak agen: OpenCode, Oh My Pi (`omp`), Command Code (`cmd`), Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI, dan Aider.
+- Terminal yang disembunyikan meninggalkan strip di bawah editor untuk membukanya lagi, dan bilah judul menampilkan ikon terminal.
 
 ## 0.1.0
 

@@ -2,6 +2,10 @@
   import type { Entry } from "../lib/ipc";
   import { useProject } from "../lib/project.svelte";
   import { mediaKind } from "../lib/media";
+  import { errorText, ipc } from "../lib/ipc";
+  import { relative } from "../lib/paths";
+  import { copyText, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
+  import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
 
@@ -14,6 +18,37 @@
   const changedInside = $derived(entry.dir && project.folderChanged(entry.path));
   const fresh = $derived(project.isFresh(entry.path, now));
   const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
+  function menu(e: MouseEvent) {
+    const rel = relative(project.root, entry.path) ?? entry.path;
+    const where: MenuItem[] = [
+      { label: t("menu.copyPath"), run: () => copyText(entry.path) },
+      { label: t("menu.copyRelative"), run: () => copyText(rel) },
+      { label: revealLabel(), run: () => reveal(entry.path) },
+    ];
+    if (entry.dir) {
+      openMenu(e, [{ label: open ? t("menu.collapse") : t("menu.expand"), run: () => project.toggleDir(entry.path) }, "sep", ...where]);
+      return;
+    }
+    const c = change;
+    const git: MenuItem[] = c
+      ? [
+          "sep",
+          { label: c.kind === "untracked" ? t("git.menu.delete") : t("git.menu.discard"), disabled: c.kind === "conflict", run: () => project.discard(c) },
+          ...(c.kind === "untracked" ? [{ label: t("git.menu.ignore"), run: () => project.ignore(c.path) }] : []),
+        ]
+      : [];
+    openMenu(e, [
+      { label: t("menu.open"), run: () => project.openFile(entry.path) },
+      ...(c ? [{ label: t("git.menu.openDiff"), run: () => project.openDiff(c) }] : []),
+      ...(mediaKind(entry.name)
+        ? [{ label: t("media.openExternally"), run: () => ipc.openExternally(entry.path).catch((err) => toast(errorText(err), "error")) }]
+        : []),
+      ...git,
+      "sep",
+      ...where,
+    ]);
+  }
+
   const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
 </script>
 
@@ -23,6 +58,7 @@
   class:fresh
   style:padding-left="{8 + depth * 14}px"
   onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path))}
+  oncontextmenu={menu}
   title={entry.path}
 >
   {#if entry.dir}

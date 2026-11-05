@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod files;
 mod git;
+mod mcp;
 mod media;
 mod projects;
 mod terminal;
@@ -59,6 +60,7 @@ pub fn run() {
                 *projects.launch.lock().unwrap() = Some(project);
             }
             app.manage(projects);
+            app.manage(mcp::Mcp::new(app.path().app_data_dir()?));
             // Debug builds are not released, so they have nothing to update to.
             if !cfg!(debug_assertions) {
                 updater::start_background_checks(app.handle());
@@ -77,6 +79,10 @@ pub fn run() {
             commands::read_file,
             commands::write_file,
             commands::open_externally,
+            commands::mcp_start,
+            commands::mcp_stop,
+            commands::mcp_link,
+            commands::mcp_reply,
             commands::git_status,
             commands::git_log,
             commands::git_diff,

@@ -54,6 +54,21 @@ export interface Release {
   notes: string;
 }
 export type UpdateCheck = ({ status: "available" } & Release) | { status: "upToDate"; current: string } | { status: "busy" };
+export interface McpCall {
+  id: number;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+export interface McpInfo {
+  url: string;
+  token: string;
+}
+export interface McpLink {
+  running: boolean;
+  connected: boolean;
+  client: string | null;
+  idleSecs: number | null;
+}
 export type TerminalEvent = { type: "data"; data: string } | { type: "exit"; code: number | null };
 
 export const ipc = {
@@ -89,6 +104,15 @@ export const ipc = {
   terminalWrite: (id: string, data: string) => invoke<void>("terminal_write", { id, data }),
   terminalResize: (id: string, cols: number, rows: number) => invoke<void>("terminal_resize", { id, cols, rows }),
   terminalClose: (id: string) => invoke<void>("terminal_close", { id }),
+
+  mcpStart(tools: unknown, instructions: string, onCall: (c: McpCall) => void) {
+    const channel = new Channel<McpCall>();
+    channel.onmessage = onCall;
+    return invoke<McpInfo>("mcp_start", { tools, instructions, onCall: channel });
+  },
+  mcpStop: () => invoke<void>("mcp_stop"),
+  mcpLink: () => invoke<McpLink>("mcp_link"),
+  mcpReply: (id: number, result: unknown) => invoke<void>("mcp_reply", { id, result }),
 
   checkUpdates: () => invoke<UpdateCheck>("check_updates"),
   installUpdate: () => invoke<void>("install_update"),

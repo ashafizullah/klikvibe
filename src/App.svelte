@@ -13,6 +13,8 @@
   import ProjectView from "./components/ProjectView.svelte";
   import Toasts from "./components/Toasts.svelte";
   import ContextMenu from "./components/ContextMenu.svelte";
+  import McpDialog from "./components/McpDialog.svelte";
+  import { startMcp } from "./lib/mcp.svelte";
   import Icon from "./components/Icon.svelte";
 
   const project = $derived(currentProject());
@@ -22,6 +24,7 @@
     const off = listen<Project>("open-project", (e) => openProject(e.payload));
     ipc.takeLaunchProject().then((p) => p && openProject(p));
     initUpdates();
+    if (settings.mcpEnabled) startMcp();
     return () => off.then((f) => f());
   });
 
@@ -106,6 +109,9 @@
 
   {#if ui.busy}
     <div class="busy"><Icon name="loader" size={13} class="spin" />{ui.busy}</div>
+  {/if}
+  {#if ui.dialog === "mcp"}
+    <McpDialog />
   {/if}
   <Toasts />
   <ContextMenu />

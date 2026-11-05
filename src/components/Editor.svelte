@@ -3,8 +3,7 @@
   import { languageName } from "../lib/languages";
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
-  import { copyText, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
-  import { revealItemInDir } from "@tauri-apps/plugin-opener";
+  import { copyText, mod, openMenu, reveal, revealLabel, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import CodeView from "./CodeView.svelte";
@@ -38,7 +37,7 @@
       { label: t("menu.copyPath"), run: () => copyText(tb.path) },
       { label: t("menu.copyRelative"), run: () => copyText(relative(project.root, tb.path) ?? tb.path) },
       "sep" as const,
-      { label: revealLabel(), run: () => revealItemInDir(tb.path).catch((err) => toast(errorText(err), "error")) },
+      { label: revealLabel(), run: () => reveal(tb.path) },
     ];
     openMenu(e, [
       { label: t("menu.close"), hint: `${mod}W`, run: () => project.closeTab(tb.id) },

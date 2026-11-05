@@ -5,6 +5,7 @@ import { getContext, setContext } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
+import type { EditorView } from "@codemirror/view";
 import { errorText, ipc, type Change, type Commit, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
@@ -45,6 +46,14 @@ function newTab(kind: TabKind, id: string, title: string, path: string): Tab {
   return { id, kind, title, path, text: "", saved: "", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null };
 }
 
+function selectLines(view: EditorView, line: number, endLine: number) {
+  const doc = view.state.doc;
+  const from = doc.line(Math.min(Math.max(1, line), doc.lines));
+  const to = doc.line(Math.min(Math.max(from.number, endLine), doc.lines));
+  view.dispatch({ selection: { anchor: from.from, head: to.to }, scrollIntoView: true });
+  view.focus();
+}
+
 /** One open project. */
 export class ProjectState {
   readonly current: Project;
@@ -61,6 +70,11 @@ export class ProjectState {
   gitBusy = $state<string | null>(null);
   /** Files changed on disk lately (path → when), shown as fresh in the tree. */
   readonly fresh = new SvelteMap<string, number>();
+
+  /** The editors of file tabs on screen, by tab id (read by the MCP tools). */
+  readonly views = new Map<string, EditorView>();
+  /** Lines to show once a tab's editor appears (1-based, inclusive). */
+  private reveals = new Map<string, { line: number; endLine: number }>();
 
   private closed = false;
   private pendingDirs = new Set<string>();
@@ -154,6 +168,27 @@ export class ProjectState {
     tab.media = mediaKind(path);
     if (tab.media) tab.loading = false;
     else await this.readInto(tab);
+  }
+
+  /** Scrolls a file tab to `line` (through `endLine`) and selects those lines, now or once its editor appears. */
+  revealLines(tabId: string, line: number, endLine = line) {
+    const view = this.views.get(tabId);
+    if (view) selectLines(view, line, endLine);
+    else this.reveals.set(tabId, { line, endLine });
+  }
+
+  /** Called by the editor when it appears. */
+  attachView(tabId: string, view: EditorView) {
+    this.views.set(tabId, view);
+    const want = this.reveals.get(tabId);
+    if (want) {
+      this.reveals.delete(tabId);
+      selectLines(view, want.line, want.endLine);
+    }
+  }
+
+  detachView(tabId: string, view: EditorView) {
+    if (this.views.get(tabId) === view) this.views.delete(tabId);
   }
 
   /** Switches a previewed text file (an SVG) to its source. */

@@ -2,10 +2,9 @@
   import { useProject } from "../lib/project.svelte";
   import { ago } from "../lib/time";
   import { i18n, t, type Key } from "../lib/i18n/index.svelte";
-  import { copyText, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
-  import { errorText, type Change, type Commit } from "../lib/ipc";
+  import { copyText, mod, openMenu, reveal, revealLabel } from "../lib/ui.svelte";
+  import type { Change, Commit } from "../lib/ipc";
   import { join } from "../lib/paths";
-  import { revealItemInDir } from "@tauri-apps/plugin-opener";
   import Icon from "./Icon.svelte";
 
   const project = useProject();
@@ -44,7 +43,7 @@
       "sep",
       { label: t("menu.copyPath"), run: () => copyText(abs) },
       { label: t("menu.copyRelative"), run: () => copyText(c.path) },
-      { label: revealLabel(), disabled: gone, run: () => revealItemInDir(abs).catch((err) => toast(errorText(err), "error")) },
+      { label: revealLabel(), disabled: gone, run: () => reveal(abs) },
     ]);
   }
 
