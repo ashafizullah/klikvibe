@@ -1,6 +1,6 @@
 [package]
 name = "klikvibe"
-version = "0.1.0"
+version = "0.2.0"
 description = "Free, open-source, lightweight code editor for vibe coding"
 authors = ["Adam Suchi Hafizullah"]
 edition = "2024"

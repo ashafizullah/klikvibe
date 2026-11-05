@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Belum dirilis
+## 0.2.0
+
+Beberapa proyek sekaligus, checkpoint untuk membatalkan yang dilakukan agen, tugas paralel di worktree, server MCP untuk agenmu, dan banyak lagi untuk vibe coding.
 
 - Buka beberapa proyek sekaligus, masing-masing di tab sendiri di bilah judul. Tiap proyek punya file, panel Git dan terminalnya sendiri, jadi agent tetap jalan di satu proyek saat kamu melihat proyek lain.
 - Gambar, video, audio dan PDF tampil sebagai pratinjau, bukan "file biner", dan ikut diperbarui saat filenya berubah. SVG bisa dialihkan ke kodenya, dan semua pratinjau bisa dibuka di aplikasi bawaan.
@@ -27,7 +29,6 @@
 - Path di output terminal (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) bisa diklik untuk membuka file di baris itu, kalau filenya ada di proyek; alamat web seperti `http://localhost:5173` terbuka di browser.
 - Tab terminal diberi nama sesuai program yang berjalan di dalamnya ("Claude Code", "npm run dev", "vite"), dan kembali ke "Terminal 1" saat di prompt shell. Klik dua kali atau klik kanan tab untuk mengganti nama; nama buatanmu tetap dipakai sampai kamu memilih nama otomatis lagi.
 - Breadcrumb di atas editor (proyek › folder › file): folder menampilkan isinya untuk membuka file, file menawarkan Tampilkan di Files, path-nya dan Tampilkan di Finder. Tampilkan di Files membuka folder-foldernya di pohon file.
-- Item menu klik kanan kembali tampil dengan huruf biasa dan garis pemisahnya utuh; panah di breadcrumb tampil dengan benar.
 - Checkpoint: selama agen bekerja, KlikVibe menyimpan snapshot file setiap kali file berhenti berubah sejenak (dan paling lambat tiap menit), di ref Git tersendiri yang tidak pernah menyentuh commit, branch, index, atau stash-mu, dan tidak pernah ter-push. Tab Checkpoint di panel Git menampilkannya beserta file dan diff-nya; Kembalikan mengembalikan file seperti saat itu (kondisi saat ini disimpan dulu, jadi pengembalian pun bisa dibatalkan).
 - Tanya agen: klik kanan kode (baris yang dipilih), file, folder, diff, perubahan, atau commit lalu pilih "Tanya agen tentang ini"; rujukan seperti `@src/app.ts baris 12-30` ditempel ke terminal agen untuk kamu lengkapi dan kirim. Tombol Prompt di terminal berisi prompt siap pakai dan prompt buatanmu.
 - MCP: enam tool baru untuk agen. `read_terminal` (output terbaru terminal lain, misalnya error dev server), `create_checkpoint` (dengan catatan), `list_checkpoints`, `restore_checkpoint` (hanya setelah kamu setujui di KlikVibe), `show_commit`, dan `reveal_in_files`. Checkpoint bisa diberi catatan, yang tampil di tab Checkpoint.
