@@ -10,6 +10,7 @@
   import type { Change, Commit, Worktree } from "../lib/ipc";
   import { join } from "../lib/paths";
   import Icon from "./Icon.svelte";
+  import { fileIcon } from "../lib/fileIcons";
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { layoutGraph, refLabels } from "../lib/graph";
   import { persist, settings } from "../lib/settings.svelte";
@@ -162,11 +163,18 @@
   };
 </script>
 
+<!-- The file's type, as in the file tree. -->
+{#snippet typeIcon(name: string)}
+  {@const fi = fileIcon(name)}
+  <Icon name={fi.icon} color={fi.color} size={13} class="type-icon" />
+{/snippet}
+
 {#snippet changeRow(c: Change, inIndex: boolean)}
   {@const p = split(c.path)}
   <div class="change">
     <button class="change-main" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
       <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
+      {@render typeIcon(p.name)}
       <span class="name ellipsis">{p.name}</span>
       <span class="dir ellipsis">{p.dir}</span>
     </button>
@@ -201,6 +209,7 @@
       {@const p = split(f.path)}
       <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
         <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
+        {@render typeIcon(p.name)}
         <span class="name ellipsis">{p.name}</span>
         <span class="dir ellipsis">{p.dir}</span>
         {#if f.added !== null}
@@ -663,6 +672,10 @@
   }
   .file:hover {
     background: var(--panel-2);
+  }
+  .git :global(.type-icon) {
+    flex: none;
+    color: var(--muted);
   }
   .file .name {
     flex: none;
