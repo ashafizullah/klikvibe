@@ -19,6 +19,7 @@
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
+  import { seen } from "./lib/attention.svelte";
   import { treeKey } from "./lib/grid";
 
   const project = $derived(currentProject());
@@ -30,6 +31,12 @@
     initUpdates();
     if (settings.mcpEnabled) startMcp();
     return () => off.then((f) => f());
+  });
+
+  // Looking at a project clears its "an agent is waiting" dot.
+  $effect(() => {
+    const root = workspace.active;
+    if (root && document.hasFocus()) seen(root);
   });
 
   // The window title follows the project in front and its active file.
@@ -115,7 +122,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} onbeforeunload={beforeUnload} />
+<svelte:window onkeydown={onKeydown} onbeforeunload={beforeUnload} onfocus={() => workspace.active && seen(workspace.active)} />
 
 <div class="app">
   {#if workspace.projects.length}

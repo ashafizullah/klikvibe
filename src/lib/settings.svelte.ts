@@ -28,6 +28,8 @@ interface Stored {
   fontSize: number;
   wrap: boolean;
   updateMode: UpdateMode;
+  /** Tell the user when an agent in a terminal waits for them (see attention.svelte.ts). */
+  notifyAgents: boolean;
   /** Diffs side by side (old left, new right) or in one column. */
   diffView: "split" | "unified";
   /** The history (and its graph) shows every branch, not only the current one. */
@@ -60,6 +62,7 @@ function load(): Stored {
     updateMode: "auto",
     historyAll: false,
     diffView: "split",
+    notifyAgents: true,
     lastVersion: "",
   };
   try {

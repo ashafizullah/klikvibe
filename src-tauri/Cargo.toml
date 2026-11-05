@@ -42,6 +42,8 @@ tauri-plugin-updater = "2"
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 # Reading the clipboard for Paste in the editor menu (text only, no image support).
 arboard = { version = "3", default-features = false }
+# System notifications when an agent in a terminal waits for the user.
+tauri-plugin-notification = "2"
 
 # Debug builds keep line numbers for backtraces but not full debug info.
 [profile.dev]

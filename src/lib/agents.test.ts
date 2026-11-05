@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AGENTS, agentById, clientName } from "./agents";
+import { AGENTS, agentById, agentIn, clientName } from "./agents";
 
 const info = { url: "http://127.0.0.1:47825/mcp", token: "secret123" };
 
@@ -26,4 +26,14 @@ describe("agents", () => {
     expect(clientName(null)).toBe("MCP");
     expect(clientName("mystery-agent 1")).toBe("mystery-agent");
   });
+});
+
+test("finds the agent in a foreground command line", () => {
+  expect(agentIn("claude")).toBe("Claude Code");
+  expect(agentIn("node /usr/local/bin/claude --resume")).toBe("Claude Code");
+  expect(agentIn("/Users/me/.cargo/bin/codex exec")).toBe("Codex");
+  expect(agentIn("cursor-agent")).toBe("Cursor CLI");
+  expect(agentIn("-zsh")).toBeNull();
+  expect(agentIn("vim claude.md")).toBeNull();
+  expect(agentIn(null)).toBeNull();
 });

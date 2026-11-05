@@ -8,6 +8,7 @@
   import { isLastPanel, setLayout, togglePanel } from "../lib/layout";
   import { treeShown } from "../lib/grid";
   import McpBadge from "./McpBadge.svelte";
+  import { attention } from "../lib/attention.svelte";
 
   const project = $derived(currentProject());
   const git = $derived(project?.git);
@@ -57,6 +58,7 @@
         <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
           <Icon name="project" size={13} />
           <span class="name">{p.current.name}</span>
+          {#if attention.has(p.root)}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
           {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
         </button>
         <button class="ptab-close" class:dirty={p.dirty} onclick={() => closeProject(p)} title={t("bar.closeProject")} aria-label={t("bar.closeProject")}>
@@ -182,6 +184,24 @@
     border-radius: 50%;
     background: var(--accent);
     flex: none;
+  }
+  .waiting {
+    display: inline-flex;
+    flex: none;
+    color: var(--accent);
+    animation: ring 1.2s ease-in-out 3;
+  }
+  @keyframes ring {
+    0%,
+    100% {
+      transform: rotate(0);
+    }
+    25% {
+      transform: rotate(-14deg);
+    }
+    75% {
+      transform: rotate(14deg);
+    }
   }
   .ptab-close {
     width: 20px;

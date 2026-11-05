@@ -239,6 +239,11 @@ pub fn terminal_resize(terminals: State<'_, Terminals>, id: String, cols: u16, r
 }
 
 #[tauri::command]
+pub fn terminal_foreground(terminals: State<'_, Terminals>, id: String) -> Option<String> {
+    terminals.foreground(&id)
+}
+
+#[tauri::command]
 pub fn terminal_close(terminals: State<'_, Terminals>, id: String) {
     terminals.close(&id)
 }

@@ -222,6 +222,12 @@ const en = {
   "about.source": "Source code",
   "about.license": "Free and open source, MIT License.",
 
+  "notify.waiting": "Needs you: it's waiting for an answer, or done.",
+  "notify.bell": "Wants your attention.",
+  "notify.turnOn": "Tell me when an agent waits (off)",
+  "notify.turnOff": "Tell me when an agent waits (on)",
+  "notify.dot": "An agent is waiting for you",
+
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
   "terminal.new": "New terminal",

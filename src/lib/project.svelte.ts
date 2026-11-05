@@ -85,6 +85,9 @@ export class ProjectState {
   /** Every file in the project (relative paths), for search by name; loaded on first search. */
   allFiles = $state.raw<string[] | null>(null);
   allFilesTruncated = $state(false);
+  /** The same list as a set, to tell whether a path in terminal output is a file here. */
+  private fileSet: Set<string> | null = null;
+  private filesLoading = false;
   private filesTimer: ReturnType<typeof setTimeout> | null = null;
   /** The history commit showing its files, if any. */
   expandedCommit = $state<string | null>(null);
@@ -153,12 +156,21 @@ export class ProjectState {
       const list = await ipc.listFiles(this.root);
       if (this.closed) return;
       this.allFiles = list.files;
+      this.fileSet = new Set(list.files);
       this.allFilesTruncated = list.truncated;
     } catch (e) {
       toast(errorText(e), "error");
     }
   }
 
+  /** Whether `rel` (forward slashes) is a file in the project; false until the list is loaded. */
+  hasFile(rel: string): boolean {
+    if (!this.fileSet && !this.filesLoading) {
+      this.filesLoading = true;
+      this.loadAllFiles().finally(() => (this.filesLoading = false));
+    }
+    return this.fileSet?.has(rel) ?? false;
+  }
   toggleDir(path: string) {
     if (this.expanded.has(path)) {
       this.expanded.delete(path);

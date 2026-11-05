@@ -103,6 +103,24 @@ impl Terminals {
         Ok(())
     }
 
+    /// The command line of the program in front in a session (an agent, or
+    /// just the shell), so the window can tell an agent waiting for the user
+    /// from an idle prompt. Unix only.
+    pub fn foreground(&self, id: &str) -> Option<String> {
+        #[cfg(unix)]
+        {
+            let pid = self.0.lock().unwrap().get(id)?.master.process_group_leader()?;
+            let out = std::process::Command::new("ps").args(["-o", "args=", "-p", &pid.to_string()]).output().ok()?;
+            let args = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            (!args.is_empty()).then_some(args)
+        }
+        #[cfg(not(unix))]
+        {
+            let _ = id;
+            None
+        }
+    }
+
     pub fn close(&self, id: &str) {
         if let Some(mut s) = self.0.lock().unwrap().remove(id) {
             let _ = s.killer.kill();

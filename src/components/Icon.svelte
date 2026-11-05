@@ -3,6 +3,8 @@
   import {
     ArrowDown,
     ArrowUp,
+    Bell,
+    BellOff,
     AudioLines,
     Check,
     Columns3,
@@ -63,6 +65,8 @@
   const ICONS: Record<string, LucideIcon> = {
     "arrow-down": ArrowDown,
     "arrow-up": ArrowUp,
+    bell: Bell,
+    "bell-off": BellOff,
     audio: AudioLines,
     check: Check,
     columns: Columns3,

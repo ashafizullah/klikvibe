@@ -44,6 +44,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Images, video, audio and PDFs from the open projects (see media.rs).
         .register_asynchronous_uri_scheme_protocol("media", |ctx, request, responder| {
@@ -102,6 +103,7 @@ pub fn run() {
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_close,
+            commands::terminal_foreground,
             commands::check_updates,
             commands::install_update,
             commands::set_update_mode,

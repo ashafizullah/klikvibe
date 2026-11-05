@@ -23,6 +23,8 @@
 - Pencarian di panel Files: berdasarkan nama (`⌘P`), dengan kata, pola `*`, `**`, `?`, dan `!` untuk mengecualikan, atau di isi file (`⌘⇧F`), bisa dibatasi ke file seperti `*.ts`; hasil membuka file di baris itu. Keduanya mengikuti `.gitignore`.
 - Pintasan tidak lagi terpicu oleh Ctrl di terminal: di macOS hanya memakai ⌘, di sistem lain Ctrl+huruf diteruskan ke shell selama terminal menerima ketikan (Ctrl+W tidak lagi menutup tab file).
 - Ikon file mengikuti jenis filenya: kode dengan warna bahasanya, JSON, konfigurasi, lockfile, `.env`, gambar, video, audio, arsip, `package.json`, `Cargo.toml`, `Dockerfile`, README dan LICENSE punya ikon sendiri, di pohon file, hasil pencarian dan tab.
+- KlikVibe memberi tahu saat agen butuh kamu: setelah bekerja lalu diam (menunggu jawaban, atau selesai), atau membunyikan bel terminal atau mengirim notifikasi. Kalau kamu sedang tidak melihat terminal itu, tab proyeknya diberi ikon lonceng, ikon di Dock memantul dan macOS menampilkan notifikasi. Tombol lonceng di header terminal untuk mematikannya.
+- Path di output terminal (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) bisa diklik untuk membuka file di baris itu, kalau filenya ada di proyek; alamat web seperti `http://localhost:5173` terbuka di browser.
 
 ## 0.1.0
 

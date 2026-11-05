@@ -136,6 +136,8 @@ export const ipc = {
   terminalWrite: (id: string, data: string) => invoke<void>("terminal_write", { id, data }),
   terminalResize: (id: string, cols: number, rows: number) => invoke<void>("terminal_resize", { id, cols, rows }),
   terminalClose: (id: string) => invoke<void>("terminal_close", { id }),
+  /** The command line of the program in front in a terminal (null on Windows). */
+  terminalForeground: (id: string) => invoke<string | null>("terminal_foreground", { id }),
 
   mcpStart(tools: unknown, instructions: string, onCall: (c: McpCall) => void) {
     const channel = new Channel<McpCall>();

@@ -5,10 +5,97 @@
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
   import { errorText, ipc } from "../lib/ipc";
+  import { openUrl } from "@tauri-apps/plugin-opener";
+  import { useProject } from "../lib/project.svelte";
+  import { findLinks, projectPath } from "../lib/termLinks";
+  import { needsYou } from "../lib/attention.svelte";
+  import { agentIn } from "../lib/agents";
+  import { join } from "../lib/paths";
   import { toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
 
   let { cwd, visible, onexit }: { cwd: string; visible: boolean; onexit: (code: number | null) => void } = $props();
+  const project = useProject();
+
+  // ---- an agent waiting for the user ----
+
+  /** Output after this much silence starts a new burst of work. */
+  const QUIET = 6000;
+  /** A burst shorter than this (a command's output, typing) isn't an agent at work. */
+  const BUSY = 3000;
+  const key = `${project.root}#${Math.random().toString(36).slice(2)}`;
+  let lastInput = 0;
+  let lastOutput = 0;
+  let burstStart = 0;
+  let burstNotified = true;
+
+  function noteOutput() {
+    const now = Date.now();
+    // The echo of what the user types isn't the agent working.
+    if (now - lastInput < 1000) return;
+    if (now - lastOutput > QUIET) {
+      burstStart = now;
+      burstNotified = false;
+    }
+    lastOutput = now;
+  }
+
+  async function tell(agent: string | null, message: string) {
+    const name = agent ?? agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null) ?? t("terminal.title");
+    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus());
+  }
+
+  /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
+  function watchForAgent(xterm: Terminal) {
+    const bell = xterm.onBell(() => tell(null, t("notify.bell")));
+    // OSC 9 "message" (iTerm2); "9;4;…" is a progress report, not a message.
+    const osc9 = xterm.parser.registerOscHandler(9, (data) => {
+      if (/^\d+;/.test(data)) return false;
+      tell(null, data);
+      return true;
+    });
+    // OSC 777 "notify;title;body".
+    const osc777 = xterm.parser.registerOscHandler(777, (data) => {
+      const [cmd, title, ...body] = data.split(";");
+      if (cmd !== "notify") return false;
+      tell(null, body.join(";") || title || t("notify.bell"));
+      return true;
+    });
+    const timer = setInterval(async () => {
+      const now = Date.now();
+      if (burstNotified || !session || now - lastOutput < QUIET || lastOutput - burstStart < BUSY) return;
+      burstNotified = true;
+      const agent = agentIn(await ipc.terminalForeground(session).catch(() => null));
+      if (agent) tell(agent, t("notify.waiting"));
+    }, 2000);
+    return () => {
+      bell.dispose();
+      osc9.dispose();
+      osc777.dispose();
+      clearInterval(timer);
+    };
+  }
+
+  /** File paths (that exist in the project) and web addresses in the output, as links. */
+  function links(xterm: Terminal) {
+    return xterm.registerLinkProvider({
+      provideLinks(y, callback) {
+        const text = xterm.buffer.active.getLine(y - 1)?.translateToString(true) ?? "";
+        const found = findLinks(text).flatMap((l) => {
+          let activate: () => void;
+          if (l.kind === "url") activate = () => openUrl(l.target).catch((e) => toast(errorText(e), "error"));
+          else {
+            const rel = projectPath(l.target, project.root);
+            if (!rel || !project.hasFile(rel)) return [];
+            const abs = join(project.root, rel);
+            activate = () => project.openFile(abs).then(() => l.line && project.revealLines(`file:${abs}`, l.line, l.line));
+          }
+          return [{ range: { start: { x: l.start + 1, y }, end: { x: l.end, y } }, text: text.slice(l.start, l.end), activate, decorations: { underline: true, pointerCursor: true } }];
+        });
+        callback(found.length ? found : undefined);
+      },
+    });
+  }
 
   const decode = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
@@ -40,7 +127,10 @@
     let disposed = false;
     ipc
       .terminalOpen(cwd, xterm.cols, xterm.rows, (e) => {
-        if (e.type === "data") xterm.write(decode(e.data));
+        if (e.type === "data") {
+          xterm.write(decode(e.data));
+          noteOutput();
+        }
         else {
           exited = true;
           onexit(e.code);
@@ -51,7 +141,12 @@
         else session = id;
       })
       .catch((e) => toast(errorText(e), "error"));
-    const input = xterm.onData((d) => session && ipc.terminalWrite(session, d).catch(() => {}));
+    const linkProvider = links(xterm);
+    const waiting = watchForAgent(xterm);
+    const input = xterm.onData((d) => {
+      lastInput = Date.now();
+      if (session) ipc.terminalWrite(session, d).catch(() => {});
+    });
     const resize = xterm.onResize(({ cols, rows }) => session && ipc.terminalResize(session, cols, rows).catch(() => {}));
     const observer = new ResizeObserver(() => host.offsetParent && fitAddon.fit());
     observer.observe(host);
@@ -60,6 +155,8 @@
       disposed = true;
       observer.disconnect();
       input.dispose();
+      linkProvider.dispose();
+      waiting();
       resize.dispose();
       if (session) ipc.terminalClose(session);
       session = null;

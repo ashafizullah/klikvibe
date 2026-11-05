@@ -98,6 +98,16 @@
         <Icon name="sparkles" size={13} />{t("terminal.runAgent")}
       </button>
     </div>
+    <button
+      class="icon-btn"
+      class:on={settings.notifyAgents}
+      onclick={() => ((settings.notifyAgents = !settings.notifyAgents), persist())}
+      title={settings.notifyAgents ? t("notify.turnOff") : t("notify.turnOn")}
+      aria-label={settings.notifyAgents ? t("notify.turnOff") : t("notify.turnOn")}
+      aria-pressed={settings.notifyAgents}
+    >
+      <Icon name={settings.notifyAgents ? "bell" : "bell-off"} size={14} />
+    </button>
     <button class="icon-btn" onclick={() => togglePanel("showTerminal")} disabled={isLastPanel("showTerminal")} title={t("terminal.hide")} aria-label={t("terminal.hide")}>
       <Icon name={fill ? "close" : "down"} size={fill ? 14 : 16} />
     </button>

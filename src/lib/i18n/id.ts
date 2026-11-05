@@ -224,6 +224,12 @@ const id: Record<Key, string> = {
   "about.source": "Kode sumber",
   "about.license": "Gratis dan open source, Lisensi MIT.",
 
+  "notify.waiting": "Butuh kamu: sedang menunggu jawaban, atau sudah selesai.",
+  "notify.bell": "Meminta perhatianmu.",
+  "notify.turnOn": "Beri tahu saat agen menunggu (mati)",
+  "notify.turnOff": "Beri tahu saat agen menunggu (aktif)",
+  "notify.dot": "Ada agen yang menunggumu",
+
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
   "terminal.new": "Terminal baru",

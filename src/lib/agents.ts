@@ -132,3 +132,14 @@ export function clientName(client: string | null | undefined): string {
   if (!client) return "MCP";
   return known.find(([re]) => re.test(client))?.[1] ?? client.split(" ")[0];
 }
+
+/** The agent running in a terminal, from its foreground command line ("node /usr/local/bin/claude --resume"). */
+export function agentIn(commandLine: string | null): string | null {
+  if (!commandLine) return null;
+  for (const word of commandLine.split(/\s+/).slice(0, 3)) {
+    const name = word.split(/[\\/]/).pop() ?? "";
+    const agent = AGENTS.find((a) => a.command === name);
+    if (agent) return agent.label;
+  }
+  return null;
+}

@@ -23,6 +23,8 @@
 - Search in the Files panel: by name (`⌘P`), with words, `*`, `**` and `?` patterns and `!` to leave out, or in file contents (`⌘⇧F`), optionally only in files like `*.ts`; a result opens the file at that line. Both follow `.gitignore`.
 - Shortcuts no longer fire on Ctrl in the terminal: on macOS they use ⌘ only, elsewhere Ctrl+letter goes to the shell while the terminal has the keyboard (Ctrl+W no longer closes a file tab).
 - File icons follow the kind of file: code by language colour, JSON, config, lockfiles, `.env`, images, video, audio, archives, `package.json`, `Cargo.toml`, `Dockerfile`, README and LICENSE each have their own, in the tree, search results and tabs.
+- KlikVibe tells you when an agent needs you: after it has been working and goes quiet (waiting for an answer, or done), or rings the terminal bell or sends a notification. Unless you are looking at that terminal, its project tab gets a bell, the Dock icon bounces and macOS shows a notification. The bell button in the terminal header turns it off.
+- Paths in terminal output (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) open the file at that line with a click, when the file is in the project; web addresses such as `http://localhost:5173` open in the browser.
 
 ## 0.1.0
 
