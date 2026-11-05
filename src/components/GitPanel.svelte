@@ -23,7 +23,7 @@
     if (tab === "checkpoints") project.loadCheckpoints();
   }
 
-  const REASON_ICON: Record<string, string> = { opened: "open", changes: "diff", "before-restore": "save", restored: "rotate-ccw", manual: "save" };
+  const REASON_ICON: Record<string, string> = { opened: "open", changes: "diff", "before-restore": "save", restored: "rotate-ccw", manual: "save", agent: "sparkles" };
 
   /** "14:05", or "3 Nov 14:05" when it isn't today. */
   function moment(iso: string) {
@@ -229,7 +229,7 @@
               <button class="cp-main" onclick={() => project.toggleCommitFiles(cp.hash)} aria-expanded={open} title={cp.hash}>
                 <Icon name={REASON_ICON[cp.reason] ?? "save"} size={14} />
                 <span class="cp-text">
-                  <span class="cp-title ellipsis">{t(`checkpoints.reason.${cp.reason}` as Key) ?? cp.reason}</span>
+                  <span class="cp-title ellipsis">{t(`checkpoints.reason.${cp.reason}` as Key) ?? cp.reason}{cp.note ? ` · ${cp.note}` : ""}</span>
                   <span class="meta">{when} · {ago(cp.date, i18n.locale)} · {t("checkpoints.files", { count: cp.files })}</span>
                 </span>
               </button>

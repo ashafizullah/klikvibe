@@ -27,7 +27,7 @@
 
 - **Terminal first.** Shells open in the project folder, as many as you need (the agent in one, the dev server in another). *Start agent* types the command of your agent (Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI or Aider) for you; you press Enter.
 - **Several projects at once,** each in its own tab with its own files, Git panel and terminals, so an agent keeps working in one while you look at another.
-- **Your agent sees what you see (MCP).** Turn on the local MCP server and add it to your agent with one command: it can then read the file and the code you have selected, see unsaved edits, and open files and diffs in KlikVibe for you to review.
+- **Your agent sees what you see (MCP).** Turn on the local MCP server and add it to your agent with one command: it can then read the file and the code you have selected, see unsaved edits and your other terminals' output (dev server errors, failing tests), open files, diffs and commits in KlikVibe for you to review, and take checkpoints before risky changes.
 - **Knows when the agent needs you.** When an agent has been working and goes quiet (waiting for an answer, or done), KlikVibe shows a notification, so you can do something else meanwhile. Paths in its output open the file at that line with a click.
 - **Undo what the agent did.** Checkpoints save your files as the agent works, apart from your commits; restore one to go back to before a change.
 - **Point the agent at code.** Right-click code, a file or a diff and pick "Ask the agent about this" to paste a reference into its terminal.

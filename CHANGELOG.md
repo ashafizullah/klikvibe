@@ -30,6 +30,7 @@
 - Right-click menus show their items in normal type again and their dividers as full lines; the breadcrumb's arrows show properly.
 - Checkpoints: as an agent works, KlikVibe saves snapshots of the files whenever they stop changing for a moment (and at least every minute), on a Git ref of their own that never touches your commits, branches, index or stash, and is never pushed. The Checkpoints tab in the Git panel lists them with their files and diffs; Restore puts the files back as they were (the current state is saved first, so a restore can be undone too).
 - Ask the agent: right-click code (the selection's lines), a file, a folder, a diff, a change or a commit and pick "Ask the agent about this"; a reference such as `@src/app.ts lines 12-30` is pasted into the agent's terminal for you to finish and send. The Prompts button in the terminal holds ready-made prompts and your own.
+- MCP: six more tools for your agent. `read_terminal` (the other terminals' recent output, e.g. dev server errors), `create_checkpoint` (with a note), `list_checkpoints`, `restore_checkpoint` (only after you agree in KlikVibe), `show_commit` and `reveal_in_files`. Checkpoints can carry a note, shown in the Checkpoints tab.
 
 ## 0.1.0
 

@@ -73,8 +73,9 @@ export interface Checkpoint {
   hash: string;
   short: string;
   date: string;
-  /** "opened", "changes", "before-restore" or "restored". */
+  /** "opened", "changes", "manual", "agent", "before-restore" or "restored". */
   reason: string;
+  note: string;
   files: number;
 }
 export interface FsChanged {
@@ -133,7 +134,7 @@ export const ipc = {
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),
-  checkpointCreate: (root: string, reason: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason }),
+  checkpointCreate: (root: string, reason: string, note?: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason, note: note ?? null }),
   checkpointList: (root: string) => invoke<Checkpoint[]>("checkpoint_list", { root }),
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),
   checkpointClear: (root: string) => invoke<void>("checkpoint_clear", { root }),

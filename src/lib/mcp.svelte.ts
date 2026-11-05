@@ -1,10 +1,11 @@
 // Local MCP server so the user's own coding agent (Claude Code, Codex,
 // OpenCode...) can see what the user sees in KlikVibe (the file in front,
-// the selection, unsaved edits) and put files and diffs in front of them.
+// the selection, unsaved edits, the other terminals' output), put files,
+// diffs and commits in front of them, and take or restore checkpoints.
 // The server (Rust, mcp.rs) only listens on 127.0.0.1 and needs a secret
 // token; tool calls are answered here.
 import type { EditorView } from "@codemirror/view";
-import { errorText, ipc, type McpInfo } from "./ipc";
+import { errorText, ipc, type Checkpoint, type McpInfo } from "./ipc";
 import { languageName } from "./languages";
 import { join, relative } from "./paths";
 import { currentProject, isDirty, showProject, workspace, type ProjectState, type Tab } from "./project.svelte";
@@ -21,6 +22,9 @@ const INSTRUCTIONS = [
   "When the user says 'this file', 'this function', 'the selected code' or 'what I'm looking at', call get_editor_state or get_selection first.",
   "read_open_file returns a file as it is in the editor, including edits the user hasn't saved yet. If get_editor_state lists a file as unsaved, read it with read_open_file before you change that file on disk, and tell the user.",
   "To show the user something, use open_file (optionally with line numbers to select those lines) or show_diff to put a changed file's diff in front of them for review. notify shows a short message in the app.",
+  "read_terminal shows the output of the user's other terminals (a dev server, tests, a build): check it for errors after you change code, instead of asking the user to copy them.",
+  "Before a risky or wide change, call create_checkpoint with a short note; the user can then restore it from KlikVibe. list_checkpoints shows what was saved. restore_checkpoint puts files back, but only after the user agrees in KlikVibe.",
+  "show_commit puts a commit (or one file in it) in front of the user; reveal_in_files shows a file or folder in the file tree.",
   "Paths may be absolute or relative to the project in front. Only files inside the projects open in KlikVibe (list_projects) can be opened.",
 ].join("\n");
 
@@ -88,6 +92,17 @@ function describeTab(p: ProjectState, tab: Tab) {
     unsaved: isDirty(tab),
   };
 }
+
+/** A checkpoint by hash or the start of one. */
+async function findCheckpoint(p: ProjectState, ref: string): Promise<Checkpoint> {
+  const list = await ipc.checkpointList(p.root);
+  const want = ref.trim().toLowerCase();
+  const found = list.filter((c) => c.hash.startsWith(want));
+  if (found.length !== 1) throw new Error(found.length ? `"${ref}" matches several checkpoints; give more of the hash.` : `No checkpoint "${ref}" here; list_checkpoints shows them.`);
+  return found[0];
+}
+
+const describeCheckpoint = (c: Checkpoint) => ({ hash: c.short, date: c.date, reason: c.reason, note: c.note || undefined, files: c.files });
 
 const TOOLS: Tool[] = [
   {
@@ -190,6 +205,143 @@ const TOOLS: Tool[] = [
       showProject(project.root);
       await project.openDiff(change);
       return `Showing the changes to ${change.path} in KlikVibe.`;
+    },
+  },
+  {
+    name: "read_terminal",
+    description:
+      "The recent output of the terminals in a project (a dev server, tests, a build), as plain text. Without `terminal`, every terminal except those running an agent. Use it to see errors after a change.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root or name (optional)." },
+        terminal: { type: "string", description: "The terminal's name (as in KlikVibe, e.g. \"npm run dev\") or number, optional." },
+        lines: { type: "number", description: "Lines from the end, per terminal (default 60, at most 500)." },
+      },
+    },
+    run: (args) => {
+      const p = pickProject(args.project);
+      const all = p.terminals?.() ?? [];
+      if (!all.length) return "No terminals are open in this project.";
+      const lines = Math.min(500, num(args.lines) ?? 60);
+      const which = typeof args.terminal === "string" && args.terminal.trim() ? args.terminal.trim() : null;
+      const picked = which
+        ? all.filter((x) => String(x.index) === which || x.name.toLowerCase() === which.toLowerCase())
+        : all.filter((x) => !x.agent);
+      if (!picked.length) return `No terminal "${which ?? ""}". Terminals: ${all.map((x) => `${x.index} "${x.name}"${x.agent ? " (agent)" : ""}`).join(", ")}.`;
+      return cap(picked.map((x) => `── ${x.index}: ${x.name}${x.active ? " (in front)" : ""} ──\n${x.tail(lines) || "(no output)"}`).join("\n\n"));
+    },
+  },
+  {
+    name: "create_checkpoint",
+    description: "Saves the project's files as a checkpoint (apart from commits and branches) that the user can restore from KlikVibe. Call it before a risky or wide change.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root or name (optional)." },
+        note: { type: "string", description: "What comes next, e.g. \"before moving auth to middleware\"." },
+      },
+    },
+    run: async (args) => {
+      const p = pickProject(args.project);
+      const note = typeof args.note === "string" ? args.note : "";
+      const made = await p.takeCheckpoint("agent", note);
+      if (p.checkpointsOff) throw new Error(p.checkpointsOff);
+      if (!made) {
+        const [latest] = await ipc.checkpointList(p.root);
+        return `Nothing changed since the last checkpoint${latest ? ` (${latest.short})` : ""}; that one already holds the current files.`;
+      }
+      return out({ created: describeCheckpoint(made) });
+    },
+  },
+  {
+    name: "list_checkpoints",
+    description: "The project's checkpoints, newest first, with why each was taken and how many files changed. With `checkpoint`, also the files that one changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root or name (optional)." },
+        checkpoint: { type: "string", description: "A checkpoint's hash (or its start) to list its files (optional)." },
+        limit: { type: "number", description: "How many (default 20)." },
+      },
+    },
+    run: async (args) => {
+      const p = pickProject(args.project);
+      if (typeof args.checkpoint === "string" && args.checkpoint.trim()) {
+        const c = await findCheckpoint(p, args.checkpoint);
+        const files = await ipc.gitCommitFiles(p.root, c.hash);
+        return out({ ...describeCheckpoint(c), changed: files.map((f) => ({ path: f.path, kind: f.kind, added: f.added, removed: f.removed })) });
+      }
+      const list = await ipc.checkpointList(p.root);
+      return out({ checkpoints: list.slice(0, num(args.limit) ?? 20).map(describeCheckpoint) });
+    },
+  },
+  {
+    name: "restore_checkpoint",
+    description:
+      "Asks the user, in KlikVibe, to put the project's files back as they were at a checkpoint (files changed since are rewritten, files added since are deleted; the current state is saved first). Returns whether they agreed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root or name (optional)." },
+        checkpoint: { type: "string", description: "The checkpoint's hash (or its start), from list_checkpoints." },
+      },
+      required: ["checkpoint"],
+    },
+    run: async (args) => {
+      const p = pickProject(args.project);
+      const c = await findCheckpoint(p, str(args.checkpoint, "checkpoint"));
+      showProject(p.root);
+      settings.showGit = true;
+      persist();
+      p.gitTab = "checkpoints";
+      p.loadCheckpoints();
+      const when = new Date(c.date).toLocaleString();
+      return (await p.restoreCheckpoint(c, when)) ? `Restored the files to checkpoint ${c.short} (${when}).` : "The user kept the files as they are.";
+    },
+  },
+  {
+    name: "show_commit",
+    description: "Opens a commit in KlikVibe for the user to review: the whole commit, or with `path` just that file's changes in it.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project root or name (optional)." },
+        commit: { type: "string", description: "The commit hash (at least 4 characters)." },
+        path: { type: "string", description: "A file changed in that commit, relative to the project (optional)." },
+      },
+      required: ["commit"],
+    },
+    run: async (args) => {
+      const p = pickProject(args.project);
+      const hash = str(args.commit, "commit").toLowerCase();
+      if (!/^[0-9a-f]{4,64}$/.test(hash)) throw new Error("Give the commit's hash (hex), e.g. from git log.");
+      const commit = { hash, short: hash.slice(0, 7) };
+      showProject(p.root);
+      if (typeof args.path === "string" && args.path.trim()) {
+        const rel = args.path.trim().replace(/^\.\//, "");
+        const file = (await ipc.gitCommitFiles(p.root, hash)).find((f) => f.path === rel);
+        if (!file) throw new Error(`${rel} didn't change in ${commit.short}.`);
+        await p.openCommitFile(commit, file);
+        return `Showing the changes to ${rel} in ${commit.short}.`;
+      }
+      await p.openCommit(commit);
+      return `Showing commit ${commit.short}.`;
+    },
+  },
+  {
+    name: "reveal_in_files",
+    description: "Shows a file or folder in KlikVibe's file tree (opening the folders down to it), without opening the file.",
+    inputSchema: { type: "object", properties: { path: { type: "string", description: "Absolute, or relative to the project in front." } }, required: ["path"] },
+    run: async (args) => {
+      const { project, abs } = locate(str(args.path, "path"));
+      const isDir = await ipc.listDir(abs).then(
+        () => true,
+        () => false,
+      );
+      showProject(project.root);
+      await project.revealInTree(abs, isDir);
+      return `Showing ${relative(project.root, abs) || "."} in the file tree.`;
     },
   },
   {

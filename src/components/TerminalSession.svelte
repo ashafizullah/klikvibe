@@ -210,6 +210,22 @@
     return true;
   }
 
+  /** The last `n` lines of output as plain text (wrapped lines joined back), for the MCP tools. */
+  export function tail(n: number): string {
+    if (!term) return "";
+    const b = term.buffer.active;
+    let last = b.length - 1;
+    while (last >= 0 && !b.getLine(last)?.translateToString(true).trim()) last--;
+    const lines: string[] = [];
+    for (let y = last; y >= 0 && lines.length < n; y--) {
+      // A wrapped line continues the one above it: walk up to where it starts.
+      let text = b.getLine(y)?.translateToString(true) ?? "";
+      while (y > 0 && b.getLine(y)?.isWrapped) text = (b.getLine(--y)?.translateToString(true) ?? "") + text;
+      lines.push(text);
+    }
+    return lines.reverse().join("\n");
+  }
+
   export function refit() {
     fit?.fit();
   }

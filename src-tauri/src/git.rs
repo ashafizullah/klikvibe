@@ -426,8 +426,10 @@ pub struct Checkpoint {
     pub short: String,
     /// ISO 8601.
     pub date: String,
-    /// Why it was taken: "opened", "changes", "before-restore" or "restored".
+    /// Why it was taken: "opened", "changes", "manual", "agent", "before-restore" or "restored".
     pub reason: String,
+    /// A note from whoever took it by hand (the user, or an agent over MCP); may be empty.
+    pub note: String,
     /// Files that differ from the checkpoint before it (all files for the first).
     pub files: u32,
 }
@@ -446,7 +448,7 @@ fn checkpoint_index(root: &Path) -> AppResult<String> {
 }
 
 /// Takes a checkpoint of the working tree; None when nothing changed since the last one.
-pub fn checkpoint(root: &Path, reason: &str) -> AppResult<Option<Checkpoint>> {
+pub fn checkpoint(root: &Path, reason: &str, note: &str) -> AppResult<Option<Checkpoint>> {
     let index = checkpoint_index(root)?;
     let env = [("GIT_INDEX_FILE", index.as_str())];
     run_env(root, &["add", "-A", "--", "."], &env)?;
@@ -463,7 +465,9 @@ pub fn checkpoint(root: &Path, reason: &str) -> AppResult<Option<Checkpoint>> {
         None => run(root, &["ls-tree", "-r", "--name-only", &tree])?.lines().count(),
     };
     let reason: String = reason.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(40).collect();
-    let message = format!("{reason}\n\n{files}");
+    // One line, as a commit message paragraph can't hold more without changing its meaning here.
+    let note: String = note.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(160).collect();
+    let message = if note.is_empty() { format!("{reason}\n\n{files}") } else { format!("{reason}\n\n{files}\n\n{note}") };
     let mut args = vec!["commit-tree", tree.as_str(), "-m", message.as_str()];
     if let Some(p) = &parent {
         args.extend(["-p", p.as_str()]);
@@ -485,12 +489,17 @@ pub fn checkpoints(root: &Path, limit: u32) -> AppResult<Vec<Checkpoint>> {
         .split('\x1e')
         .filter_map(|rec| {
             let f: Vec<&str> = rec.trim_start_matches('\n').split('\x1f').collect();
-            (f.len() == 5).then(|| Checkpoint {
-                hash: f[0].into(),
-                short: f[1].into(),
-                date: f[2].into(),
-                reason: f[3].into(),
-                files: f[4].trim().parse().unwrap_or(0),
+            (f.len() == 5).then(|| {
+                // The body: the file count, then the note if there is one.
+                let mut body = f[4].trim().splitn(2, '\n');
+                Checkpoint {
+                    hash: f[0].into(),
+                    short: f[1].into(),
+                    date: f[2].into(),
+                    reason: f[3].into(),
+                    files: body.next().unwrap_or("").trim().parse().unwrap_or(0),
+                    note: body.next().unwrap_or("").trim().to_string(),
+                }
             })
         })
         .collect())
@@ -501,7 +510,7 @@ pub fn checkpoints(root: &Path, limit: u32) -> AppResult<Vec<Checkpoint>> {
 /// checkpoint first, so this can be undone too. Ignored files are left alone.
 pub fn restore_checkpoint(root: &Path, hash: &str) -> AppResult<()> {
     check_hash(hash)?;
-    checkpoint(root, "before-restore")?;
+    checkpoint(root, "before-restore", "")?;
     let current = run(root, &["rev-parse", "--verify", CHECKPOINTS])?.trim().to_string();
     let changes = run(root, &["diff-tree", "-r", "-z", "--no-renames", "--name-status", hash, &current])?;
     let mut fields = changes.split('\0').filter(|s| !s.is_empty());
@@ -523,7 +532,7 @@ pub fn restore_checkpoint(root: &Path, hash: &str) -> AppResult<()> {
         args.extend(chunk.iter().map(String::as_str));
         run(root, &args)?;
     }
-    checkpoint(root, "restored")?;
+    checkpoint(root, "restored", "")?;
     Ok(())
 }
 
@@ -681,17 +690,18 @@ mod tests {
         std::fs::write(dir.join("staged.txt"), "staged\n").unwrap();
         run(&dir, &["add", "staged.txt"]).unwrap();
 
-        let base = checkpoint(&dir, "opened").unwrap().unwrap();
-        assert_eq!(base.reason, "opened");
-        assert!(checkpoint(&dir, "changes").unwrap().is_none(), "nothing changed");
+        let base = checkpoint(&dir, "opened", "").unwrap().unwrap();
+        assert_eq!((base.reason.as_str(), base.note.as_str()), ("opened", ""));
+        assert!(checkpoint(&dir, "changes", "").unwrap().is_none(), "nothing changed");
 
         // An agent edits, adds and deletes; an ignored build folder appears.
         std::fs::write(dir.join("a.txt"), "two\n").unwrap();
         std::fs::write(dir.join("new.txt"), "new\n").unwrap();
         std::fs::create_dir_all(dir.join("build")).unwrap();
         std::fs::write(dir.join("build/out.js"), "x").unwrap();
-        let after = checkpoint(&dir, "changes").unwrap().unwrap();
+        let after = checkpoint(&dir, "agent", "before the\nrefactor").unwrap().unwrap();
         assert_eq!(after.files, 2);
+        assert_eq!((after.reason.as_str(), after.note.as_str()), ("agent", "before the refactor"));
         assert_eq!(checkpoints(&dir, 10).unwrap().len(), 2);
 
         restore_checkpoint(&dir, &base.hash).unwrap();
@@ -700,7 +710,7 @@ mod tests {
         assert!(dir.join("build/out.js").exists(), "ignored files are left alone");
         // Nothing had changed since "changes", so no before-restore copy; the restore can be undone from there.
         let list = checkpoints(&dir, 10).unwrap();
-        assert_eq!(list.iter().map(|c| c.reason.as_str()).collect::<Vec<_>>(), ["restored", "changes", "opened"]);
+        assert_eq!(list.iter().map(|c| c.reason.as_str()).collect::<Vec<_>>(), ["restored", "agent", "opened"]);
         restore_checkpoint(&dir, &list[1].hash).unwrap();
         assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "two\n");
         assert!(dir.join("new.txt").exists());

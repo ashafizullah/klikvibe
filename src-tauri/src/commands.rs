@@ -208,9 +208,14 @@ pub async fn git_ignore(projects: State<'_, Projects>, root: String, path: Strin
 
 /// Takes a checkpoint of the working tree (see git.rs); None when nothing changed.
 #[tauri::command]
-pub async fn checkpoint_create(projects: State<'_, Projects>, root: String, reason: String) -> AppResult<Option<Checkpoint>> {
+pub async fn checkpoint_create(
+    projects: State<'_, Projects>,
+    root: String,
+    reason: String,
+    note: Option<String>,
+) -> AppResult<Option<Checkpoint>> {
     let root = root_of(&projects, &root)?;
-    blocking(move || git::checkpoint(&root, &reason)).await
+    blocking(move || git::checkpoint(&root, &reason, note.as_deref().unwrap_or(""))).await
 }
 
 #[tauri::command]

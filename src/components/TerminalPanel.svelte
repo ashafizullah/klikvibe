@@ -97,8 +97,12 @@
     tick().then(() => refs[target.id]?.paste(text));
   }
   project.askAgent = askAgent;
+  const terminals = () =>
+    shells.map((s, i) => ({ index: i + 1, name: label(s, i), active: s.id === active, agent: isAgent(s), tail: (n: number) => refs[s.id]?.tail(n) ?? "" }));
+  project.terminals = terminals;
   onDestroy(() => {
     if (project.askAgent === askAgent) project.askAgent = null;
+    if (project.terminals === terminals) project.terminals = null;
   });
 
   const BUILT_IN = ["prompts.fixTests", "prompts.review", "prompts.explain", "prompts.commitMessage", "prompts.simpler"] as const;

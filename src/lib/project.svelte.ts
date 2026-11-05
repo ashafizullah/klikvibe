@@ -97,6 +97,8 @@ export class ProjectState {
   private fileSet: Set<string> | null = null;
   private filesLoading = false;
   private filesTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The project's terminals and their output, for the MCP tools; set by TerminalPanel. */
+  terminals: (() => { index: number; name: string; active: boolean; agent: boolean; tail: (lines: number) => string }[]) | null = null;
   /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
   askAgent: ((text: string) => void) | null = null;
   /** The history commit showing its files, if any. */
@@ -180,15 +182,18 @@ export class ProjectState {
     }, wait);
   }
 
-  async takeCheckpoint(reason: string) {
+  /** The new checkpoint, or null when nothing changed (or checkpoints can't be taken here: see checkpointsOff). */
+  async takeCheckpoint(reason: string, note?: string): Promise<Checkpoint | null> {
     try {
-      const made = await ipc.checkpointCreate(this.root, reason);
-      if (this.closed) return;
+      const made = await ipc.checkpointCreate(this.root, reason, note);
+      if (this.closed) return null;
       this.checkpointsOff = null;
       if (made && this.checkpoints) this.checkpoints = [made, ...this.checkpoints];
+      return made;
     } catch (e) {
       // Not a repository (yet), or a subfolder of one: say so in the Checkpoints tab, quietly.
       this.checkpointsOff = errorText(e);
+      return null;
     }
   }
 
@@ -201,20 +206,23 @@ export class ProjectState {
   }
 
   /** Puts the files back as they were at `cp`, after asking (the current state is kept as a checkpoint). */
-  async restoreCheckpoint(cp: Checkpoint, when: string) {
+  /** True when the user agreed and the files were put back. */
+  async restoreCheckpoint(cp: Checkpoint, when: string): Promise<boolean> {
     const ok = await confirm({
       title: t("checkpoints.restoreTitle", { when }),
       message: t("checkpoints.restoreBody"),
       confirm: t("checkpoints.restore"),
       danger: true,
     });
-    if (!ok) return;
+    if (!ok) return false;
     this.checkpointBusy = true;
     try {
       await ipc.checkpointRestore(this.root, cp.hash);
       toast(t("checkpoints.restored", { when }), "ok");
+      return true;
     } catch (e) {
       toast(errorText(e), "error");
+      return false;
     } finally {
       this.checkpointBusy = false;
       this.loadCheckpoints();
