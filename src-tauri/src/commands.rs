@@ -149,6 +149,29 @@ pub async fn git_pull(projects: State<'_, Projects>, root: String) -> AppResult<
 }
 
 #[tauri::command]
+pub async fn git_discard(
+    projects: State<'_, Projects>,
+    root: String,
+    path: String,
+    from: Option<String>,
+    untracked: bool,
+) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    let path = relative(&path)?.to_string();
+    let from = from.as_deref().map(relative).transpose()?.map(String::from);
+    blocking(move || git::discard(&root, &path, from.as_deref(), untracked)).await
+}
+
+#[tauri::command]
+pub async fn git_ignore(projects: State<'_, Projects>, root: String, path: String, dir: bool) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    let path = relative(&path)?.to_string();
+    // Through `writable`, so a .gitignore symlinked out of the project is refused.
+    let file = projects.writable(&root.join(".gitignore").display().to_string())?;
+    blocking(move || git::ignore(&file, &path, dir)).await
+}
+
+#[tauri::command]
 pub async fn git_init(projects: State<'_, Projects>, root: String) -> AppResult<String> {
     let root = root_of(&projects, &root)?;
     blocking(move || git::init(&root)).await

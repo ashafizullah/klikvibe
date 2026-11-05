@@ -2,7 +2,10 @@
   import { useProject } from "../lib/project.svelte";
   import { ago } from "../lib/time";
   import { i18n, t, type Key } from "../lib/i18n/index.svelte";
-  import { mod } from "../lib/ui.svelte";
+  import { copyText, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
+  import { errorText, type Change, type Commit } from "../lib/ipc";
+  import { join } from "../lib/paths";
+  import { revealItemInDir } from "@tauri-apps/plugin-opener";
   import Icon from "./Icon.svelte";
 
   const project = useProject();
@@ -20,6 +23,38 @@
       e.preventDefault();
       project.commitAll();
     }
+  }
+
+  function changeMenu(e: MouseEvent, c: Change) {
+    const abs = join(project.root, c.path);
+    const gone = c.kind === "deleted";
+    const untracked = c.kind === "untracked";
+    const dir = split(c.path).dir;
+    openMenu(e, [
+      { label: t("git.menu.openDiff"), run: () => project.openDiff(c) },
+      { label: t("git.menu.openFile"), disabled: gone, run: () => project.openFile(abs) },
+      "sep",
+      { label: untracked ? t("git.menu.delete") : t("git.menu.discard"), disabled: c.kind === "conflict", run: () => project.discard(c) },
+      ...(untracked
+        ? [
+            { label: t("git.menu.ignore"), run: () => project.ignore(c.path) },
+            ...(dir ? [{ label: t("git.menu.ignoreFolder", { dir }), run: () => project.ignore(dir, true) }] : []),
+          ]
+        : []),
+      "sep",
+      { label: t("menu.copyPath"), run: () => copyText(abs) },
+      { label: t("menu.copyRelative"), run: () => copyText(c.path) },
+      { label: revealLabel(), disabled: gone, run: () => revealItemInDir(abs).catch((err) => toast(errorText(err), "error")) },
+    ]);
+  }
+
+  function commitMenu(e: MouseEvent, c: Commit) {
+    openMenu(e, [
+      { label: t("git.menu.openCommit"), run: () => project.openCommit(c) },
+      "sep",
+      { label: t("menu.copyHash"), run: () => copyText(c.hash) },
+      { label: t("git.menu.copyMessage"), run: () => copyText(c.subject) },
+    ]);
   }
 
   const split = (path: string) => {
@@ -85,7 +120,7 @@
       <div class="list">
         {#each git.changes as c (c.path)}
           {@const p = split(c.path)}
-          <button class="change" onclick={() => project.openDiff(c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
+          <button class="change" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
             <span class="name">{p.name}</span>
             <span class="dir">{p.dir}</span>
             <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
@@ -97,7 +132,7 @@
     {:else}
       <div class="list">
         {#each project.log as c (c.hash)}
-          <button class="commit-row" onclick={() => project.openCommit(c)} title={c.hash}>
+          <button class="commit-row" onclick={() => project.openCommit(c)} oncontextmenu={(e) => commitMenu(e, c)} title={c.hash}>
             <span class="subject">{c.subject}</span>
             <span class="meta">
               {#if c.local}<span class="local" title={t("git.notPushed")}><Icon name="arrow-up" size={10} /></span>{/if}

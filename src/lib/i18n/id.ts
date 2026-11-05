@@ -2,6 +2,7 @@ import type { Key } from "./en";
 
 const id: Record<Key, string> = {
   "common.loading": "Memuat…",
+  "common.cancel": "Batal",
   "common.copied": "Disalin",
 
   "home.start": "Mulai",
@@ -103,6 +104,19 @@ const id: Record<Key, string> = {
   "git.clean": "Tidak ada perubahan. Semua sudah di-commit.",
   "git.noCommits": "Belum ada commit.",
   "git.notPushed": "Belum di-push",
+  "git.menu.openDiff": "Lihat perubahan",
+  "git.menu.openFile": "Buka file",
+  "git.menu.discard": "Buang perubahan",
+  "git.menu.delete": "Hapus file",
+  "git.menu.ignore": "Tambahkan ke .gitignore",
+  "git.menu.ignoreFolder": "Tambahkan {dir}/ ke .gitignore",
+  "git.menu.openCommit": "Lihat commit",
+  "git.menu.copyMessage": "Salin pesan commit",
+  "git.discardAsk": "Buang perubahan di {name}? File kembali seperti di commit terakhir. Ini tidak bisa dibatalkan.",
+  "git.deleteAsk": "Hapus {name}? File ini belum dilacak Git, jadi tidak bisa dikembalikan.",
+  "git.discarded": "Perubahan dibuang",
+  "git.deleted": "File dihapus",
+  "git.ignored": "{path} ditambahkan ke .gitignore",
   "git.kind.added": "Ditambahkan",
   "git.kind.modified": "Diubah",
   "git.kind.deleted": "Dihapus",

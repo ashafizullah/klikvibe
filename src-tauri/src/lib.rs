@@ -85,6 +85,8 @@ pub fn run() {
             commands::git_push,
             commands::git_pull,
             commands::git_init,
+            commands::git_discard,
+            commands::git_ignore,
             commands::terminal_open,
             commands::terminal_write,
             commands::terminal_resize,

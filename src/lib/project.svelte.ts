@@ -334,6 +334,38 @@ export class ProjectState {
     if (await this.gitAction("commit", (r) => ipc.gitCommit(r, message), t("git.committed"))) this.commitMessage = "";
   }
 
+  /** Throws away a file's changes (deletes it when Git doesn't track it), after asking. */
+  async discard(change: Change) {
+    const untracked = change.kind === "untracked";
+    const name = baseName(change.path);
+    const question = untracked ? t("git.deleteAsk", { name }) : t("git.discardAsk", { name });
+    const okLabel = untracked ? t("git.menu.delete") : t("git.menu.discard");
+    if (!(await ask(question, { title: "KlikVibe", kind: "warning", okLabel, cancelLabel: t("common.cancel") }))) return;
+    try {
+      await ipc.gitDiscard(this.root, change.path, change.from, untracked);
+      // Its diff is now empty; a new file is gone altogether.
+      const gone = untracked || change.kind === "added" ? [`file:${join(this.root, change.path)}`] : [];
+      for (const id of [`diff:${change.path}`, ...gone]) this.closeTab(id, true);
+      toast(untracked ? t("git.deleted") : t("git.discarded"), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      this.refreshGit();
+    }
+  }
+
+  /** Adds a file (or, with `dir`, a folder) to the project's .gitignore. */
+  async ignore(rel: string, dir = false) {
+    try {
+      await ipc.gitIgnore(this.root, rel, dir);
+      toast(t("git.ignored", { path: dir ? `${rel}/` : rel }), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      this.refreshGit();
+    }
+  }
+
   push = () => this.gitAction("push", ipc.gitPush, t("git.pushed"));
   pull = () => this.gitAction("pull", ipc.gitPull, t("git.pulled"));
   initRepo = () => this.gitAction("init", ipc.gitInit, t("git.initialized"));

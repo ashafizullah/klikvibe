@@ -78,6 +78,8 @@ export const ipc = {
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),
+  gitDiscard: (root: string, path: string, from: string | null, untracked: boolean) => invoke<void>("git_discard", { root, path, from, untracked }),
+  gitIgnore: (root: string, path: string, dir: boolean) => invoke<void>("git_ignore", { root, path, dir }),
 
   terminalOpen(cwd: string, cols: number, rows: number, onEvent: (e: TerminalEvent) => void) {
     const channel = new Channel<TerminalEvent>();

@@ -242,6 +242,65 @@ pub fn pull(root: &Path) -> AppResult<String> {
     run_all(root, &["pull", "--ff-only"])
 }
 
+/// Throws away the changes to `path` (and to `from`, the old path of a
+/// rename): back to the last commit, or gone for a file Git doesn't track.
+/// Paths are literal, so a name like `*.ts` never matches other files.
+pub fn discard(root: &Path, path: &str, from: Option<&str>, untracked: bool) -> AppResult<()> {
+    if untracked {
+        // `clean` only ever deletes untracked files.
+        run(root, &["--literal-pathspecs", "clean", "-f", "-q", "--", path])?;
+        return Ok(());
+    }
+    let has_head = run(root, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok();
+    let mut args = if has_head {
+        // No-overlay mode: files missing from HEAD (added ones) are removed.
+        vec!["--literal-pathspecs", "restore", "--source=HEAD", "--staged", "--worktree", "--", path]
+    } else {
+        // Before the first commit, every change is an added file.
+        vec!["--literal-pathspecs", "rm", "-f", "-q", "--", path]
+    };
+    args.extend(from);
+    run(root, &args)?;
+    Ok(())
+}
+
+/// `rel` as a .gitignore line that matches only it, from the project root.
+pub fn ignore_line(rel: &str, dir: bool) -> String {
+    let mut line = String::from("/");
+    for c in rel.chars() {
+        if matches!(c, '*' | '?' | '[' | '\\') {
+            line.push('\\');
+        }
+        line.push(c);
+    }
+    // Trailing spaces are dropped unless escaped.
+    let trimmed = line.trim_end_matches(' ').len();
+    let spaces = line.len() - trimmed;
+    line.truncate(trimmed);
+    line.push_str(&"\\ ".repeat(spaces));
+    if dir {
+        line.push('/');
+    }
+    line
+}
+
+/// Adds `rel` (a file, or a folder with `dir`) to the root .gitignore at `file`.
+pub fn ignore(file: &Path, rel: &str, dir: bool) -> AppResult<()> {
+    let mut text =
+        std::fs::read_to_string(file).or_else(|e| if e.kind() == std::io::ErrorKind::NotFound { Ok(String::new()) } else { Err(e) })?;
+    let line = ignore_line(rel, dir);
+    if text.lines().any(|l| l == line) {
+        return Ok(());
+    }
+    if !text.is_empty() && !text.ends_with('\n') {
+        text.push('\n');
+    }
+    text.push_str(&line);
+    text.push('\n');
+    std::fs::write(file, text)?;
+    Ok(())
+}
+
 pub fn init(root: &Path) -> AppResult<String> {
     run_all(root, &["init"])
 }
@@ -300,6 +359,57 @@ mod tests {
         assert_eq!(log[0].subject, "First");
         assert!(show(&dir, &log[0].hash).unwrap().contains("a.txt"));
         assert!(show(&dir, "HEAD; rm -rf /").is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn discards_literally() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-discard-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        // Before the first commit: an added file goes away.
+        std::fs::write(dir.join("first.txt"), "1\n").unwrap();
+        run(&dir, &["add", "first.txt"]).unwrap();
+        discard(&dir, "first.txt", None, false).unwrap();
+        assert!(!dir.join("first.txt").exists());
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        std::fs::write(dir.join("b.txt"), "one\n").unwrap();
+        commit(&dir, "First").unwrap();
+        std::fs::write(dir.join("a.txt"), "two\n").unwrap();
+        std::fs::write(dir.join("b.txt"), "two\n").unwrap();
+        // A glob-looking name matches nothing, and leaves the others alone.
+        assert!(discard(&dir, "*.txt", None, false).is_err());
+        discard(&dir, "a.txt", None, false).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
+        assert_eq!(std::fs::read_to_string(dir.join("b.txt")).unwrap(), "two\n");
+        // A rename goes back to the old name.
+        run(&dir, &["mv", "b.txt", "c.txt"]).unwrap();
+        discard(&dir, "c.txt", Some("b.txt"), false).unwrap();
+        assert!(dir.join("b.txt").exists() && !dir.join("c.txt").exists());
+        // Untracked files are deleted; `clean` never touches tracked ones.
+        std::fs::write(dir.join("new.log"), "x").unwrap();
+        discard(&dir, "new.log", None, true).unwrap();
+        assert!(!dir.join("new.log").exists());
+        discard(&dir, "a.txt", None, true).unwrap();
+        assert!(dir.join("a.txt").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn ignore_lines_match_one_path() {
+        assert_eq!(ignore_line("dist/app.js", false), "/dist/app.js");
+        assert_eq!(ignore_line("tmp", true), "/tmp/");
+        assert_eq!(ignore_line("a*b?[c].txt", false), "/a\\*b\\?\\[c].txt");
+        assert_eq!(ignore_line("#notes ", false), "/#notes\\ ");
+        let dir = std::env::temp_dir().join(format!("klikvibe-ignore-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join(".gitignore");
+        std::fs::write(&file, "node_modules").unwrap();
+        ignore(&file, "out.log", false).unwrap();
+        ignore(&file, "out.log", false).unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "node_modules\n/out.log\n");
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
