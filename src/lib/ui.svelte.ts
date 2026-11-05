@@ -10,6 +10,16 @@ export interface Toast {
   action?: { label: string; run: () => void };
 }
 
+/** An in-app message with buttons (AlertDialog). */
+export interface AlertOptions {
+  tone: "update" | "success" | "error";
+  title: string;
+  message: string;
+  /** Release notes, rendered as safe Markdown. */
+  markdown?: string;
+  actions?: { label: string; value: string; primary?: boolean }[];
+}
+
 /** A right-click menu entry, or "sep" for a divider. */
 export type MenuItem = { label: string; run: () => void; disabled?: boolean; hint?: string } | "sep";
 
@@ -18,8 +28,21 @@ export const ui = $state({
   toasts: [] as Toast[],
   menu: null as { x: number; y: number; items: MenuItem[] } | null,
   /** The modal on screen, if any. */
-  dialog: null as "mcp" | null,
+  dialog: null as "mcp" | "about" | null,
+  alert: null as (AlertOptions & { resolve: (value: string | null) => void }) | null,
 });
+
+/** Shows an AlertDialog; resolves with the chosen action's value, or null when dismissed. */
+export function showAlert(options: AlertOptions): Promise<string | null> {
+  ui.alert?.resolve(null);
+  return new Promise((resolve) => (ui.alert = { ...options, resolve }));
+}
+
+export function closeAlert(value: string | null) {
+  const alert = ui.alert;
+  ui.alert = null;
+  alert?.resolve(value);
+}
 
 /** Shows a right-click menu at the pointer. */
 export function openMenu(e: MouseEvent, items: MenuItem[]) {

@@ -10,6 +10,6 @@ Useful to know when looking at KlikVibe:
 - **Media:** images, video, audio and PDFs load over a `media://` protocol (`src-tauri/src/media.rs`) that serves only those file types, and only from open project folders. *Open in default app* is limited to the same types, so it can't run a script or program.
 - **MCP server (off by default):** when the user turns it on, it listens on `127.0.0.1` only, needs a random secret token (kept in the app data folder), and refuses requests from web pages on other origins (`src-tauri/src/mcp.rs`). Its tools read what is open in the editor and open files and diffs inside open projects; none of them types in the terminal, writes or deletes files, or runs Git.
 - **Content:** file contents and diffs are shown as text (CodeMirror and plain DOM text), never as HTML. The content security policy allows no remote scripts or connections.
-- **Network:** no account or telemetry. KlikVibe checks GitHub for updates once a day, and the MCP server (when on) only accepts local connections.
+- **Network:** no account or telemetry. KlikVibe checks GitHub for updates once a day (unless the user turns that off), fetches a new version's changelog from the repository, and installs only packages signed with the project's key. The MCP server (when on) only accepts local connections.
 
 Only the latest code on `main` gets security fixes.

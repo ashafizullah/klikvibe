@@ -1,8 +1,9 @@
 <script lang="ts">
   import { closeProject, currentProject, showProject, workspace, type ProjectState } from "../lib/project.svelte";
   import { persist, settings } from "../lib/settings.svelte";
-  import { copyText, isMac, mod, openMenu, reveal, revealLabel } from "../lib/ui.svelte";
+  import { copyText, isMac, mod, openMenu, reveal, revealLabel, ui } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
+  import { updates } from "../lib/updates.svelte";
   import Icon from "./Icon.svelte";
   import McpBadge from "./McpBadge.svelte";
 
@@ -70,6 +71,10 @@
   {/if}
   <div class="spacer" data-tauri-drag-region></div>
   <McpBadge />
+  <button class="icon-btn about" onclick={() => (ui.dialog = "about")} title={t("about.title")} aria-label={t("about.title")}>
+    <Icon name="info" size={15} />
+    {#if updates.ready || updates.available}<span class="new" title={t("update.availableTitle")}></span>{/if}
+  </button>
   {#if project}
     <div class="toggles">
       <button class="icon-btn" class:on={settings.showTree} onclick={() => toggle("showTree")} title={`${t("bar.files")} (${mod}B)`} aria-label={t("bar.files")} aria-pressed={settings.showTree}>
@@ -234,6 +239,20 @@
     flex: 1;
     align-self: stretch;
     min-width: 24px;
+  }
+  .about {
+    position: relative;
+    flex: none;
+  }
+  .new {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--panel);
   }
   .toggles {
     display: flex;

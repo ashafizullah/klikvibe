@@ -10,6 +10,8 @@
 - A local MCP server (off by default) for the agent you use: it can read the file and selection you are looking at and your unsaved edits, and open files and diffs in KlikVibe. Setup steps for Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush and Cursor CLI.
 - *Start agent* knows more agents: OpenCode, Oh My Pi (`omp`), Command Code (`cmd`), Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI and Aider.
 - A hidden terminal leaves a strip at the bottom of the editor to bring it back, and the title bar shows a terminal icon for it.
+- Updates the way KlikPaper does them: install automatically (download in the background, install on quit), ask first, or only check on request. A new version shows its changes in your language, and after an update KlikVibe shows once what's new.
+- An *About & updates* window (the ⓘ button in the title bar, or the version on Home) with the version, the update choice and a Check for updates button.
 
 ## 0.1.0
 

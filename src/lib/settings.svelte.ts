@@ -1,6 +1,9 @@
 // Layout preferences, kept in the webview's local storage. The recent
 // projects list lives on the Rust side, which decides what may be opened.
 
+/** auto: download in the background, install on quit; notify: ask first; off: only on request. */
+export type UpdateMode = "auto" | "notify" | "off";
+
 interface Stored {
   showTree: boolean;
   showGit: boolean;
@@ -14,9 +17,15 @@ interface Stored {
   mcpEnabled: boolean;
   fontSize: number;
   wrap: boolean;
+  updateMode: UpdateMode;
+  /** The version that last ran, to show what's new once after an update. */
+  lastVersion: string;
 }
 
 const KEY = "klikvibe.settings";
+
+/** Settings were saved before this run (so this isn't a fresh install). */
+export let hadSettings = false;
 
 function load(): Stored {
   const fallback: Stored = {
@@ -30,9 +39,12 @@ function load(): Stored {
     mcpEnabled: false,
     fontSize: 13,
     wrap: false,
+    updateMode: "auto",
+    lastVersion: "",
   };
   try {
     const raw = localStorage.getItem(KEY);
+    hadSettings = !!raw;
     if (raw) return { ...fallback, ...JSON.parse(raw) };
   } catch {}
   return fallback;

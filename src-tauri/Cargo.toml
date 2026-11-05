@@ -38,8 +38,7 @@ axum = { version = "0.8", default-features = false, features = ["http1", "json",
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
 futures = "0.3"
 tauri-plugin-updater = "2"
-
-[dev-dependencies]
+# Fetching the changelog of a new version (also the MCP server's tests).
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
 
 # Debug builds keep line numbers for backtraces but not full debug info.

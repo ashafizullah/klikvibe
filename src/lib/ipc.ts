@@ -116,6 +116,9 @@ export const ipc = {
 
   checkUpdates: () => invoke<UpdateCheck>("check_updates"),
   installUpdate: () => invoke<void>("install_update"),
+  setUpdateMode: (mode: string) => invoke<void>("set_update_mode", { mode }),
+  pendingUpdate: () => invoke<Release | null>("pending_update"),
+  updateChangelog: (version: string, locale: string) => invoke<string>("update_changelog", { version, locale }),
 };
 
 export function errorText(e: unknown): string {

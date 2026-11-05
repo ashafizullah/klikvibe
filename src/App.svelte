@@ -14,6 +14,8 @@
   import Toasts from "./components/Toasts.svelte";
   import ContextMenu from "./components/ContextMenu.svelte";
   import McpDialog from "./components/McpDialog.svelte";
+  import AboutDialog from "./components/AboutDialog.svelte";
+  import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import Icon from "./components/Icon.svelte";
 
@@ -112,7 +114,10 @@
   {/if}
   {#if ui.dialog === "mcp"}
     <McpDialog />
+  {:else if ui.dialog === "about"}
+    <AboutDialog />
   {/if}
+  <AlertDialog />
   <Toasts />
   <ContextMenu />
 </div>

@@ -97,10 +97,15 @@
 
     <div class="grow"></div>
     <div class="foot">
-      <button class="version" onclick={checkForUpdates} disabled={updates.checking} title={t("update.check")}>
-        <span>KlikVibe {version && `v${version}`}</span>
-        <span class="check"><Icon name="refresh" size={10} class={updates.checking ? "spin" : ""} />{t("update.check")}</span>
-      </button>
+      <div class="version">
+        <button class="ver" onclick={() => (ui.dialog = "about")} title={t("about.title")}>
+          KlikVibe {version && `v${version}`}
+          {#if updates.ready || updates.available}<span class="new" title={t("update.availableTitle")}></span>{/if}
+        </button>
+        <button class="check" onclick={checkForUpdates} disabled={updates.checking}>
+          <Icon name="refresh" size={10} class={updates.checking ? "spin" : ""} />{updates.checking ? t("update.checking") : t("update.check")}
+        </button>
+      </div>
       <LanguageToggle />
     </div>
   </aside>
@@ -266,7 +271,12 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 1px;
+    gap: 2px;
+  }
+  .version button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     padding: 0;
     border: none;
     background: none;
@@ -274,13 +284,18 @@
     color: var(--muted);
     text-align: left;
   }
-  .version:hover {
+  .version button:hover:not(:disabled) {
+    color: var(--accent);
+  }
+  .version .ver {
+    font-size: 11px;
     color: var(--text);
   }
-  .check {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  .new {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
   main {

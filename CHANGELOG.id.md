@@ -10,6 +10,8 @@
 - Server MCP lokal (nonaktif secara bawaan) untuk agen yang kamu pakai: agen bisa membaca file dan teks yang sedang kamu pilih serta editan yang belum disimpan, dan membuka file dan diff di KlikVibe. Ada langkah setup untuk Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, dan Cursor CLI.
 - *Jalankan agen* mengenal lebih banyak agen: OpenCode, Oh My Pi (`omp`), Command Code (`cmd`), Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI, dan Aider.
 - Terminal yang disembunyikan meninggalkan strip di bawah editor untuk membukanya lagi, dan bilah judul menampilkan ikon terminal.
+- Pembaruan seperti di KlikPaper: pasang otomatis (diunduh di latar, dipasang saat aplikasi ditutup), tanya dulu, atau hanya periksa saat diminta. Versi baru menampilkan perubahannya dalam bahasamu, dan setelah update KlikVibe sekali menampilkan apa saja yang baru.
+- Jendela *Tentang & pembaruan* (tombol ⓘ di bilah judul, atau versi di Home) berisi versi, pilihan pembaruan, dan tombol Periksa pembaruan.
 
 ## 0.1.0
 

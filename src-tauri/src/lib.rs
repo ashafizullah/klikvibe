@@ -99,7 +99,16 @@ pub fn run() {
             commands::terminal_close,
             commands::check_updates,
             commands::install_update,
+            commands::set_update_mode,
+            commands::pending_update,
+            commands::update_changelog,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running KlikVibe");
+        .build(tauri::generate_context!())
+        .expect("error while building KlikVibe")
+        .run(|_, event| {
+            // An update downloaded in the background is installed as the app quits.
+            if let tauri::RunEvent::Exit = event {
+                updater::install_on_exit();
+            }
+        });
 }

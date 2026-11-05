@@ -243,9 +243,28 @@ pub async fn check_updates(app: AppHandle) -> AppResult<updater::Check> {
     updater::check(&app).await.map_err(AppError::msg)
 }
 
+/// Installs the version the last check found (or the one downloaded in the background) and restarts.
 #[tauri::command]
 pub async fn install_update(app: AppHandle) -> AppResult<()> {
-    updater::install(&app).await.map_err(AppError::msg)
+    updater::install_available(&app).await.map_err(AppError::msg)
+}
+
+/// "auto", "notify" or "off".
+#[tauri::command]
+pub fn set_update_mode(mode: String) {
+    updater::set_mode(&mode)
+}
+
+/// A version downloaded in the background, waiting to be installed.
+#[tauri::command]
+pub fn pending_update() -> Option<updater::Release> {
+    updater::pending()
+}
+
+/// The changelog of `version` in the interface language, from the repository at its tag.
+#[tauri::command]
+pub async fn update_changelog(version: String, locale: String) -> AppResult<String> {
+    updater::changelog(&version, &locale).await.map_err(AppError::msg)
 }
 
 #[cfg(test)]
