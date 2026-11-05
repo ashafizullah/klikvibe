@@ -10,7 +10,8 @@
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
 
-  let { entry, depth, now }: { entry: Entry; depth: number; now: number } = $props();
+  // `dim`: inside an ignored folder (Git ignores everything in it).
+  let { entry, depth, now, dim = false }: { entry: Entry; depth: number; now: number; dim?: boolean } = $props();
   const project = useProject();
 
   const open = $derived(entry.dir && project.expanded.has(entry.path));
@@ -18,6 +19,7 @@
   const change = $derived(entry.dir ? undefined : project.changeFor(entry.path));
   const changedInside = $derived(entry.dir && project.folderChanged(entry.path));
   const fresh = $derived(project.isFresh(entry.path, now));
+  const ignored = $derived(dim || entry.ignored);
   const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
   function menu(e: MouseEvent) {
     const rel = relative(project.root, entry.path) ?? entry.path;
@@ -78,6 +80,7 @@
   data-path={entry.path}
   class:active
   class:fresh
+  class:ignored
   style:padding-left="{8 + depth * 14}px"
   onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path))}
   oncontextmenu={menu}
@@ -97,7 +100,7 @@
 </button>
 {#if open}
   {#each children as child (child.path)}
-    <TreeNode entry={child} depth={depth + 1} {now} />
+    <TreeNode entry={child} depth={depth + 1} {now} dim={ignored} />
   {/each}
 {/if}
 
@@ -139,6 +142,11 @@
   }
   .label-text {
     flex: 1;
+  }
+  /* Ignored by Git (node_modules, dist, build output): there, but in the background. */
+  .node.ignored .label-text,
+  .node.ignored :global(.kind) {
+    opacity: 0.5;
   }
   .label-text.modified,
   .label-text.renamed,

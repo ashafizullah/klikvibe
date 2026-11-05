@@ -1,8 +1,9 @@
 //! Listing, reading and writing files inside the open project.
 use crate::error::{AppError, AppResult};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Files larger than this open read-only as "too large".
 const MAX_TEXT: u64 = 5 * 1024 * 1024;
@@ -13,12 +14,14 @@ pub struct Entry {
     pub name: String,
     pub path: String,
     pub dir: bool,
+    /// Left out by `.gitignore` (shown dimmed, like other editors do).
+    pub ignored: bool,
 }
 
-/// The folder's entries as Git sees them: `.gitignore`d files and `.git`
-/// itself left out, folders first, then by name.
+/// The folder's entries, `.git` itself left out, folders first, then by name.
+/// What Git ignores is listed too, marked `ignored`.
 pub fn list(dir: &Path) -> AppResult<Vec<Entry>> {
-    let mut entries: Vec<Entry> = ignore::WalkBuilder::new(dir)
+    let kept: HashSet<PathBuf> = ignore::WalkBuilder::new(dir)
         .max_depth(Some(1))
         .hidden(false)
         .parents(true)
@@ -26,14 +29,22 @@ pub fn list(dir: &Path) -> AppResult<Vec<Entry>> {
         .git_exclude(true)
         .git_global(true)
         .require_git(false)
-        .filter_entry(|e| e.file_name() != ".git")
         .build()
         .filter_map(Result::ok)
         .filter(|e| e.depth() == 1)
-        .map(|e| Entry {
-            name: e.file_name().to_string_lossy().into_owned(),
-            path: e.path().display().to_string(),
-            dir: e.file_type().is_some_and(|t| t.is_dir()),
+        .map(ignore::DirEntry::into_path)
+        .collect();
+    let mut entries: Vec<Entry> = std::fs::read_dir(dir)?
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name() != ".git")
+        .map(|e| {
+            let path = e.path();
+            Entry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                dir: e.file_type().is_ok_and(|t| t.is_dir()),
+                ignored: !kept.contains(&path),
+                path: path.display().to_string(),
+            }
         })
         .collect();
     entries.sort_by(|a, b| b.dir.cmp(&a.dir).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
@@ -244,8 +255,9 @@ mod tests {
         std::fs::write(dir.join(".gitignore"), "node_modules\n").unwrap();
         std::fs::write(dir.join("README.md"), "# hi\n").unwrap();
         std::fs::write(dir.join("logo.png"), [0x89, b'P', b'N', b'G', 0, 0, 1]).unwrap();
-        let names: Vec<String> = list(&dir).unwrap().into_iter().map(|e| e.name).collect();
-        assert_eq!(names, ["src", ".gitignore", "logo.png", "README.md"]);
+        let entries: Vec<(String, bool)> = list(&dir).unwrap().into_iter().map(|e| (e.name, e.ignored)).collect();
+        let want = [("node_modules", true), ("src", false), (".gitignore", false), ("logo.png", false), ("README.md", false)];
+        assert_eq!(entries, want.map(|(n, i)| (n.to_string(), i)));
         assert_eq!(read(&dir.join("README.md")).unwrap().text.as_deref(), Some("# hi\n"));
         let png = read(&dir.join("logo.png")).unwrap();
         assert!(png.binary && png.text.is_none());

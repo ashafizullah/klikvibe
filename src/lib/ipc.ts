@@ -12,6 +12,8 @@ export interface Entry {
   name: string;
   path: string;
   dir: boolean;
+  /** Left out by .gitignore: shown dimmed. */
+  ignored: boolean;
 }
 export interface FileList {
   files: string[];
