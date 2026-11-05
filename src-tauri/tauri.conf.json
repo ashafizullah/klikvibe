@@ -31,12 +31,26 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "nsis", "msi", "deb", "rpm", "appimage"],
+    "targets": [
+      "app",
+      "dmg",
+      "nsis",
+      "msi",
+      "deb",
+      "rpm",
+      "appimage"
+    ],
     "category": "DeveloperTool",
     "shortDescription": "Free, open-source, lightweight code editor for vibe coding",
     "longDescription": "See the code your AI agent writes, follow Git changes, history and pushes, and run the agent in a built-in terminal, all in one small, fast window.",
     "copyright": "Copyright © 2026 Adam Suchi Hafizullah. MIT License.",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "macOS": {
       "minimumSystemVersion": "11.0",
       "signingIdentity": "-",
@@ -44,9 +58,23 @@
       "hardenedRuntime": true
     },
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
     },
     "publisher": "KlikVibe contributors",
-    "homepage": "https://github.com/ashafizullah/klikvibe"
+    "homepage": "https://github.com/ashafizullah/klikvibe",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAwRTU2QzMxQkJCOEFFQTgKUldTb3JyaTdNV3psQUJZUVROSlFFcS9jbE9PVi9RMEJYbnJ4UHFSeGVQSXRCTHBVT2x6VUhUUEcK",
+      "endpoints": [
+        "https://github.com/ashafizullah/klikvibe/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

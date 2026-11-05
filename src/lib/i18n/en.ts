@@ -80,6 +80,14 @@ const en = {
   "git.kind.untracked": "New, not tracked yet",
   "git.kind.conflict": "Conflict",
 
+  "update.check": "Check for updates",
+  "update.available": "KlikVibe {version} is available.",
+  "update.install": "Install and restart",
+  "update.installing": "Installing the update…",
+  "update.latest": "You have the latest version ({version}).",
+  "update.busy": "Already checking for updates…",
+  "update.error": "Couldn't check for updates.",
+
   "terminal.title": "Terminal",
   "terminal.new": "New terminal",
   "terminal.close": "Close terminal",

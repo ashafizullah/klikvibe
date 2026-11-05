@@ -4,6 +4,7 @@ mod files;
 mod git;
 mod projects;
 mod terminal;
+mod updater;
 mod watch;
 
 use std::path::PathBuf;
@@ -41,6 +42,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(terminal::Terminals::default())
         .manage(watch::Watchers::default())
         .setup(|app| {
@@ -51,6 +53,10 @@ pub fn run() {
                 *projects.launch.lock().unwrap() = Some(project);
             }
             app.manage(projects);
+            // Debug builds are not released, so they have nothing to update to.
+            if !cfg!(debug_assertions) {
+                updater::start_background_checks(app.handle());
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -76,6 +82,8 @@ pub fn run() {
             commands::terminal_write,
             commands::terminal_resize,
             commands::terminal_close,
+            commands::check_updates,
+            commands::install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running KlikVibe");

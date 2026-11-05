@@ -7,6 +7,7 @@
   import { persist, settings } from "./lib/settings.svelte";
   import { toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
+  import { initUpdates } from "./lib/updates.svelte";
   import Home from "./components/Home.svelte";
   import TitleBar from "./components/TitleBar.svelte";
   import FileTree from "./components/FileTree.svelte";
@@ -20,6 +21,7 @@
     document.documentElement.lang = i18n.locale;
     const off = listen<Project>("open-project", (e) => openProject(e.payload));
     ipc.takeLaunchProject().then((p) => p && openProject(p));
+    initUpdates();
     return () => off.then((f) => f());
   });
 

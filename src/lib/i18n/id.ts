@@ -82,6 +82,14 @@ const id: Record<Key, string> = {
   "git.kind.untracked": "Baru, belum dilacak",
   "git.kind.conflict": "Konflik",
 
+  "update.check": "Periksa pembaruan",
+  "update.available": "KlikVibe {version} sudah tersedia.",
+  "update.install": "Pasang lalu mulai ulang",
+  "update.installing": "Memasang pembaruan…",
+  "update.latest": "Anda sudah memakai versi terbaru ({version}).",
+  "update.busy": "Sedang memeriksa pembaruan…",
+  "update.error": "Gagal memeriksa pembaruan.",
+
   "terminal.title": "Terminal",
   "terminal.new": "Terminal baru",
   "terminal.close": "Tutup terminal",

@@ -5,6 +5,7 @@ use crate::files::{self, Entry, FileText};
 use crate::git::{self, Commit, Status};
 use crate::projects::{Project, Projects, RecentProject};
 use crate::terminal::{TerminalEvent, Terminals};
+use crate::updater;
 use crate::watch::Watchers;
 use std::path::{Component, Path, PathBuf};
 use tauri::ipc::Channel;
@@ -170,6 +171,18 @@ pub fn terminal_resize(terminals: State<'_, Terminals>, id: String, cols: u16, r
 #[tauri::command]
 pub fn terminal_close(terminals: State<'_, Terminals>, id: String) {
     terminals.close(&id)
+}
+
+// ---- updates ----
+
+#[tauri::command]
+pub async fn check_updates(app: AppHandle) -> AppResult<updater::Check> {
+    updater::check(&app).await.map_err(AppError::msg)
+}
+
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> AppResult<()> {
+    updater::install(&app).await.map_err(AppError::msg)
 }
 
 #[cfg(test)]

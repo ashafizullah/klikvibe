@@ -5,6 +5,7 @@
   import { openProject } from "../lib/project.svelte";
   import { AGENTS } from "../lib/settings.svelte";
   import { isMac, mod, toast } from "../lib/ui.svelte";
+  import { checkForUpdates, updates } from "../lib/updates.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import LanguageToggle from "./LanguageToggle.svelte";
@@ -78,7 +79,10 @@
 
     <div class="grow"></div>
     <div class="foot">
-      <span class="version">KlikVibe {version && `v${version}`}</span>
+      <button class="version" onclick={checkForUpdates} disabled={updates.checking} title={t("update.check")}>
+        <span>KlikVibe {version && `v${version}`}</span>
+        <span class="check"><Icon name="refresh" size={10} class={updates.checking ? "spin" : ""} />{t("update.check")}</span>
+      </button>
       <LanguageToggle />
     </div>
   </aside>
@@ -251,8 +255,24 @@
     border-top: 1px solid var(--line);
   }
   .version {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 0;
+    border: none;
+    background: none;
     font-size: 10px;
     color: var(--muted);
+    text-align: left;
+  }
+  .version:hover {
+    color: var(--text);
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
   main {

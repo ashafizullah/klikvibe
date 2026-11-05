@@ -1,0 +1,13 @@
+# Changelog
+
+## 0.1.0
+
+The first release of KlikVibe, a light code editor for vibe coding.
+
+- Open a project folder (or run `klikvibe <folder>`) and reopen it from the recent list.
+- A file tree that follows `.gitignore` and the disk: files changed in the last moments pulse, and changed files show their Git status.
+- Code tabs with CodeMirror 6 and syntax highlighting for the common languages; open files reload when the agent edits them, and ask first when you have unsaved edits.
+- A Git panel: changes with diffs, commit all, pull (fast-forward only), push or publish a branch, history with unpushed commits marked, and `git init`.
+- Terminals in the project folder, as many as you need, with a button that types `claude`, `codex` or `gemini`.
+- Updates: KlikVibe checks once a day and installs a new version when you agree.
+- English and Bahasa Indonesia.

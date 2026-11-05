@@ -48,6 +48,12 @@ export interface FsChanged {
   many: boolean;
   git: boolean;
 }
+export interface Release {
+  version: string;
+  current: string;
+  notes: string;
+}
+export type UpdateCheck = ({ status: "available" } & Release) | { status: "upToDate"; current: string } | { status: "busy" };
 export type TerminalEvent = { type: "data"; data: string } | { type: "exit"; code: number | null };
 
 export const ipc = {
@@ -80,6 +86,9 @@ export const ipc = {
   terminalWrite: (id: string, data: string) => invoke<void>("terminal_write", { id, data }),
   terminalResize: (id: string, cols: number, rows: number) => invoke<void>("terminal_resize", { id, cols, rows }),
   terminalClose: (id: string) => invoke<void>("terminal_close", { id }),
+
+  checkUpdates: () => invoke<UpdateCheck>("check_updates"),
+  installUpdate: () => invoke<void>("install_update"),
 };
 
 export function errorText(e: unknown): string {
