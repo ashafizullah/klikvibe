@@ -15,7 +15,7 @@
 - A side-by-side layout: Terminal | Code | Git as columns (the button next to the panel toggles). Every panel can be hidden, the code included (`⌘⇧E` / `Ctrl+Shift+E`), so the terminal can take the whole window; at least one stays on screen. The file tree starts hidden in this layout (`⌘B` shows it), and each layout remembers its own choice. Terminals keep running when the layout changes.
 - The welcome card stays behind the terminal when the terminal is dragged up.
 - Tooltips on every button: hover an icon to see what it does and its shortcut.
-- A commit graph in the Git history: branch and merge lines, branch and tag labels, the checked-out commit marked, and a switch between this branch and all branches.
+- A commit graph in the Git history: branch and merge lines, branch and tag labels, the checked-out commit marked, and a switch between this branch and all branches. Click a commit to list the files it changed (with lines added and removed) and open each one's diff; the whole commit is one click further.
 
 ## 0.1.0
 

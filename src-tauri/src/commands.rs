@@ -2,7 +2,7 @@
 //! projects (see projects.rs); slow work runs off the main thread.
 use crate::error::{AppError, AppResult};
 use crate::files::{self, Entry, FileText};
-use crate::git::{self, Commit, Status};
+use crate::git::{self, Commit, CommitFile, Status};
 use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
 use crate::terminal::{TerminalEvent, Terminals};
@@ -129,6 +129,26 @@ pub async fn git_diff(projects: State<'_, Projects>, root: String, path: String)
 pub async fn git_show(projects: State<'_, Projects>, root: String, hash: String) -> AppResult<String> {
     let root = root_of(&projects, &root)?;
     blocking(move || git::show(&root, &hash)).await
+}
+
+#[tauri::command]
+pub async fn git_commit_files(projects: State<'_, Projects>, root: String, hash: String) -> AppResult<Vec<CommitFile>> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::commit_files(&root, &hash)).await
+}
+
+#[tauri::command]
+pub async fn git_commit_file_diff(
+    projects: State<'_, Projects>,
+    root: String,
+    hash: String,
+    path: String,
+    from: Option<String>,
+) -> AppResult<String> {
+    let root = root_of(&projects, &root)?;
+    let path = relative(&path)?.to_string();
+    let from = from.as_deref().map(relative).transpose()?.map(String::from);
+    blocking(move || git::commit_file_diff(&root, &hash, &path, from.as_deref())).await
 }
 
 #[tauri::command]

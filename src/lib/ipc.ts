@@ -45,6 +45,14 @@ export interface Commit {
   /** Full decorations, e.g. "HEAD -> refs/heads/main" (see refLabels in graph.ts). */
   refs: string[];
 }
+export interface CommitFile {
+  path: string;
+  from: string | null;
+  kind: "added" | "modified" | "deleted" | "renamed";
+  /** Lines added and removed; null for binary files. */
+  added: number | null;
+  removed: number | null;
+}
 export interface FsChanged {
   root: string;
   paths: string[];
@@ -92,6 +100,8 @@ export const ipc = {
   gitLog: (root: string, all: boolean, limit = 200) => invoke<Commit[]>("git_log", { root, limit, all }),
   gitDiff: (root: string, path: string) => invoke<string>("git_diff", { root, path }),
   gitShow: (root: string, hash: string) => invoke<string>("git_show", { root, hash }),
+  gitCommitFiles: (root: string, hash: string) => invoke<CommitFile[]>("git_commit_files", { root, hash }),
+  gitCommitFileDiff: (root: string, hash: string, path: string, from: string | null) => invoke<string>("git_commit_file_diff", { root, hash, path, from }),
   gitCommit: (root: string, message: string) => invoke<string>("git_commit", { root, message }),
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),

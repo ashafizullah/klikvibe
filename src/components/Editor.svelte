@@ -15,7 +15,7 @@
   const project = useProject();
   const tab = $derived(project.activeTab());
   const rel = $derived(tab ? relative(project.root, tab.path) : null);
-  const ICON = { file: "code", diff: "diff", commit: "commit" } as const;
+  const ICON = { file: "code", diff: "diff", commit: "commit", commitFile: "diff" } as const;
 
   function onAux(e: MouseEvent, id: string) {
     // Middle click closes, as in browsers.

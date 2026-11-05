@@ -9,7 +9,7 @@
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { layoutGraph, refLabels } from "../lib/graph";
   import { persist, settings } from "../lib/settings.svelte";
-  import GraphCell, { graphWidth } from "./GraphCell.svelte";
+  import GraphCell, { graphWidth, laneColor, laneX } from "./GraphCell.svelte";
 
   const project = useProject();
 
@@ -54,6 +54,14 @@
   const graph = $derived(layoutGraph(project.log));
   /** One width for the whole column, so the text lines up; very wide graphs are cut at 8 lanes. */
   const graphW = $derived(graphWidth(Math.min(8, Math.max(1, ...graph.map((r) => r.width)))));
+
+  /** The lanes that run on past row `i` (into the next row), for the strip beside its file list. */
+  function lanesAfter(i: number) {
+    const next = graph[i + 1]?.top.map((s) => ({ lane: s.from, color: s.color }));
+    const own = graph[i]?.bottom.map((s) => ({ lane: s.to, color: s.color })) ?? [];
+    const all = next ?? own;
+    return all.filter((l, k) => all.findIndex((m) => m.lane === l.lane) === k);
+  }
 
   function setScope(all: boolean) {
     settings.historyAll = all;
@@ -153,7 +161,8 @@
       <div class="list">
         {#each project.log as c, i (c.hash)}
           {@const refs = refLabels(c.refs)}
-          <button class="commit-row" onclick={() => project.openCommit(c)} oncontextmenu={(e) => commitMenu(e, c)} title={c.hash}>
+          {@const open = project.expandedCommit === c.hash}
+          <button class="commit-row" class:open onclick={() => project.toggleCommitFiles(c.hash)} oncontextmenu={(e) => commitMenu(e, c)} title={c.hash} aria-expanded={open}>
             {#if graph[i]}<GraphCell row={graph[i]} width={graphW} merge={c.parents.length > 1} head={refs.some((r) => r.current)} />{/if}
             <span class="commit-text">
               <span class="subject-line">
@@ -168,6 +177,39 @@
               </span>
             </span>
           </button>
+          {#if open}
+            {@const files = project.commitFiles.get(c.hash)}
+            <div class="commit-files">
+              <!-- The graph's lines carry on beside the list. -->
+              <div class="lanes" style:width="{graphW}px" aria-hidden="true">
+                {#each lanesAfter(i) as l (l.lane)}<span style:left="{laneX(l.lane) - 1}px" style:background={laneColor(l.color)}></span>{/each}
+              </div>
+              <div class="files">
+                {#if files === "loading" || files === undefined}
+                  <p class="files-note">{t("common.loading")}</p>
+                {:else if files === "error"}
+                  <p class="files-note">{t("git.filesError")}</p>
+                {:else}
+                  {#each files as f (f.path)}
+                    {@const p = split(f.path)}
+                    <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
+                      <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
+                      <span class="name">{p.name}</span>
+                      <span class="dir">{p.dir}</span>
+                      {#if f.added !== null}
+                        <span class="count add">+{f.added}</span><span class="count del">−{f.removed}</span>
+                      {:else}
+                        <span class="count">{t("git.binary")}</span>
+                      {/if}
+                    </button>
+                  {:else}
+                    <p class="files-note">{t("git.noFileChanges")}</p>
+                  {/each}
+                {/if}
+                <button class="full" onclick={() => project.openCommit(c)}><Icon name="commit" size={12} />{t("git.showFullCommit")}</button>
+              </div>
+            </div>
+          {/if}
         {:else}
           <p class="empty-note">{t("git.noCommits")}</p>
         {/each}
@@ -350,6 +392,100 @@
   }
   .ref.tag {
     border-style: dashed;
+  }
+  .commit-row.open {
+    background: var(--panel-2);
+  }
+  .commit-files {
+    display: flex;
+    /* No vertical padding here: the lane strip must reach both rows. */
+    padding-left: 2px;
+  }
+  .lanes {
+    position: relative;
+    flex: none;
+    margin-right: 4px;
+  }
+  .lanes span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    border-radius: 1px;
+  }
+  .files {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--line);
+    padding: 2px 0 6px 4px;
+  }
+  .file {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 12px 0 6px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    font-size: 12px;
+    text-align: left;
+    min-width: 0;
+  }
+  .file:hover {
+    background: var(--panel-2);
+  }
+  .file .name {
+    flex: none;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file .dir {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  .count {
+    flex: none;
+    font: 10.5px var(--mono);
+    color: var(--muted);
+  }
+  .count.add {
+    color: var(--ok);
+  }
+  .count.del {
+    color: var(--danger);
+  }
+  .files-note {
+    margin: 0;
+    padding: 4px 6px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .full {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 2px;
+    padding: 3px 6px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .full:hover {
+    color: var(--accent);
+    background: var(--panel-2);
   }
   .scope {
     flex: none;

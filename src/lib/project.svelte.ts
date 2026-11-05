@@ -6,14 +6,15 @@ import { listen } from "@tauri-apps/api/event";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import type { EditorView } from "@codemirror/view";
-import { errorText, ipc, type Change, type Commit, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
+import { errorText, ipc, type Change, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
 import { toast } from "./ui.svelte";
 import { settings } from "./settings.svelte";
 
-export type TabKind = "file" | "diff" | "commit";
+/** commitFile: one file's changes in a commit. */
+export type TabKind = "file" | "diff" | "commit" | "commitFile";
 
 export interface Tab {
   id: string;
@@ -71,6 +72,10 @@ export class ProjectState {
   gitBusy = $state<string | null>(null);
   /** Files changed on disk lately (path → when), shown as fresh in the tree. */
   readonly fresh = new SvelteMap<string, number>();
+  /** The history commit showing its files, if any. */
+  expandedCommit = $state<string | null>(null);
+  /** The files of commits opened in the history (commits don't change, so they stay). */
+  readonly commitFiles = new SvelteMap<string, CommitFile[] | "loading" | "error">();
 
   /** The editors of file tabs on screen, by tab id (read by the MCP tools). */
   readonly views = new Map<string, EditorView>();
@@ -221,6 +226,34 @@ export class ProjectState {
     if (!fresh) return;
     try {
       tab.text = await ipc.gitShow(this.root, commit.hash);
+      tab.revision++;
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      tab.loading = false;
+    }
+  }
+
+  /** Shows (or hides) the files a commit changed, under it in the history. */
+  async toggleCommitFiles(hash: string) {
+    this.expandedCommit = this.expandedCommit === hash ? null : hash;
+    if (this.expandedCommit !== hash || this.commitFiles.get(hash) instanceof Array) return;
+    this.commitFiles.set(hash, "loading");
+    try {
+      this.commitFiles.set(hash, await ipc.gitCommitFiles(this.root, hash));
+    } catch (e) {
+      this.commitFiles.set(hash, "error");
+      toast(errorText(e), "error");
+    }
+  }
+
+  /** One file's changes in a commit, in a tab. */
+  async openCommitFile(commit: Commit, file: CommitFile) {
+    const id = `commitfile:${commit.hash}:${file.path}`;
+    const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.path)));
+    if (!fresh) return;
+    try {
+      tab.text = await ipc.gitCommitFileDiff(this.root, commit.hash, file.path, file.from);
       tab.revision++;
     } catch (e) {
       toast(errorText(e), "error");

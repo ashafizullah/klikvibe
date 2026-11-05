@@ -15,7 +15,7 @@
 - Tata letak berdampingan: Terminal | Kode | Git sebagai kolom (tombol di sebelah tombol panel). Semua panel bisa disembunyikan, termasuk kode (`⌘⇧E` / `Ctrl+Shift+E`), sehingga terminal bisa memenuhi jendela; minimal satu tetap tampil. Pohon file tersembunyi secara bawaan di tata letak ini (`⌘B` untuk menampilkannya), dan tiap tata letak mengingat pilihannya sendiri. Terminal tetap berjalan saat tata letak diganti.
 - Kartu sambutan tetap di belakang terminal saat terminal ditarik ke atas.
 - Tooltip di semua tombol: arahkan kursor ke ikon untuk melihat fungsinya dan pintasannya.
-- Graph commit di riwayat Git: garis branch dan merge, label branch dan tag, penanda commit yang sedang dipakai, dan pilihan antara branch ini atau semua branch.
+- Graph commit di riwayat Git: garis branch dan merge, label branch dan tag, penanda commit yang sedang dipakai, dan pilihan antara branch ini atau semua branch. Klik commit untuk melihat daftar file yang diubah (dengan jumlah baris ditambah dan dihapus) dan membuka diff tiap file; commit lengkapnya tinggal satu klik lagi.
 
 ## 0.1.0
 

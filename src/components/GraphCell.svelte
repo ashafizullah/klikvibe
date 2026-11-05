@@ -5,6 +5,8 @@
   export const ROW = 46;
   const PAD = 9;
   export const graphWidth = (lanes: number) => PAD * 2 + (Math.max(lanes, 1) - 1) * LANE;
+  export const laneX = (lane: number) => PAD + lane * LANE;
+  export const laneColor = (i: number) => LANE_COLORS[i % LANE_COLORS.length];
 </script>
 
 <script lang="ts">
@@ -13,9 +15,9 @@
 
   let { row, width, merge, head }: { row: GraphRow; width: number; merge: boolean; head: boolean } = $props();
 
-  const x = (lane: number) => PAD + lane * LANE;
+  const x = laneX;
   const mid = ROW / 2;
-  const color = (i: number) => LANE_COLORS[i % LANE_COLORS.length];
+  const color = laneColor;
 
   /** A straight line within a lane, or an S-curve when it changes lanes. */
   function path(s: Segment, y1: number, y2: number) {

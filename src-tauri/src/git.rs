@@ -227,12 +227,92 @@ pub fn diff(root: &Path, path: &str) -> AppResult<String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-/// A commit's message, files and patch.
-pub fn show(root: &Path, hash: &str) -> AppResult<String> {
-    if hash.is_empty() || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
+fn check_hash(hash: &str) -> AppResult<()> {
+    if hash.is_empty() || hash.len() > 64 || !hash.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(AppError::msg("Invalid commit"));
     }
+    Ok(())
+}
+
+/// A commit's message, files and patch.
+pub fn show(root: &Path, hash: &str) -> AppResult<String> {
+    check_hash(hash)?;
     run(root, &["show", "--no-color", "--stat", "--patch", "--format=fuller", hash])
+}
+
+/// Git's empty tree: what the first commit is compared with.
+const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+/// What `hash` is compared with: its first parent (so a merge shows what it brought in), or nothing.
+fn base_of(root: &Path, hash: &str) -> String {
+    run(root, &["rev-parse", "--verify", "-q", &format!("{hash}^1")]).map(|s| s.trim().to_string()).unwrap_or_else(|_| EMPTY_TREE.into())
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitFile {
+    pub path: String,
+    /// The old path of a rename.
+    pub from: Option<String>,
+    /// added, modified, deleted or renamed.
+    pub kind: String,
+    /// Lines added and removed; None for binary files.
+    pub added: Option<u32>,
+    pub removed: Option<u32>,
+}
+
+/// Parses `git diff --name-status -z` and `--numstat -z` (both with -M) into files.
+pub fn parse_commit_files(names: &str, nums: &str) -> Vec<CommitFile> {
+    let mut files = Vec::new();
+    let mut f = names.split('\0').filter(|s| !s.is_empty());
+    while let Some(status) = f.next() {
+        let kind = match status.chars().next() {
+            Some('A') => "added",
+            Some('D') => "deleted",
+            Some('R') | Some('C') => "renamed",
+            _ => "modified",
+        };
+        let (from, path) = if kind == "renamed" { (f.next().map(String::from), f.next()) } else { (None, f.next()) };
+        let Some(path) = path else { break };
+        files.push(CommitFile { path: path.into(), from, kind: kind.into(), added: None, removed: None });
+    }
+    // numstat: "added\tremoved\tpath", or "added\tremoved\t" then old and new paths for a rename.
+    let mut n = nums.split('\0');
+    while let Some(head) = n.next() {
+        let parts: Vec<&str> = head.splitn(3, '\t').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+        let path = if parts[2].is_empty() {
+            let _old = n.next();
+            n.next().unwrap_or_default()
+        } else {
+            parts[2]
+        };
+        if let Some(file) = files.iter_mut().find(|x| x.path == path) {
+            file.added = parts[0].parse().ok();
+            file.removed = parts[1].parse().ok();
+        }
+    }
+    files
+}
+
+/// The files a commit changed (against its first parent).
+pub fn commit_files(root: &Path, hash: &str) -> AppResult<Vec<CommitFile>> {
+    check_hash(hash)?;
+    let base = base_of(root, hash);
+    let names = run(root, &["diff", "--no-color", "-M", "-z", "--name-status", &base, hash])?;
+    let nums = run(root, &["diff", "--no-color", "-M", "-z", "--numstat", &base, hash])?;
+    Ok(parse_commit_files(&names, &nums))
+}
+
+/// One file's changes in a commit (`from`: its old path, for a rename).
+pub fn commit_file_diff(root: &Path, hash: &str, path: &str, from: Option<&str>) -> AppResult<String> {
+    check_hash(hash)?;
+    let base = base_of(root, hash);
+    let mut args = vec!["--literal-pathspecs", "diff", "--no-color", "-M", &base, hash, "--", path];
+    args.extend(from);
+    run(root, &args)
 }
 
 /// Stages everything and commits it.
@@ -376,7 +456,34 @@ mod tests {
         assert_eq!(log[0].subject, "First");
         assert!(show(&dir, &log[0].hash).unwrap().contains("a.txt"));
         assert!(show(&dir, "HEAD; rm -rf /").is_err());
+        // The first commit's files, against nothing; then a change.
+        let first = &log[0].hash;
+        assert_eq!(commit_files(&dir, first).unwrap()[0].kind, "added");
+        std::fs::write(dir.join("b.txt"), "x\ny\n").unwrap();
+        commit(&dir, "Second").unwrap();
+        let second = log_head(&dir);
+        let files = commit_files(&dir, &second).unwrap();
+        let paths: Vec<(&str, &str, Option<u32>)> = files.iter().map(|f| (f.path.as_str(), f.kind.as_str(), f.added)).collect();
+        assert_eq!(paths, [("a.txt", "modified", Some(1)), ("b.txt", "added", Some(2))]);
+        assert!(commit_file_diff(&dir, &second, "a.txt", None).unwrap().contains("+two"));
+        assert!(commit_files(&dir, "HEAD").is_err());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn log_head(dir: &Path) -> String {
+        run(dir, &["rev-parse", "HEAD"]).unwrap().trim().to_string()
+    }
+
+    #[test]
+    fn parses_renames_and_binaries_in_a_commit() {
+        let names = "M\0src/a.ts\0R100\0old.ts\0new.ts\0A\0logo.png\0";
+        let nums = "3\t1\tsrc/a.ts\0".to_string() + "0\t0\t\0old.ts\0new.ts\0" + "-\t-\tlogo.png\0";
+        let files = parse_commit_files(names, &nums);
+        assert_eq!(files.len(), 3);
+        assert_eq!((files[0].added, files[0].removed), (Some(3), Some(1)));
+        assert_eq!(files[1].from.as_deref(), Some("old.ts"));
+        assert_eq!((files[1].kind.as_str(), files[1].path.as_str()), ("renamed", "new.ts"));
+        assert_eq!(files[2].added, None);
     }
 
     #[test]

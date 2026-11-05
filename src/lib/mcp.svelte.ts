@@ -84,7 +84,7 @@ function describeTab(p: ProjectState, tab: Tab) {
     kind: tab.kind === "file" ? (tab.media ? `${tab.media} preview` : "file") : tab.kind,
     path: tab.kind === "commit" ? undefined : tab.path,
     relativePath: tab.kind === "commit" ? undefined : (relative(p.root, tab.path) ?? undefined),
-    commit: tab.kind === "commit" ? tab.id.slice("commit:".length) : undefined,
+    commit: tab.kind === "commit" ? tab.id.slice("commit:".length) : tab.kind === "commitFile" ? tab.id.split(":")[1] : undefined,
     unsaved: isDirty(tab),
   };
 }
