@@ -44,18 +44,18 @@
 ## Performa
 
 <p align="center">
-  <img src="design/performance.id.png" alt="KlikVibe memakai 118 MB memori dan 0% CPU saat diam, dan ukuran aplikasinya 7,1 MB">
+  <img src="design/performance.id.png" alt="KlikVibe memakai 122 MB memori dan 0,2% CPU saat diam, dan ukuran aplikasinya 8,0 MB">
 </p>
 
-Diukur pada build rilis macOS dengan satu proyek dan satu terminal terbuka, menjumlahkan semua proses yang dijalankan KlikVibe: aplikasinya, tiga proses pembantu WebKit, dan shell.
+Diukur pada build rilis macOS dengan satu proyek dan satu terminal terbuka, menjumlahkan semua proses yang dijalankan KlikVibe: aplikasinya, tiga proses pembantu WebKit, dan shell (median dari tiga kali pengukuran).
 
 | | |
 |---|---|
-| Memori | **118 MB** (tampilan 56, inti Rust 33, grafis 18, jaringan 6, shell 6) |
-| CPU saat diam | **0%** |
-| Ukuran aplikasi | **7,1 MB** |
+| Memori | **122 MB** (tampilan 57, inti Rust 33, grafis 21, jaringan 6, shell 5) |
+| CPU saat diam | **0,2%** |
+| Ukuran aplikasi | **8,0 MB** |
 
-Saat jendela di depan dan terminal sedang fokus, proses grafis naik menjadi sekitar 220 MB dan CPU sekitar 3% karena kursor terminal berkedip. Agen yang Anda jalankan di terminal memakai memorinya sendiri di luar angka ini. Untuk mengukurnya sendiri, jalankan `footprint -p <pid>` pada proses `klikvibe` dan proses pembantu `com.apple.WebKit.*` yang dijalankannya.
+Saat jendela di depan dan terminal sedang menerima ketikan (fokus), proses grafis naik menjadi sekitar 260 MB dan CPU sekitar 3–4%: WebKit terus menggambar ulang selama ada kolom teks yang fokus. Kalau fokusnya di tempat lain, angkanya tetap dekat dengan angka di atas. Agen yang Anda jalankan di terminal memakai memorinya sendiri di luar angka ini. Untuk mengukurnya sendiri, jalankan `footprint -p <pid>` pada proses `klikvibe` dan proses pembantu `com.apple.WebKit.*` yang dijalankannya.
 
 ## Instal
 

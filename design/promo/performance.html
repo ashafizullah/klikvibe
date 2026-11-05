@@ -63,40 +63,42 @@
     </div>
     <h1 id="title"></h1>
     <div class="grid">
-      <div class="tile hero"><div class="label" id="l1"></div><div class="value">118<small>MB</small></div><div class="hint" id="h1"></div></div>
-      <div class="tile"><div class="label" id="l2"></div><div class="value">0<small>%</small></div><div class="hint" id="h2"></div></div>
-      <div class="tile"><div class="label" id="l3"></div><div class="value">7.1<small>MB</small></div><div class="hint" id="h3"></div></div>
+      <div class="tile hero"><div class="label" id="l1"></div><div class="value">122<small>MB</small></div><div class="hint" id="h1"></div></div>
+      <div class="tile"><div class="label" id="l2"></div><div class="value"><span id="cpu"></span><small>%</small></div><div class="hint" id="h2"></div></div>
+      <div class="tile"><div class="label" id="l3"></div><div class="value"><span id="size"></span><small>MB</small></div><div class="hint" id="h3"></div></div>
       <div class="parts"><div class="label" id="l4"></div><div id="rows"></div></div>
     </div>
     <div class="foot" id="foot"></div>
   </div>
 <script>
-  // Measured 2026-11-05 on macOS: release build, one project open, one terminal, no file open, window in the background.
-  const PARTS = [["page", 56], ["core", 33], ["gpu", 18], ["net", 6], ["shell", 6]];
+  // Measured 2026-11-05 on macOS (median of three runs): release build, one project open, one terminal, no file open, window in the background.
+  const PARTS = [["page", 57], ["core", 33], ["gpu", 21], ["net", 6], ["shell", 5]];
   const T = {
     en: {
       eyebrow: "Release build · macOS",
+      cpu: "0.2", size: "8.0",
       title: "Light enough to <b>leave open all day.</b>",
       l1: "Memory", h1: "Everything: app, web view and a terminal",
-      l2: "CPU at idle", h2: "Nothing polls or animates in the background",
+      l2: "CPU at idle", h2: "It barely wakes up while you're not using it",
       l3: "App size", h3: "One small native binary, no bundled browser",
-      l4: "Where the 118 MB goes",
+      l4: "Where the 122 MB goes",
       parts: { page: "Interface (WebKit)", core: "Rust core", gpu: "Graphics (WebKit)", net: "Networking (WebKit)", shell: "Terminal shell" },
       foot: "One project open with one terminal, window in the background. Measured with macOS footprint and top.",
     },
     id: {
       eyebrow: "Build rilis · macOS",
+      cpu: "0,2", size: "8,0",
       title: "Cukup ringan untuk <b>dibiarkan terbuka seharian.</b>",
       l1: "Memori", h1: "Semuanya: aplikasi, web view dan satu terminal",
-      l2: "CPU saat diam", h2: "Tidak ada polling atau animasi di latar",
+      l2: "CPU saat diam", h2: "Hampir tidak bekerja saat tidak dipakai",
       l3: "Ukuran aplikasi", h3: "Satu program native kecil, tanpa browser bawaan",
-      l4: "Rincian 118 MB",
+      l4: "Rincian 122 MB",
       parts: { page: "Tampilan (WebKit)", core: "Inti Rust", gpu: "Grafis (WebKit)", net: "Jaringan (WebKit)", shell: "Shell terminal" },
       foot: "Satu proyek terbuka dengan satu terminal, jendela di latar. Diukur dengan footprint dan top bawaan macOS.",
     },
   };
   const t = T[new URLSearchParams(location.search).get("lang") === "id" ? "id" : "en"];
-  for (const k of ["eyebrow", "l1", "h1", "l2", "h2", "l3", "h3", "l4", "foot"]) document.getElementById(k).textContent = t[k];
+  for (const k of ["eyebrow", "cpu", "size", "l1", "h1", "l2", "h2", "l3", "h3", "l4", "foot"]) document.getElementById(k).textContent = t[k];
   document.getElementById("title").innerHTML = t.title;
   const max = Math.max(...PARTS.map((p) => p[1]));
   document.getElementById("rows").innerHTML = PARTS.map(
