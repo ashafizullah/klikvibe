@@ -5,7 +5,10 @@
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, agentById } from "../lib/agents";
   import { t } from "../lib/i18n/index.svelte";
-  import { openMenu, openMenuBelow, ui, type MenuItem } from "../lib/ui.svelte";
+  import { openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
+  import { CARGO_SCRIPTS, packageManager, packageScripts, type Script } from "../lib/scripts";
+  import { ipc } from "../lib/ipc";
+  import { join } from "../lib/paths";
   import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
@@ -21,18 +24,22 @@
     name: string | null;
     /** From what runs in it (terminalName in agents.ts); null for the bare shell. */
     auto: string | null;
+    /** A dev server's address it printed, for the preview. */
+    url: string | null;
+    /** A script to run once it starts. */
+    run?: string;
   }
 
   let nextId = 1;
-  const shell = (): Shell => ({ id: nextId++, exited: false, name: null, auto: null });
+  const shell = (run?: string): Shell => ({ id: nextId++, exited: false, name: null, auto: null, url: null, run });
   let shells = $state<Shell[]>([shell()]);
   let active = $state(1);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
   const agent = $derived(agentById(settings.agent));
 
-  function add() {
-    const s = shell();
+  function add(run?: string) {
+    const s = shell(run);
     shells.push(s);
     active = s.id;
   }
@@ -64,7 +71,7 @@
       { label: t("terminal.rename"), run: () => rename(s, i) },
       { label: t("terminal.resetName"), disabled: s.name === null, run: () => (s.name = null) },
       "sep",
-      { label: t("terminal.new"), run: add },
+      { label: t("terminal.new"), run: () => add() },
       { label: t("terminal.close"), disabled: shells.length < 2, run: () => close(s.id) },
     ]);
   }
@@ -104,6 +111,32 @@
     if (project.askAgent === askAgent) project.askAgent = null;
     if (project.terminals === terminals) project.terminals = null;
   });
+
+  // ---- scripts and the preview ----
+
+  async function scriptsMenu(e: MouseEvent) {
+    const el = e.currentTarget as Element;
+    const names = (project.tree.get(project.root) ?? []).map((x) => x.name);
+    const scripts: Script[] = [];
+    if (names.includes("package.json")) {
+      const pkg = await ipc.readFile(join(project.root, "package.json")).catch(() => null);
+      scripts.push(...packageScripts(pkg?.text ?? "", packageManager(names)));
+    }
+    if (names.includes("Cargo.toml")) scripts.push(...CARGO_SCRIPTS);
+    const items: MenuItem[] = scripts.length
+      ? scripts.map((s) => ({ label: s.name, hint: s.detail && s.detail.length > 28 ? `${s.detail.slice(0, 27)}…` : s.detail, icon: "play", run: () => add(s.command) }))
+      : [{ label: t("scripts.none"), disabled: true, run: () => {} }];
+    openMenuBelow(el, items);
+  }
+
+  /** A dev server came up in a terminal: offer the preview, once per address. */
+  const offered = new Set<string>();
+  function foundUrl(s: Shell, url: string) {
+    s.url = url;
+    if (offered.has(url)) return;
+    offered.add(url);
+    toast(t("preview.found", { url }), "ok", { label: t("preview.open"), run: () => project.openPreview(url) }, 10_000);
+  }
 
   const BUILT_IN = ["prompts.fixTests", "prompts.review", "prompts.explain", "prompts.commitMessage", "prompts.simpler"] as const;
 
@@ -176,15 +209,21 @@
               {label(s, i)}
             </button>
           {/if}
+          {#if s.url}
+            <button class="shell-web" onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
+          {/if}
           {#if shells.length > 1}
             <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
           {/if}
         </div>
       {/each}
-      <button class="icon-btn add" onclick={add} title={t("terminal.new")} aria-label={t("terminal.new")}><Icon name="plus" size={13} /></button>
+      <button class="icon-btn add" onclick={() => add()} title={t("terminal.new")} aria-label={t("terminal.new")}><Icon name="plus" size={13} /></button>
     </div>
     <div class="spacer"></div>
     <div class="agent">
+      <button class="btn small" onclick={scriptsMenu} title={t("scripts.hint")}>
+        <Icon name="play" size={13} />{t("scripts.title")}
+      </button>
       <button class="btn small" onclick={promptsMenu} title={t("prompts.hint")}>
         <Icon name="message-square-text" size={13} />{t("prompts.title")}
       </button>
@@ -212,7 +251,7 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
+        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} run={s.run} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
       {/each}
     {/if}
   </div>
@@ -317,6 +356,13 @@
     font: 11px var(--mono);
     -webkit-user-select: text;
     user-select: text;
+  }
+  .shell-web {
+    display: flex;
+    padding: 0 4px 0 0;
+    border: none;
+    background: none;
+    color: var(--accent);
   }
   .shell-close {
     border: none;

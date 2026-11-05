@@ -10,6 +10,7 @@
   import { findLinks, projectPath } from "../lib/termLinks";
   import { needsYou } from "../lib/attention.svelte";
   import { agentIn, terminalName } from "../lib/agents";
+  import { devServerUrl } from "../lib/scripts";
   import { join } from "../lib/paths";
   import { toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -19,7 +20,32 @@
     visible,
     onexit,
     onname,
-  }: { cwd: string; visible: boolean; onexit: (code: number | null) => void; onname: (name: string | null) => void } = $props();
+    onurl,
+    run,
+  }: {
+    cwd: string;
+    visible: boolean;
+    onexit: (code: number | null) => void;
+    onname: (name: string | null) => void;
+    /** A dev server's address showed up in the output. */
+    onurl: (url: string) => void;
+    /** A command to run once the shell has started (a script from the Scripts menu). */
+    run?: string;
+  } = $props();
+
+  // Output is scanned for a dev server's address; the tail of the last chunk joins the next, as an address can be split.
+  const scan = new TextDecoder();
+  let scanTail = "";
+  let lastUrl = "";
+  function scanForUrl(bytes: Uint8Array) {
+    const text = scanTail + scan.decode(bytes, { stream: true });
+    scanTail = text.slice(-120);
+    const url = devServerUrl(text);
+    if (url && url !== lastUrl) {
+      lastUrl = url;
+      onurl(url);
+    }
+  }
   const project = useProject();
 
   // ---- an agent waiting for the user ----
@@ -147,8 +173,10 @@
     ipc
       .terminalOpen(cwd, xterm.cols, xterm.rows, (e) => {
         if (e.type === "data") {
-          xterm.write(decode(e.data));
+          const bytes = decode(e.data);
+          xterm.write(bytes);
           noteOutput();
+          scanForUrl(bytes);
         }
         else {
           exited = true;
@@ -157,7 +185,11 @@
       })
       .then((id) => {
         if (disposed) ipc.terminalClose(id);
-        else session = id;
+        else {
+          session = id;
+          // The user picked this script to run: the shell runs it as if they had typed it.
+          if (run) ipc.terminalWrite(id, `${run}\r`).catch(() => {});
+        }
       })
       .catch((e) => toast(errorText(e), "error"));
     const linkProvider = links(xterm);

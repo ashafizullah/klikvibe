@@ -280,6 +280,15 @@ const en = {
   "ask.inCommit": "{path} in commit {hash}",
   "ask.commit": "commit {hash}",
 
+  "scripts.title": "Scripts",
+  "scripts.hint": "Run a script from package.json (or cargo) in a new terminal",
+  "scripts.none": "No package.json scripts here",
+  "preview.found": "A dev server is running at {url}.",
+  "preview.open": "Open preview",
+  "preview.reload": "Reload",
+  "preview.address": "Address",
+  "preview.browser": "Open in the browser",
+
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
   "terminal.rename": "Rename",

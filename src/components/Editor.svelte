@@ -12,6 +12,7 @@
   import CodeView from "./CodeView.svelte";
   import DiffView from "./DiffView.svelte";
   import MediaView from "./MediaView.svelte";
+  import PreviewView from "./PreviewView.svelte";
   import { errorText, ipc } from "../lib/ipc";
   import { hasSource } from "../lib/media";
   import { fileIcon } from "../lib/fileIcons";
@@ -19,7 +20,7 @@
   const project = useProject();
   const tab = $derived(project.activeTab());
   const rel = $derived(tab ? relative(project.root, tab.path) : null);
-  const ICON = { file: "code", diff: "diff", commit: "commit", commitFile: "diff" } as const;
+  const ICON = { file: "code", diff: "diff", commit: "commit", commitFile: "diff", preview: "globe" } as const;
 
   function onAux(e: MouseEvent, id: string) {
     // Middle click closes, as in browsers.
@@ -31,7 +32,7 @@
 
   /** The breadcrumb: the project, then each folder down to the file (absolute paths). */
   const crumbs = $derived.by(() => {
-    if (!tab || tab.kind === "commit" || !rel) return [];
+    if (!tab || tab.kind === "commit" || tab.kind === "preview" || !rel) return [];
     const parts = rel.split("/");
     return parts.map((name, i) => ({ name, path: join(project.root, parts.slice(0, i + 1).join("/")), last: i === parts.length - 1 }));
   });
@@ -173,6 +174,10 @@
           <span>{languageName(tab.title)}</span>
         {/if}
       </footer>
+    {:else if tab.kind === "preview"}
+      {#key tab.id}
+        <PreviewView {tab} />
+      {/key}
     {:else}
       {#key tab.id}
         <DiffView {tab} />

@@ -15,8 +15,8 @@ import { confirm, toast } from "./ui.svelte";
 import { persist, settings } from "./settings.svelte";
 import { treeKey } from "./grid";
 
-/** commitFile: one file's changes in a commit. */
-export type TabKind = "file" | "diff" | "commit" | "commitFile";
+/** commitFile: one file's changes in a commit; preview: a dev server's page (path is its address). */
+export type TabKind = "file" | "diff" | "commit" | "commitFile" | "preview";
 
 export interface Tab {
   id: string;
@@ -404,6 +404,14 @@ export class ProjectState {
       this.commitFiles.set(hash, "error");
       toast(errorText(e), "error");
     }
+  }
+
+  /** A running dev server's page in a tab. */
+  openPreview(url: string) {
+    const label = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const { tab } = this.show(newTab("preview", `preview:${url}`, label, url));
+    tab.loading = false;
+    showProject(this.root);
   }
 
   /** One file's changes in a commit, in a tab. */

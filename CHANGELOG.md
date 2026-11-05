@@ -33,6 +33,7 @@
 - MCP: six more tools for your agent. `read_terminal` (the other terminals' recent output, e.g. dev server errors), `create_checkpoint` (with a note), `list_checkpoints`, `restore_checkpoint` (only after you agree in KlikVibe), `show_commit` and `reveal_in_files`. Checkpoints can carry a note, shown in the Checkpoints tab.
 - KlikVibe opens again where you left it: the projects, their file tabs and the one in front, also after an update.
 - Open on GitHub, GitLab or Bitbucket: the repository, the branch, a commit, or the file at the selected lines (from the Git panel, History, the editor and the breadcrumb); after pushing a feature branch, one click starts a pull (merge) request. Works with SSH and HTTPS remotes and self-hosted GitLab.
+- Scripts and preview: the Scripts button in the terminal runs a package.json script (with bun, pnpm, yarn or npm, as the lockfile says) or cargo run/test/build in a new terminal. When a terminal prints a local dev server address, KlikVibe offers to open it in a preview tab (reload, address bar, open in the browser), and the terminal's tab gets a globe to open it again.
 
 ## 0.1.0
 

@@ -282,6 +282,15 @@ const id: Record<Key, string> = {
   "ask.inCommit": "{path} di commit {hash}",
   "ask.commit": "commit {hash}",
 
+  "scripts.title": "Script",
+  "scripts.hint": "Jalankan script dari package.json (atau cargo) di terminal baru",
+  "scripts.none": "Tidak ada script package.json di sini",
+  "preview.found": "Dev server berjalan di {url}.",
+  "preview.open": "Buka preview",
+  "preview.reload": "Muat ulang",
+  "preview.address": "Alamat",
+  "preview.browser": "Buka di browser",
+
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
   "terminal.rename": "Ganti nama",

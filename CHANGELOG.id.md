@@ -33,6 +33,7 @@
 - MCP: enam tool baru untuk agen. `read_terminal` (output terbaru terminal lain, misalnya error dev server), `create_checkpoint` (dengan catatan), `list_checkpoints`, `restore_checkpoint` (hanya setelah kamu setujui di KlikVibe), `show_commit`, dan `reveal_in_files`. Checkpoint bisa diberi catatan, yang tampil di tab Checkpoint.
 - KlikVibe terbuka lagi seperti saat ditinggalkan: proyek, tab file, dan proyek yang di depan, termasuk setelah update.
 - Buka di GitHub, GitLab, atau Bitbucket: repositori, branch, commit, atau file di baris yang dipilih (dari panel Git, History, editor, dan breadcrumb); setelah push branch fitur, satu klik membuat pull (merge) request. Bisa untuk remote SSH dan HTTPS serta GitLab self-hosted.
+- Script dan preview: tombol Script di terminal menjalankan script package.json (dengan bun, pnpm, yarn, atau npm sesuai lockfile) atau cargo run/test/build di terminal baru. Saat terminal menampilkan alamat dev server lokal, KlikVibe menawarkan untuk membukanya di tab preview (muat ulang, kolom alamat, buka di browser), dan tab terminalnya diberi ikon bola dunia untuk membukanya lagi.
 
 ## 0.1.0
 
