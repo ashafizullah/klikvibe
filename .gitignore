@@ -1,0 +1,4 @@
+node_modules
+/dist
+/public/THIRD_PARTY_NOTICES.md
+.DS_Store

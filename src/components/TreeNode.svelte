@@ -1,0 +1,113 @@
+<script lang="ts">
+  import type { Entry } from "../lib/ipc";
+  import { changeFor, folderChanged, isFresh, openFile, project, toggleDir } from "../lib/project.svelte";
+  import Icon from "./Icon.svelte";
+  import TreeNode from "./TreeNode.svelte";
+
+  let { entry, depth, now }: { entry: Entry; depth: number; now: number } = $props();
+
+  const open = $derived(entry.dir && project.expanded.has(entry.path));
+  const children = $derived(open ? (project.tree.get(entry.path) ?? []) : []);
+  const change = $derived(entry.dir ? undefined : changeFor(entry.path));
+  const changedInside = $derived(entry.dir && folderChanged(entry.path));
+  const fresh = $derived(isFresh(entry.path, now));
+  const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
+  const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
+</script>
+
+<button
+  class="node"
+  class:active
+  class:fresh
+  style:padding-left="{8 + depth * 14}px"
+  onclick={() => (entry.dir ? toggleDir(entry.path) : openFile(entry.path))}
+  title={entry.path}
+>
+  {#if entry.dir}
+    <Icon name={open ? "down" : "right"} size={12} class="chev" />
+    <Icon name={open ? "open" : "folder"} size={14} class="kind dir" />
+  {:else}
+    <span class="chev-space"></span>
+    <Icon name="code" size={14} class="kind" />
+  {/if}
+  <span class="label-text {change?.kind ?? ''}" class:inside={changedInside}>{entry.name}</span>
+  {#if fresh}<span class="fresh-dot" aria-hidden="true"></span>{/if}
+  {#if change}<span class="git-mark {change.kind}">{MARK[change.kind]}</span>{/if}
+</button>
+{#if open}
+  {#each children as child (child.path)}
+    <TreeNode entry={child} depth={depth + 1} {now} />
+  {/each}
+{/if}
+
+<style>
+  .node {
+    width: 100%;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding-right: 8px;
+    border: none;
+    background: none;
+    text-align: left;
+    font-size: 12.5px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .node:hover {
+    background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+  }
+  .node.active {
+    background: var(--selection);
+  }
+  .node :global(.chev) {
+    color: var(--muted);
+    flex: none;
+  }
+  .chev-space {
+    width: 12px;
+    flex: none;
+  }
+  .node :global(.kind) {
+    color: var(--muted);
+    flex: none;
+  }
+  .node :global(.kind.dir) {
+    color: color-mix(in srgb, var(--accent) 75%, var(--muted));
+  }
+  .label-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .label-text.modified,
+  .label-text.renamed,
+  .label-text.inside {
+    color: var(--accent);
+  }
+  .label-text.added,
+  .label-text.untracked {
+    color: var(--ok);
+  }
+  .label-text.deleted,
+  .label-text.conflict {
+    color: var(--danger);
+  }
+  /* Changed on disk a moment ago: the agent is working here. */
+  .fresh-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    flex: none;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+</style>

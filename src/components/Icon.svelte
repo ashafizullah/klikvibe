@@ -1,0 +1,80 @@
+<script lang="ts" module>
+  // Icons from Lucide (ISC), the same set as the other Klik apps, under stable names.
+  import {
+    ArrowDown,
+    ArrowUp,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    CircleAlert,
+    CloudDownload,
+    CloudUpload,
+    Copy,
+    ExternalLink,
+    File,
+    FileCode,
+    Folder,
+    FolderGit2,
+    FolderOpen,
+    GitBranch,
+    GitCommitHorizontal,
+    GitCompare,
+    History,
+    House,
+    LoaderCircle,
+    PanelBottom,
+    PanelLeft,
+    PanelRight,
+    Plus,
+    RefreshCw,
+    RotateCcw,
+    Save,
+    Sparkles,
+    SquareTerminal,
+    TextWrap,
+    X,
+    type LucideIcon,
+  } from "@lucide/svelte";
+
+  const ICONS: Record<string, LucideIcon> = {
+    "arrow-down": ArrowDown,
+    "arrow-up": ArrowUp,
+    check: Check,
+    down: ChevronDown,
+    right: ChevronRight,
+    alert: CircleAlert,
+    pull: CloudDownload,
+    push: CloudUpload,
+    copy: Copy,
+    external: ExternalLink,
+    file: File,
+    code: FileCode,
+    folder: Folder,
+    project: FolderGit2,
+    open: FolderOpen,
+    branch: GitBranch,
+    commit: GitCommitHorizontal,
+    diff: GitCompare,
+    history: History,
+    home: House,
+    loader: LoaderCircle,
+    "panel-bottom": PanelBottom,
+    "panel-left": PanelLeft,
+    "panel-right": PanelRight,
+    plus: Plus,
+    refresh: RefreshCw,
+    "rotate-ccw": RotateCcw,
+    save: Save,
+    sparkles: Sparkles,
+    terminal: SquareTerminal,
+    wrap: TextWrap,
+    close: X,
+  };
+</script>
+
+<script lang="ts">
+  let { name, size = 16, stroke = 2, class: className = "" }: { name: string; size?: number; stroke?: number; class?: string } = $props();
+  const Glyph = $derived(ICONS[name] ?? File);
+</script>
+
+<Glyph {size} strokeWidth={stroke} class={className} aria-hidden="true" />

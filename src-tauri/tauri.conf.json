@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KlikVibe",
+  "version": "0.1.0",
+  "identifier": "com.ashafizullah.klikvibe",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1424",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "KlikVibe",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 520,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": false,
+        "theme": "Dark",
+        "backgroundColor": "#15130f"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "nsis", "msi", "deb", "rpm", "appimage"],
+    "category": "DeveloperTool",
+    "shortDescription": "Free, open-source, lightweight code editor for vibe coding",
+    "longDescription": "See the code your AI agent writes, follow Git changes, history and pushes, and run the agent in a built-in terminal, all in one small, fast window.",
+    "copyright": "Copyright © 2026 Adam Suchi Hafizullah. MIT License.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-",
+      "entitlements": "Entitlements.plist",
+      "hardenedRuntime": true
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper" }
+    },
+    "publisher": "KlikVibe contributors",
+    "homepage": "https://github.com/ashafizullah/klikvibe"
+  }
+}

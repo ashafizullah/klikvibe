@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- README header, 1280x640 rendered at 2x: ./render.sh -->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 640px; }
+  body {
+    font-family: "IBM Plex Sans", -apple-system, sans-serif;
+    color: #ede6d8;
+    background:
+      radial-gradient(640px 460px at 82% 70%, rgba(124, 58, 237, 0.28), transparent 70%),
+      radial-gradient(560px 400px at 0% 0%, rgba(240, 168, 58, 0.16), transparent 70%),
+      linear-gradient(180deg, #120f0b 0%, #1a1611 55%, #120f0b 100%);
+    overflow: hidden;
+    position: relative;
+  }
+  /* Faint code brackets, the icon's motif */
+  .pattern {
+    position: absolute; inset: 0; opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M48 44 34 60l14 16M72 44l14 16-14 16'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .wrap { position: absolute; left: 64px; top: 0; bottom: 0; width: 470px;
+    display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 56px; height: 56px; }
+  .brand span { font: 600 32px "Fraunces", Georgia, serif; letter-spacing: -0.5px; }
+  .brand span i { font-style: normal; color: #f0a83a; }
+  .brand em { font-style: normal; font-weight: 600; font-size: 15px; color: #c4b5fd;
+    border: 1.5px solid rgba(196, 181, 253, 0.4); border-radius: 999px; padding: 6px 14px; margin-left: 4px; }
+  .eyebrow { margin-top: 30px; font: 500 15px "IBM Plex Mono", monospace; color: #f0a83a; letter-spacing: 0.02em; }
+  h1 { margin-top: 12px; font: 600 50px/1.06 "Fraunces", Georgia, serif; letter-spacing: -1.4px; }
+  h1 b { display: block; color: #c4b5fd; font-weight: 600; }
+  .sub { margin-top: 18px; font-size: 18px; line-height: 1.5; color: #c9bfae; }
+  .chips { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.13); }
+  .chip.hl { background: #f0a83a; color: #1a1208; border-color: #f0a83a; }
+  .note { align-self: flex-start; white-space: nowrap; margin-top: 20px; padding: 8px 14px; border-radius: 12px;
+    font-size: 13px; font-weight: 500; color: #c9bfae; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); }
+  /* The window without the lower terminal: 1440x620 of the 1440x860 screenshot. */
+  .shot { position: absolute; left: 572px; top: 50%; transform: translateY(-50%); width: 680px; aspect-ratio: 1440 / 620;
+    border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.4); }
+  .shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .callout { position: absolute; display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; background: rgba(29, 26, 21, 0.94); border: 1px solid rgba(240, 168, 58, 0.45);
+    box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.7); white-space: nowrap; }
+  .callout .dot { width: 8px; height: 8px; border-radius: 50%; background: #f0a83a; box-shadow: 0 0 0 4px rgba(240, 168, 58, 0.25); }
+  .callout.git { border-color: rgba(196, 181, 253, 0.45); }
+  .callout.git .dot { background: #c4b5fd; box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.22); }
+</style>
+</head>
+<body>
+  <div class="pattern"></div>
+  <div class="wrap">
+    <div class="brand">
+      <img src="icon.png" alt="">
+      <span>Klik<i>Vibe</i></span>
+      <em id="pill"></em>
+    </div>
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+    <div class="chips" id="chips"></div>
+    <div class="note" id="note"></div>
+  </div>
+  <div class="shot"><img src="app.png" alt=""></div>
+  <div class="callout" style="left: 556px; top: 366px"><span class="dot"></span><span id="c1"></span></div>
+  <div class="callout git" style="right: 30px; top: 360px"><span class="dot"></span><span id="c2"></span></div>
+<script>
+  const T = {
+    en: {
+      pill: "Open source · Free",
+      eyebrow: "For Claude Code, Codex & Gemini CLI",
+      title: "Let the agent code.<b>Keep an eye on it.</b>",
+      sub: "A light editor for vibe coding: a live file tree, diffs, Git history and pushes, and a terminal, in one window.",
+      chips: [["Live file tree", 1], ["Diffs", 0], ["Commit & push", 0], ["Terminal", 0]],
+      note: "Tauri · Svelte · Rust · no account, no telemetry",
+      c1: "Files the agent just changed",
+      c2: "Commit and push in one click",
+    },
+    id: {
+      pill: "Open source · Gratis",
+      eyebrow: "Untuk Claude Code, Codex & Gemini CLI",
+      title: "Agen ngoding,<b>Anda mengawasi.</b>",
+      sub: "Editor ringan untuk vibe coding: pohon file yang hidup, diff, riwayat Git dan push, plus terminal, dalam satu jendela.",
+      chips: [["Pohon file live", 1], ["Diff", 0], ["Commit & push", 0], ["Terminal", 0]],
+      note: "Tauri · Svelte · Rust · tanpa akun, tanpa telemetri",
+      c1: "File yang baru diubah agen",
+      c2: "Commit dan push sekali klik",
+    },
+  };
+  const t = T[new URLSearchParams(location.search).get("lang") === "id" ? "id" : "en"];
+  for (const k of ["pill", "eyebrow", "sub", "note", "c1", "c2"]) document.getElementById(k).textContent = t[k];
+  document.getElementById("title").innerHTML = t.title;
+  document.getElementById("chips").innerHTML = t.chips.map(([c, hl]) => `<span class="chip${hl ? " hl" : ""}">${c}</span>`).join("");
+</script>
+</body>
+</html>
