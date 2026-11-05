@@ -6,6 +6,7 @@
   import { useProject, type Tab } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
+  import Segmented from "./Segmented.svelte";
 
   let { tab }: { tab: Tab } = $props();
   const project = useProject();
@@ -80,10 +81,15 @@
     <span class="stat add">+{count.added}</span>
     <span class="stat del">−{count.removed}</span>
     <div class="spacer"></div>
-    <div class="view" role="radiogroup" aria-label={t("diff.view")}>
-      <button class:on={split} role="radio" aria-checked={split} onclick={() => setView("split")} title={t("diff.split")}><Icon name="columns" size={13} /></button>
-      <button class:on={!split} role="radio" aria-checked={!split} onclick={() => setView("unified")} title={t("diff.unified")}><Icon name="rows" size={13} /></button>
-    </div>
+    <Segmented
+      label={t("diff.view")}
+      value={settings.diffView}
+      onchange={setView}
+      options={[
+        { value: "split", icon: "columns", title: t("diff.split") },
+        { value: "unified", icon: "rows", title: t("diff.unified") },
+      ]}
+    />
     {#if tab.kind === "diff"}
       <button class="btn ghost small" onclick={() => project.openFile(tab.path)}><Icon name="code" size={13} />{t("diff.openFile")}</button>
     {/if}
@@ -231,27 +237,6 @@
   }
   .text {
     padding-right: 24px;
-  }
-  .view {
-    display: flex;
-    gap: 1px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-  }
-  .view button {
-    width: 24px;
-    height: 20px;
-    display: grid;
-    place-items: center;
-    border: none;
-    border-radius: 4px;
-    background: none;
-    color: var(--muted);
-  }
-  .view button.on {
-    background: var(--panel-2);
-    color: var(--text);
   }
   /* Side by side: two equal halves; long lines wrap so both sides stay level. */
   .pair {

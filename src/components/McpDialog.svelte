@@ -8,6 +8,7 @@
   import { copyText, ui } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
+  import Dialog from "./Dialog.svelte";
 
   const agent = $derived(agentById(settings.agent));
   const setup = $derived(mcp.info ? agent.mcp(mcp.info) : null);
@@ -25,10 +26,7 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && close()} />
-
-<div class="backdrop" role="presentation" onpointerdown={(e) => e.target === e.currentTarget && close()}>
-  <div class="dialog rise" role="dialog" aria-modal="true" aria-labelledby="mcp-title">
+<Dialog onclose={close} width={620} labelledby="mcp-title">
     <header>
       <Icon name="plug" size={16} />
       <h2 id="mcp-title">{t("mcp.title")}</h2>
@@ -79,29 +77,9 @@
         <p class="note small">{t("mcp.safety")}</p>
       {/if}
     </div>
-  </div>
-</div>
+</Dialog>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 120;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgb(0 0 0 / 0.45);
-  }
-  .dialog {
-    width: min(620px, 100%);
-    max-height: calc(100vh - 48px);
-    display: flex;
-    flex-direction: column;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-  }
   header {
     display: flex;
     align-items: center;
@@ -118,6 +96,8 @@
     font: 500 17px var(--serif);
   }
   .body {
+    flex: 1;
+    min-height: 0;
     overflow: auto;
     padding: 16px 18px 18px;
     display: flex;

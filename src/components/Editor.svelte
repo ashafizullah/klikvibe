@@ -101,7 +101,7 @@
         <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1">
           <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
             <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
-            <span class="tab-name">{tb.title}</span>
+            <span class="tab-name ellipsis">{tb.title}</span>
           </button>
           <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
             <span class="dot"></span><Icon name="close" size={12} />
@@ -116,7 +116,7 @@
       <nav class="crumbs" aria-label={t("crumbs.label")}>
         <button class="crumb" onclick={(e) => folderMenu(e.currentTarget, project.root)} title={project.root}>{project.current.name}</button>
         {#each crumbs as c (c.path)}
-          <Icon name="right" size={11} class="sep" />
+          <Icon name="right" size={11} class="crumb-sep" />
           {#if c.last}
             <button class="crumb file" onclick={(e) => fileMenu(e.currentTarget, c.path)} title={c.path}>
               <Icon name={fileIcon(c.name).icon} color={fileIcon(c.name).color} size={12} />{c.name}
@@ -233,11 +233,6 @@
     background: none;
     font-size: 12px;
   }
-  .tab-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .tab-close {
     width: 22px;
     height: 22px;
@@ -318,7 +313,7 @@
   .crumbs::-webkit-scrollbar {
     display: none;
   }
-  .crumbs :global(.sep) {
+  .crumbs :global(.crumb-sep) {
     flex: none;
     color: var(--muted);
     opacity: 0.6;

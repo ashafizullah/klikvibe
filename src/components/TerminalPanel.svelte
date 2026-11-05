@@ -106,7 +106,7 @@
   <button class="collapsed" onclick={() => ((settings.showTerminal = true), persist())} title={`${t("terminal.show")} (Ctrl+\`)`}>
     <Icon name="terminal" size={13} />
     <span>{t("terminal.title")}</span>
-    {#if shells.length > 1}<span class="count">{shells.length}</span>{/if}
+    {#if shells.length > 1}<span class="count-badge">{shells.length}</span>{/if}
     <span class="spacer"></span>
     <span class="kbd">Ctrl+`</span>
     <Icon name="up" size={13} />
@@ -131,7 +131,7 @@
             />
           {:else}
             <button
-              class="shell-main"
+              class="shell-main ellipsis"
               onclick={() => (active = s.id)}
               ondblclick={() => rename(s, i)}
               oncontextmenu={(e) => shellMenu(e, s, i)}
@@ -219,16 +219,6 @@
   .collapsed:hover :global(svg) {
     color: var(--accent);
   }
-  .count {
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: var(--panel-2);
-    font: 10px var(--mono);
-  }
   .grip {
     position: absolute;
     left: 0;
@@ -269,9 +259,6 @@
   }
   .shell-main {
     max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     border: none;
     background: none;
     font: 11px var(--mono);

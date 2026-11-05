@@ -12,6 +12,7 @@
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
+  import Segmented from "./Segmented.svelte";
 
   const project = useProject();
   const root = project.root;
@@ -166,14 +167,17 @@
       {/if}
     </div>
     {#if searching || focused || mode === "text"}
-      <div class="modes" role="radiogroup" aria-label={t("search.title")}>
-        <button class:on={mode === "names"} role="radio" aria-checked={mode === "names"} onmousedown={(e) => e.preventDefault()} onclick={() => (mode = "names")} title={`${t("search.namesHint")} (${mod}P)`}>
-          {t("search.names")}
-        </button>
-        <button class:on={mode === "text"} role="radio" aria-checked={mode === "text"} onmousedown={(e) => e.preventDefault()} onclick={() => (mode = "text")} title={`${t("search.textHint")} (${mod}⇧F)`}>
-          {t("search.text")}
-        </button>
-      </div>
+      <Segmented
+        stretch
+        keepFocus
+        label={t("search.title")}
+        value={mode}
+        onchange={(m) => (mode = m)}
+        options={[
+          { value: "names", label: t("search.names"), title: `${t("search.namesHint")} (${mod}P)` },
+          { value: "text", label: t("search.text"), title: `${t("search.textHint")} (${mod}⇧F)` },
+        ]}
+      />
     {/if}
     {#if mode === "text"}
       <input class="include" bind:value={include} onkeydown={onKey} placeholder={t("search.include")} spellcheck="false" autocomplete="off" aria-label={t("search.include")} />
@@ -195,10 +199,10 @@
         {#each names as n, i (n.path)}
           <button class="result" class:on={i === cursor} data-result={i} onclick={() => open(n.path)} title={n.path}>
             <Icon name={fileIcon(n.name).icon} color={fileIcon(n.name).color} size={13} />
-            <span class="name">
+            <span class="name ellipsis">
               {#if n.mark}{n.name.slice(0, n.mark[0])}<mark>{n.name.slice(n.mark[0], n.mark[1])}</mark>{n.name.slice(n.mark[1])}{:else}{n.name}{/if}
             </span>
-            <span class="dir">{n.dir}</span>
+            <span class="dir ellipsis">{n.dir}</span>
           </button>
         {:else}
           <p class="empty-note">{t("search.none")}</p>
@@ -216,9 +220,9 @@
       {#each groups as g (g.path)}
         <div class="group" title={g.path}>
           <Icon name={fileIcon(g.name).icon} color={fileIcon(g.name).color} size={13} />
-          <span class="name">{g.name}</span>
-          <span class="dir">{g.dir}</span>
-          <span class="count">{g.matches.length}</span>
+          <span class="name ellipsis">{g.name}</span>
+          <span class="dir ellipsis">{g.dir}</span>
+          <span class="count-badge">{g.matches.length}</span>
         </div>
         {#each g.matches as m (m.line)}
           {@const i = found.matches.indexOf(m)}
@@ -295,27 +299,6 @@
   .include:focus {
     border-color: color-mix(in srgb, var(--accent) 60%, transparent);
   }
-  .modes {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    background: var(--bg);
-  }
-  .modes button {
-    flex: 1;
-    height: 20px;
-    border: none;
-    border-radius: 5px;
-    background: none;
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .modes button.on {
-    background: var(--panel-2);
-    color: var(--text);
-  }
   .items {
     flex: 1;
     overflow: auto;
@@ -352,16 +335,9 @@
   .name {
     flex: none;
     max-width: 65%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .dir {
     flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 10.5px;
     color: var(--muted);
   }
@@ -371,14 +347,6 @@
     padding: 0 12px;
     font-size: 12px;
     font-weight: 500;
-  }
-  .count {
-    flex: none;
-    padding: 0 6px;
-    border-radius: 999px;
-    background: var(--panel-2);
-    font: 10px/16px var(--mono);
-    color: var(--muted);
   }
   .line {
     align-items: baseline;

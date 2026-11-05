@@ -114,7 +114,7 @@
     <header data-tauri-drag-region>
       <div class="titles" data-tauri-drag-region>
         <h1>{t("home.title")}</h1>
-        <p class="sub">{t("home.tagline")}</p>
+        <p class="sub ellipsis">{t("home.tagline")}</p>
       </div>
       <button class="btn primary" onclick={pick}><Icon name="open" size={14} />{t("home.open")}</button>
     </header>
@@ -137,7 +137,7 @@
                 <button class="row-main" onclick={() => reopen(r)} disabled={!r.exists} title={r.root}>
                   <Icon name="project" size={16} />
                   <span class="name">{r.name}</span>
-                  <span class="path">{r.exists ? r.root : t("home.missing")}</span>
+                  <span class="path ellipsis">{r.exists ? r.root : t("home.missing")}</span>
                 </button>
                 <button class="icon-btn forget" onclick={() => forget(r)} title={t("home.forget")} aria-label={t("home.forget")}>
                   <Icon name="close" size={13} />
@@ -326,9 +326,6 @@
     margin: 0;
     font: 10.5px var(--mono);
     color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .body {
     flex: 1;
@@ -426,10 +423,6 @@
   .path {
     font: 11px var(--mono);
     color: var(--muted);
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .forget {
     margin-right: 6px;

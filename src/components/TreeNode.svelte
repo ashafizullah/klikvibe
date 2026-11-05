@@ -71,7 +71,7 @@
     {@const fi = fileIcon(entry.name)}
     <Icon name={fi.icon} color={fi.color} size={14} class="kind" />
   {/if}
-  <span class="label-text {change?.kind ?? ''}" class:inside={changedInside}>{entry.name}</span>
+  <span class="label-text ellipsis {change?.kind ?? ''}" class:inside={changedInside}>{entry.name}</span>
   {#if fresh}<span class="fresh-dot" aria-hidden="true"></span>{/if}
   {#if change}<span class="git-mark {change.kind}">{MARK[change.kind]}</span>{/if}
 </button>
@@ -119,9 +119,6 @@
   }
   .label-text {
     flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .label-text.modified,
   .label-text.renamed,

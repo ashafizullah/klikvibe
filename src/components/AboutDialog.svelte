@@ -8,6 +8,7 @@
   import { ui } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
+  import Dialog from "./Dialog.svelte";
 
   const REPO = "https://github.com/ashafizullah/klikvibe";
   const MODES: UpdateMode[] = ["auto", "notify", "off"];
@@ -25,10 +26,7 @@
   const open = (url: string) => openUrl(url).catch(() => {});
 </script>
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && !ui.alert && close()} />
-
-<div class="backdrop" role="presentation" onpointerdown={(e) => e.target === e.currentTarget && close()}>
-  <div class="dialog rise" role="dialog" aria-modal="true" aria-labelledby="about-title">
+<Dialog onclose={close} width={460} padding={24} gap={16} labelledby="about-title">
     <button class="icon-btn x" onclick={close} title={t("mcp.close")} aria-label={t("mcp.close")}><Icon name="close" size={14} /></button>
 
     <div class="who">
@@ -77,33 +75,9 @@
       <button class="btn ghost small" onclick={() => open(REPO)}><Icon name="code" size={13} />{t("about.source")}</button>
     </div>
     <p class="foot">{t("about.license")}</p>
-  </div>
-</div>
+</Dialog>
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 120;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgb(0 0 0 / 0.45);
-  }
-  .dialog {
-    position: relative;
-    width: min(460px, 100%);
-    max-height: calc(100vh - 48px);
-    overflow: auto;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-  }
   .x {
     position: absolute;
     top: 10px;

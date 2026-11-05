@@ -10,6 +10,7 @@
   import { layoutGraph, refLabels } from "../lib/graph";
   import { persist, settings } from "../lib/settings.svelte";
   import GraphCell, { graphWidth, laneColor, laneX } from "./GraphCell.svelte";
+  import Segmented from "./Segmented.svelte";
 
   const project = useProject();
 
@@ -106,7 +107,7 @@
       <div class="branch">
         <Icon name="branch" size={13} />
         <span class="mono">{git.branch ?? t("git.detached")}</span>
-        {#if git.upstream}<span class="upstream mono">→ {git.upstream}</span>{/if}
+        {#if git.upstream}<span class="upstream ellipsis mono">→ {git.upstream}</span>{/if}
       </div>
       <div class="sync-buttons">
         <button class="btn small" onclick={project.pull} disabled={!!project.gitBusy || !git.upstream} title={t("git.pullHint")}>
@@ -145,8 +146,8 @@
         {#each git.changes as c (c.path)}
           {@const p = split(c.path)}
           <button class="change" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
-            <span class="name">{p.name}</span>
-            <span class="dir">{p.dir}</span>
+            <span class="name ellipsis">{p.name}</span>
+            <span class="dir ellipsis">{p.dir}</span>
             <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
           </button>
         {:else}
@@ -154,9 +155,17 @@
         {/each}
       </div>
     {:else}
-      <div class="scope" role="radiogroup" aria-label={t("git.history")}>
-        <button class:on={!settings.historyAll} role="radio" aria-checked={!settings.historyAll} onclick={() => setScope(false)}>{t("git.thisBranch")}</button>
-        <button class:on={settings.historyAll} role="radio" aria-checked={settings.historyAll} onclick={() => setScope(true)}>{t("git.allBranches")}</button>
+      <div class="scope">
+        <Segmented
+          stretch
+          label={t("git.history")}
+          value={settings.historyAll}
+          onchange={setScope}
+          options={[
+            { value: false, label: t("git.thisBranch") },
+            { value: true, label: t("git.allBranches") },
+          ]}
+        />
       </div>
       <div class="list">
         {#each project.log as c, i (c.hash)}
@@ -167,9 +176,9 @@
             <span class="commit-text">
               <span class="subject-line">
                 {#each refs as r (r.kind + r.name)}
-                  <span class="ref {r.kind}" class:current={r.current} title={t(`git.ref.${r.kind}`)}>{r.name}</span>
+                  <span class="ref ellipsis {r.kind}" class:current={r.current} title={t(`git.ref.${r.kind}`)}>{r.name}</span>
                 {/each}
-                <span class="subject">{c.subject}</span>
+                <span class="subject ellipsis">{c.subject}</span>
               </span>
               <span class="meta">
                 {#if c.local}<span class="local" title={t("git.notPushed")}><Icon name="arrow-up" size={10} /></span>{/if}
@@ -194,8 +203,8 @@
                     {@const p = split(f.path)}
                     <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
                       <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
-                      <span class="name">{p.name}</span>
-                      <span class="dir">{p.dir}</span>
+                      <span class="name ellipsis">{p.name}</span>
+                      <span class="dir ellipsis">{p.dir}</span>
                       {#if f.added !== null}
                         <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
                       {:else}
@@ -260,9 +269,6 @@
   .upstream {
     color: var(--muted);
     font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .sync-buttons {
     display: grid;
@@ -329,16 +335,9 @@
   .name {
     flex: none;
     max-width: 60%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .dir {
     flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     color: var(--muted);
     font-size: 11px;
     direction: rtl;
@@ -379,9 +378,6 @@
   .ref {
     flex: none;
     max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     padding: 0 5px;
     border-radius: 4px;
     border: 1px solid var(--line);
@@ -449,16 +445,9 @@
   .file .name {
     flex: none;
     max-width: 60%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .file .dir {
     flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     font-size: 10.5px;
     color: var(--muted);
   }
@@ -498,34 +487,11 @@
   }
   .scope {
     flex: none;
-    display: flex;
-    gap: 2px;
     margin: 8px 12px 4px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    background: var(--bg);
-  }
-  .scope button {
-    flex: 1;
-    height: 22px;
-    border: none;
-    border-radius: 5px;
-    background: none;
-    color: var(--muted);
-    font-size: 11.5px;
-  }
-  .scope button.on {
-    background: var(--panel-2);
-    color: var(--text);
   }
   .subject {
     flex: 1;
-    min-width: 0;
     font-size: 12.5px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .meta {
     display: flex;

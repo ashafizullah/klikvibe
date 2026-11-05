@@ -53,11 +53,11 @@
   <div class="menu" role="menu" tabindex="-1" bind:this={el} style:left="{pos.x}px" style:top="{pos.y}px" oncontextmenu={(e) => e.preventDefault()}>
     {#each ui.menu.items as item, i (i)}
       {#if item === "sep"}
-        <div class="sep" role="separator"></div>
+        <div class="menu-sep" role="separator"></div>
       {:else}
         <button role="menuitem" disabled={item.disabled} onclick={() => run(item)}>
           {#if item.icon}<Icon name={item.icon} color={item.color} size={13} />{/if}
-          <span class="label">{item.label}</span>
+          <span class="item-label ellipsis">{item.label}</span>
           {#if item.hint}<span class="hint">{item.hint}</span>{/if}
         </button>
       {/if}
@@ -108,18 +108,12 @@
     flex: none;
     margin-right: -8px;
   }
-  .label {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .hint {
     margin-left: auto;
     font: 11px var(--mono);
     color: var(--muted);
   }
-  .sep {
+  .menu-sep {
     height: 1px;
     margin: 4px 6px;
     background: var(--line);

@@ -57,7 +57,7 @@
       <div class="ptab" class:on role="tab" aria-selected={on} tabindex="-1">
         <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
           <Icon name="project" size={13} />
-          <span class="name">{p.current.name}</span>
+          <span class="name ellipsis">{p.current.name}</span>
           {#if attention.has(p.root)}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
           {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
         </button>
@@ -174,9 +174,6 @@
   .name {
     font: 500 13.5px var(--serif);
     letter-spacing: -0.01em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .dot {
     width: 6px;

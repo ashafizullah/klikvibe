@@ -27,6 +27,7 @@
 - Paths in terminal output (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) open the file at that line with a click, when the file is in the project; web addresses such as `http://localhost:5173` open in the browser.
 - Terminal tabs are named after what runs in them ("Claude Code", "npm run dev", "vite"), and back to "Terminal 1" at the shell prompt. Double-click or right-click a tab to rename it; your name stays until you pick the automatic one again.
 - A breadcrumb over the editor (project › folders › file): a folder lists its files to open one, the file offers Show in Files, its path and Reveal. Show in Files opens the folders down to it in the tree.
+- Right-click menus show their items in normal type again and their dividers as full lines; the breadcrumb's arrows show properly.
 
 ## 0.1.0
 

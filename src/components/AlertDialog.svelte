@@ -6,6 +6,7 @@
   import { renderMarkdown } from "../lib/markdown";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
+  import Dialog from "./Dialog.svelte";
 
   const alert = $derived(ui.alert);
   const ICON = { update: "sparkles", success: "check", error: "alert", warning: "alert", danger: "alert" } as const;
@@ -19,11 +20,9 @@
   });
 </script>
 
-<svelte:window onkeydown={(e) => alert && e.key === "Escape" && (e.preventDefault(), closeAlert(null))} />
-
 {#if alert}
-  <div class="backdrop" role="presentation" onpointerdown={(e) => e.target === e.currentTarget && closeAlert(null)}>
-    <div class="dialog rise {alert.tone}" role="alertdialog" aria-modal="true" aria-labelledby="alert-title" aria-describedby="alert-message" bind:this={box}>
+  <Dialog onclose={() => closeAlert(null)} width={520} padding={20} gap={14} alert labelledby="alert-title" describedby="alert-message" bind:panel={box}>
+    <div class="tone {alert.tone}">
       <div class="head">
         <span class="badge"><Icon name={ICON[alert.tone]} size={16} /></span>
         <div>
@@ -41,35 +40,18 @@
         {/each}
       </div>
     </div>
-  </div>
+  </Dialog>
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 130;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-    background: rgb(0 0 0 / 0.45);
-  }
-  .dialog {
-    width: min(520px, 100%);
-    max-height: calc(100vh - 48px);
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 20px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: var(--shadow-lg);
-  }
   .head {
     display: flex;
     gap: 12px;
     align-items: flex-start;
+  }
+  /* Lets the head, notes and buttons sit directly in the dialog's column. */
+  .tone {
+    display: contents;
   }
   .badge {
     width: 32px;

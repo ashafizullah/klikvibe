@@ -1,0 +1,89 @@
+/* Panels, lists and text helpers shared by the components. */
+.label {
+  display: block;
+  margin: 0 0 4px;
+  font: 500 10px/1.4 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* One line of text, cut with "…" when it doesn't fit (flex children need the min-width). */
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-head {
+  height: 34px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.panel-title {
+  font: 500 10px/1.4 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empty-note {
+  padding: 14px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+/* Git change letters, as in the tree and the Git panel. */
+.git-mark {
+  font: 500 10.5px var(--mono);
+  flex: none;
+  width: 14px;
+  text-align: center;
+}
+.git-mark.modified,
+.git-mark.renamed {
+  color: var(--accent);
+}
+.git-mark.added,
+.git-mark.untracked {
+  color: var(--ok);
+}
+.git-mark.deleted,
+.git-mark.conflict {
+  color: var(--danger);
+}
+.resizer {
+  flex: none;
+  width: 5px;
+  margin: 0 -2px;
+  cursor: col-resize;
+  position: relative;
+  z-index: 5;
+}
+.resizer:hover,
+.resizer.active {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
