@@ -5,3 +5,6 @@ node_modules
 
 # Private notes and plans.
 docs/
+
+# Promo posts for social media (sources and renders).
+social-media/
