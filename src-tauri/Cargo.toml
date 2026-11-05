@@ -56,5 +56,8 @@ debug = false
 codegen-units = 1
 lto = true
 opt-level = "s"
-panic = "abort"
+# No `panic = "abort"`: AppKit (and WebKit) raise Objective-C exceptions that
+# unwind through tao's event handler, and with abort that ends the app
+# (SIGABRT) where AppKit would log the exception and carry on. A panic in a
+# command then also fails only that command.
 strip = true
