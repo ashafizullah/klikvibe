@@ -195,6 +195,10 @@ pub fn parse_log(out: &str, local: &[&str]) -> Vec<Commit> {
 /// The newest commits of the current branch, or of every branch and tag with `all`,
 /// newest first and children before their parents (for the graph).
 pub fn log(root: &Path, limit: u32, all: bool) -> AppResult<Vec<Commit>> {
+    // No commits yet: `HEAD` (passed with `all`) would be an unknown revision.
+    if run(root, &["rev-parse", "--verify", "-q", "HEAD"]).is_err() {
+        return Ok(Vec::new());
+    }
     let n = format!("-n{}", limit.clamp(1, 1000));
     let mut args = vec!["log", "--date-order", "--decorate=full", &n, LOG_FORMAT];
     if all {
@@ -444,6 +448,9 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("klikvibe-git-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
         init(&dir).unwrap();
+        // A repository without commits has an empty history, on one branch or all.
+        assert!(log(&dir, 10, true).unwrap().is_empty());
+        assert!(log(&dir, 10, false).unwrap().is_empty());
         run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
         run(&dir, &["config", "user.name", "Test"]).unwrap();
         std::fs::write(dir.join("a.txt"), "one\n").unwrap();

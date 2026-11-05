@@ -53,3 +53,13 @@ test("ref labels tell branches, remotes and tags apart", () => {
   ]);
   expect(refLabels(["HEAD"])).toEqual([{ name: "HEAD", kind: "head", current: true }]);
 });
+
+test("a merge whose first parent is awaited elsewhere keeps its dot's colour", () => {
+  // tip's first parent is m's first parent too; m's lane is handed to its second parent.
+  const rows = layoutGraph([c("tip", "base"), c("m", "base", "side"), c("side", "base"), c("base")]);
+  const m = rows[1];
+  expect(m.col).toBe(1);
+  expect(m.top).toEqual([{ from: 0, to: 0, color: 0 }]);
+  expect(m.color).toBe(1); // its own lane's colour, not the new branch's
+  expect(m.bottom).toContainEqual({ from: 1, to: 0, color: 1 });
+});

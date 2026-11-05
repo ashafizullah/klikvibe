@@ -4,7 +4,7 @@
 // The server (Rust, mcp.rs) only listens on 127.0.0.1 and needs a secret
 // token; tool calls are answered here.
 import type { EditorView } from "@codemirror/view";
-import { ipc, type McpInfo } from "./ipc";
+import { errorText, ipc, type McpInfo } from "./ipc";
 import { languageName } from "./languages";
 import { join, relative } from "./paths";
 import { currentProject, isDirty, showProject, workspace, type ProjectState, type Tab } from "./project.svelte";
@@ -214,13 +214,13 @@ export async function startMcp() {
         const text = await tool.run(call.arguments ?? {});
         await ipc.mcpReply(call.id, { content: [{ type: "text", text }] });
       } catch (e) {
-        await ipc.mcpReply(call.id, { content: [{ type: "text", text: e instanceof Error ? e.message : String(e) }], isError: true });
+        await ipc.mcpReply(call.id, { content: [{ type: "text", text: errorText(e) }], isError: true });
       }
     });
     mcp.error = null;
     settings.mcpEnabled = true;
   } catch (e) {
-    mcp.error = e instanceof Error ? e.message : String(e);
+    mcp.error = errorText(e);
     settings.mcpEnabled = false;
   }
   persist();

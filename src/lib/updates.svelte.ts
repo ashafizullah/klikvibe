@@ -6,7 +6,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { errorText, ipc, type Release } from "./ipc";
 import { closeAllProjects } from "./project.svelte";
 import { hadSettings, persist, settings, type UpdateMode } from "./settings.svelte";
-import { showAlert, toast } from "./ui.svelte";
+import { dismissToast, showAlert, toast } from "./ui.svelte";
 import { changelogSection } from "./changelog";
 import { i18n, t } from "./i18n/index.svelte";
 import changelogEn from "../../CHANGELOG.md?raw";
@@ -14,6 +14,8 @@ import changelogId from "../../CHANGELOG.id.md?raw";
 
 export const updates = $state({
   checking: false,
+  /** Downloading and installing (then the app restarts). */
+  installing: false,
   /** Downloaded in the background, installed on quit (auto mode). */
   ready: null as Release | null,
   /** Found by a check, not downloaded yet. */
@@ -77,11 +79,17 @@ export async function checkForUpdates() {
 
 /** Closes the projects (asking about unsaved edits), then installs and restarts. */
 export async function installUpdate() {
-  if (!(await closeAllProjects())) return;
+  if (updates.installing || !(await closeAllProjects())) return;
+  updates.installing = true;
+  // Stays until KlikVibe restarts into the new version.
+  const notice = toast(t("update.installing"), "info", undefined, 0);
   try {
     await ipc.installUpdate();
   } catch (e) {
+    dismissToast(notice);
     await showAlert({ tone: "error", title: t("update.installFailed"), message: errorText(e) });
+  } finally {
+    updates.installing = false;
   }
 }
 

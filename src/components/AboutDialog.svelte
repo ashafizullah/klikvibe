@@ -46,7 +46,7 @@
         {#if updates.ready}
           <Icon name="sparkles" size={14} />
           <span>{t("update.ready", { version: updates.ready.version })}</span>
-          <button class="btn primary small" onclick={installUpdate}>{t("update.restart")}</button>
+          <button class="btn primary small" onclick={installUpdate} disabled={updates.installing}>{t("update.restart")}</button>
         {:else if updates.available}
           <Icon name="sparkles" size={14} />
           <span>{t("update.availableShort", { version: updates.available.version })}</span>

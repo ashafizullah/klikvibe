@@ -8,7 +8,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use tauri::http::{Request, Response, StatusCode, header};
 
-/// Longest slice sent for an open-ended range request (`bytes=N-`).
+/// Longest slice sent for one range request; a client asking for more gets this much and asks again.
 const CHUNK: u64 = 4 * 1024 * 1024;
 /// Largest file sent whole, without a range request.
 const MAX_WHOLE: u64 = 256 * 1024 * 1024;
@@ -51,8 +51,8 @@ fn range(value: &str, size: u64) -> Option<(u64, u64)> {
         (size.saturating_sub(n), last)
     } else {
         let start: u64 = a.parse().ok()?;
-        let end = if b.is_empty() { start.saturating_add(CHUNK - 1) } else { b.parse().ok()? };
-        (start, end.min(last))
+        let end: u64 = if b.is_empty() { u64::MAX } else { b.parse().ok()? };
+        (start, end.min(start.saturating_add(CHUNK - 1)).min(last))
     };
     (start <= end).then_some((start, end))
 }
@@ -112,6 +112,8 @@ mod tests {
         assert_eq!(range("bytes=0-99", 1000), Some((0, 99)));
         assert_eq!(range("bytes=900-", 1000), Some((900, 999)));
         assert_eq!(range("bytes=0-", 100 * CHUNK), Some((0, CHUNK - 1)));
+        // A whole huge file asked for at once still comes in chunks.
+        assert_eq!(range(&format!("bytes=0-{}", 100 * CHUNK - 1), 100 * CHUNK), Some((0, CHUNK - 1)));
         assert_eq!(range("bytes=-100", 1000), Some((900, 999)));
         assert_eq!(range("bytes=0-5000", 1000), Some((0, 999)));
         assert_eq!(range("bytes=1000-", 1000), None);

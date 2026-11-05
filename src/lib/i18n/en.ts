@@ -180,6 +180,7 @@ const en = {
   "update.later": "Later",
   "update.latestBody": "KlikVibe {version} is the latest version.",
   "update.errorTitle": "Couldn't check for updates",
+  "update.installing": "Installing the update… KlikVibe restarts when it's done.",
   "update.installFailed": "The update couldn't be installed",
   "update.whatsNew": "What's new",
   "update.whatsNewTitle": "What's new in KlikVibe {version}",

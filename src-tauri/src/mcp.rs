@@ -70,6 +70,9 @@ struct Inner {
     streams: AtomicUsize,
     last_seen: Mutex<Option<Instant>>,
     client: Mutex<Option<String>>,
+    /// Bumped by `stop`: open streams end, since graceful shutdown would wait for them forever.
+    stops: AtomicU64,
+    shutdown: tokio::sync::Notify,
 }
 
 /// Counts an open stream until the client hangs up.
@@ -120,6 +123,8 @@ impl Mcp {
                 streams: AtomicUsize::new(0),
                 last_seen: Mutex::new(None),
                 client: Mutex::new(None),
+                stops: AtomicU64::new(0),
+                shutdown: tokio::sync::Notify::new(),
             }),
             running: Mutex::new(None),
         }
@@ -175,6 +180,8 @@ impl Mcp {
         if let Some((_, stop)) = self.running.lock().unwrap().take() {
             let _ = stop.send(());
         }
+        self.inner.stops.fetch_add(1, Ordering::SeqCst);
+        self.inner.shutdown.notify_waiters();
         *self.inner.bridge.lock().unwrap() = None;
         *self.inner.last_seen.lock().unwrap() = None;
         // Dropping the senders fails the calls still waiting.
@@ -225,10 +232,17 @@ async fn stream(State(inner): State<Arc<Inner>>, headers: HeaderMap) -> Response
         return r.into_response();
     }
     inner.streams.fetch_add(1, Ordering::Relaxed);
+    let started = inner.stops.load(Ordering::SeqCst);
     let guard = StreamGuard(inner);
-    let ticks = futures::stream::unfold(guard, |guard| async move {
-        tokio::time::sleep(KEEPALIVE).await;
-        Some((Ok::<_, std::convert::Infallible>(Bytes::from_static(b": keepalive\n\n")), guard))
+    let ticks = futures::stream::unfold(guard, move |guard| async move {
+        // The server was stopped: end the stream so the connection (and the server) can close.
+        if guard.0.stops.load(Ordering::SeqCst) != started {
+            return None;
+        }
+        tokio::select! {
+            _ = tokio::time::sleep(KEEPALIVE) => Some((Ok::<_, std::convert::Infallible>(Bytes::from_static(b": keepalive\n\n")), guard)),
+            _ = guard.0.shutdown.notified() => None,
+        }
     });
     let first = futures::stream::once(async { Ok(Bytes::from_static(b": connected\n\n")) });
     (
@@ -394,6 +408,13 @@ mod tests {
         drop(sse);
         tokio::time::sleep(Duration::from_millis(100)).await;
         // Closing is noticed at the next keepalive write at the latest.
+
+        // Stopping the server ends a stream that is still open.
+        let mut open = reqwest::Client::new().get(&info.url).bearer_auth(&token).send().await.unwrap();
+        assert!(open.chunk().await.unwrap().is_some());
+        mcp.stop();
+        let ended = tokio::time::timeout(Duration::from_secs(5), async { while let Ok(Some(_)) = open.chunk().await {} }).await;
+        assert!(ended.is_ok(), "the stream outlived stop()");
 
         // The token survives a restart.
         assert_eq!(Mcp::new(dir.clone()).inner.token, token);

@@ -19,7 +19,6 @@
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
-  import Icon from "./components/Icon.svelte";
 
   const project = $derived(currentProject());
 
@@ -109,9 +108,6 @@
     <Home />
   {/if}
 
-  {#if ui.busy}
-    <div class="busy"><Icon name="loader" size={13} class="spin" />{ui.busy}</div>
-  {/if}
   {#if ui.dialog === "mcp"}
     <McpDialog />
   {:else if ui.dialog === "about"}
@@ -128,22 +124,5 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-  }
-  .busy {
-    position: fixed;
-    left: 50%;
-    bottom: 24px;
-    transform: translateX(-50%);
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    color: var(--text);
-    font-size: 12px;
-    padding: 7px 14px;
-    border-radius: 999px;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    z-index: 90;
-    box-shadow: var(--shadow);
   }
 </style>

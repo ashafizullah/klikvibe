@@ -43,6 +43,8 @@ export function layoutGraph(commits: { hash: string; parents: string[] }[]): Gra
       colors[col] = nextColor++;
     } else top.push({ from: col, to: col, color: colors[col] });
     lanes[col] = c.hash;
+    // Read now: a merge may hand this lane to another branch below, with a new colour.
+    const color = colors[col];
 
     // Other lanes pass by, or end here when they were waiting for this commit too.
     const passing: number[] = [];
@@ -82,7 +84,7 @@ export function layoutGraph(commits: { hash: string; parents: string[] }[]): Gra
 
     while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
     const width = Math.max(col, ...top.map((s) => Math.max(s.from, s.to)), ...bottom.map((s) => Math.max(s.from, s.to))) + 1;
-    return { col, color: colors[col], top, bottom, width };
+    return { col, color, top, bottom, width };
   });
 }
 

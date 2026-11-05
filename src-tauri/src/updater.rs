@@ -16,6 +16,8 @@ use tauri_plugin_updater::{Update, UpdaterExt};
 
 const STARTUP_DELAY: Duration = Duration::from_secs(10);
 const INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+/// After a failed check or download, the next try.
+const RETRY: Duration = Duration::from_secs(60 * 60);
 /// How often the background thread looks at the mode, so turning updates on takes effect soon.
 const TICK: Duration = Duration::from_secs(60);
 
@@ -99,41 +101,58 @@ pub fn start_background_checks(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         std::thread::sleep(STARTUP_DELAY);
-        let mut last: Option<Instant> = None;
+        let mut next: Option<Instant> = None;
         loop {
-            let due = last.is_none_or(|t| t.elapsed() >= INTERVAL);
-            match mode() {
-                Mode::Auto if due => {
-                    last = Some(Instant::now());
-                    tauri::async_runtime::block_on(download(app.clone()));
+            if next.is_none_or(|t| Instant::now() >= t) {
+                let ok = match mode() {
+                    Mode::Auto => Some(tauri::async_runtime::block_on(download(app.clone()))),
+                    Mode::Notify => Some(match tauri::async_runtime::block_on(check(&app)) {
+                        Ok(Check::Available(release)) => {
+                            let _ = app.emit("update-available", release);
+                            true
+                        }
+                        Ok(_) => true,
+                        Err(_) => false,
+                    }),
+                    _ => None,
+                };
+                // A failed check (offline, GitHub down) is tried again within the hour, not a day later.
+                if let Some(ok) = ok {
+                    next = Some(Instant::now() + if ok { INTERVAL } else { RETRY });
                 }
-                Mode::Notify if due => {
-                    last = Some(Instant::now());
-                    if let Ok(Check::Available(release)) = tauri::async_runtime::block_on(check(&app)) {
-                        let _ = app.emit("update-available", release);
-                    }
-                }
-                _ => {}
             }
             std::thread::sleep(TICK);
         }
     });
 }
 
-/// Downloads a new version quietly and tells the frontend it is ready.
-async fn download(app: AppHandle) {
-    if PENDING.lock().unwrap().is_some() || CHECKING.swap(true, Ordering::SeqCst) {
-        return;
+/// Downloads a new version quietly and tells the frontend it is ready. A
+/// newer release replaces one downloaded earlier. False when the check or
+/// download failed.
+async fn download(app: AppHandle) -> bool {
+    if CHECKING.swap(true, Ordering::SeqCst) {
+        return true;
     }
-    if let Ok(Some(update)) = async { app.updater()?.check().await }.await
-        && let Ok(bytes) = update.download(|_, _| {}, || {}).await
-    {
-        *PENDING.lock().unwrap() = Some((update, bytes));
-        if let Some(ready) = pending() {
-            let _ = app.emit("update-ready", ready);
+    let result = async {
+        let Some(update) = app.updater()?.check().await? else { return Ok(()) };
+        if PENDING.lock().unwrap().as_ref().is_some_and(|(u, _)| u.version == update.version) {
+            return Ok(());
         }
+        let bytes = update.download(|_, _| {}, || {}).await?;
+        // set_mode stores the mode before it clears PENDING, so checking under the lock can't miss a switch away from auto.
+        let mut pending_slot = PENDING.lock().unwrap();
+        if mode() == Mode::Auto {
+            *pending_slot = Some((update, bytes));
+            drop(pending_slot);
+            if let Some(ready) = pending() {
+                let _ = app.emit("update-ready", ready);
+            }
+        }
+        Ok::<(), tauri_plugin_updater::Error>(())
     }
+    .await;
     CHECKING.store(false, Ordering::SeqCst);
+    result.is_ok()
 }
 
 /// Looks for a newer version and keeps it for `install_available`.

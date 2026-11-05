@@ -182,6 +182,7 @@ const id: Record<Key, string> = {
   "update.later": "Nanti",
   "update.latestBody": "KlikVibe {version} adalah versi terbaru.",
   "update.errorTitle": "Gagal memeriksa pembaruan",
+  "update.installing": "Memasang pembaruan… KlikVibe akan mulai ulang setelah selesai.",
   "update.installFailed": "Pembaruan gagal dipasang",
   "update.whatsNew": "Yang baru",
   "update.whatsNewTitle": "Yang baru di KlikVibe {version}",

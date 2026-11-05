@@ -1,7 +1,8 @@
-// Interface state shared across components: toasts, the busy indicator and
-// the right-click menu.
+// Interface state shared across components: toasts, dialogs, the right-click
+// menu, and small helpers (copy, reveal).
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { t } from "./i18n/index.svelte";
+import { errorText } from "./ipc";
 
 export interface Toast {
   id: number;
@@ -34,7 +35,6 @@ export interface ConfirmOptions {
 export type MenuItem = { label: string; run: () => void; disabled?: boolean; hint?: string } | "sep";
 
 export const ui = $state({
-  busy: null as string | null,
   toasts: [] as Toast[],
   menu: null as { x: number; y: number; items: MenuItem[] } | null,
   /** The modal on screen, if any. */
@@ -43,9 +43,16 @@ export const ui = $state({
 });
 
 /** Shows an AlertDialog; resolves with the chosen action's value, or null when dismissed. */
+/** Alerts waiting for the one on screen to be answered. */
+const queue: (AlertOptions & { resolve: (value: string | null) => void })[] = [];
+
 export function showAlert(options: AlertOptions): Promise<string | null> {
-  ui.alert?.resolve(null);
-  return new Promise((resolve) => (ui.alert = { ...options, resolve }));
+  return new Promise((resolve) => {
+    const alert = { ...options, resolve };
+    // Never answer a question on screen for the user: a later alert waits its turn.
+    if (ui.alert) queue.push(alert);
+    else ui.alert = alert;
+  });
 }
 
 /** A yes/no question in the app's own dialog; true when the user goes ahead. */
@@ -64,7 +71,7 @@ export async function confirm(o: ConfirmOptions): Promise<boolean> {
 
 export function closeAlert(value: string | null) {
   const alert = ui.alert;
-  ui.alert = null;
+  ui.alert = queue.shift() ?? null;
   alert?.resolve(value);
 }
 
@@ -81,7 +88,7 @@ export function closeMenu() {
 
 /** Shows a file or folder in Finder / Explorer. */
 export function reveal(path: string) {
-  revealItemInDir(path).catch((e) => toast(e instanceof Error ? e.message : String(e), "error"));
+  revealItemInDir(path).catch((e) => toast(errorText(e), "error"));
 }
 
 export async function copyText(text: string) {
@@ -89,33 +96,22 @@ export async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
     toast(t("common.copied"), "ok", undefined, 1800);
   } catch (e) {
-    toast(e instanceof Error ? e.message : String(e), "error");
+    toast(errorText(e), "error");
   }
 }
 
 let nextToast = 1;
 /** `ms` = 0 keeps the toast until the user closes it or takes its action. */
-export function toast(text: string, kind: Toast["kind"] = "info", action?: Toast["action"], ms = kind === "error" ? 9000 : 4500) {
+/** Returns the toast's id, for dismissToast. */
+export function toast(text: string, kind: Toast["kind"] = "info", action?: Toast["action"], ms = kind === "error" ? 9000 : 4500): number {
   const id = nextToast++;
   ui.toasts.push({ id, text, kind, action });
   if (ms > 0) setTimeout(() => dismissToast(id), ms);
+  return id;
 }
 
 export function dismissToast(id: number) {
   ui.toasts = ui.toasts.filter((t) => t.id !== id);
-}
-
-/** Runs `fn` with a busy indicator; errors become toasts. */
-export async function busy<T>(label: string, fn: () => Promise<T>): Promise<T | undefined> {
-  ui.busy = label;
-  try {
-    return await fn();
-  } catch (e) {
-    toast(e instanceof Error ? e.message : String(e), "error");
-    return undefined;
-  } finally {
-    ui.busy = null;
-  }
 }
 
 export const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.platform || navigator.userAgent);
