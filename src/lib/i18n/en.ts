@@ -81,6 +81,7 @@ const en = {
   "diff.none": "No changes.",
   "diff.openFile": "Open file",
 
+  "git.hide": "Hide Git panel",
   "git.refresh": "Refresh",
   "git.notRepo": "This folder isn't a Git repository yet.",
   "git.init": "Initialize Git",

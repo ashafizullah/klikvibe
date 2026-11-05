@@ -83,6 +83,7 @@ const id: Record<Key, string> = {
   "diff.none": "Tidak ada perubahan.",
   "diff.openFile": "Buka file",
 
+  "git.hide": "Sembunyikan panel Git",
   "git.refresh": "Muat ulang",
   "git.notRepo": "Folder ini belum menjadi repositori Git.",
   "git.init": "Inisialisasi Git",

@@ -6,6 +6,7 @@
   import type { Change, Commit } from "../lib/ipc";
   import { join } from "../lib/paths";
   import Icon from "./Icon.svelte";
+  import { isLastPanel, togglePanel } from "../lib/layout";
 
   const project = useProject();
 
@@ -66,6 +67,9 @@
   <div class="panel-head">
     <span class="panel-title">Git</span>
     <button class="icon-btn" onclick={() => project.refreshGit(true)} title={t("git.refresh")} aria-label={t("git.refresh")}><Icon name="refresh" size={13} /></button>
+    <button class="icon-btn" onclick={() => togglePanel("showGit")} disabled={isLastPanel("showGit")} title={`${t("git.hide")} (${mod}⇧G)`} aria-label={t("git.hide")}>
+      <Icon name="close" size={13} />
+    </button>
   </div>
 
   {#if !git}
