@@ -41,6 +41,22 @@
 - **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no cloud: the optional MCP server only listens on your own computer.
 - English and Bahasa Indonesia.
 
+## Performance
+
+<p align="center">
+  <img src="design/performance.png" alt="KlikVibe uses 118 MB of memory and 0% CPU at idle, and the app is 7.1 MB">
+</p>
+
+Measured on the macOS release build with one project and one terminal open, adding up every process KlikVibe runs: the app, its three WebKit helpers and the shell.
+
+| | |
+|---|---|
+| Memory | **118 MB** (interface 56, Rust core 33, graphics 18, networking 6, shell 6) |
+| CPU at idle | **0%** |
+| App size | **7.1 MB** |
+
+While the window is in front with the terminal focused, the graphics process grows to about 220 MB and CPU sits around 3% as the terminal cursor blinks. An agent you run in the terminal uses its own memory on top. To measure it yourself, run `footprint -p <pid>` on the `klikvibe` process and the `com.apple.WebKit.*` helpers it starts.
+
 ## Install
 
 **macOS** (Apple Silicon + Intel, macOS 11 or later): run this in Terminal to install or update:
