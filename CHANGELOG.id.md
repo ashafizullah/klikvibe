@@ -1,5 +1,13 @@
 # Catatan perubahan
 
+## 0.4.0
+
+Terminal kembali setelah restart dengan agen di percakapan terakhirnya, ⌘-klik file dan folder di terminal, dan tab yang bisa digeser.
+
+- File dan folder yang disebut di terminal terbuka dengan ⌘-klik (Ctrl+klik di Windows dan Linux), termasuk folder, file yang dikecualikan .gitignore, dan nama saja seperti `SKILL.md` kalau hanya satu file proyek yang bernama begitu. File terbuka di editor (di barisnya), folder di pohon file. Alamat web terbuka dengan cara yang sama; klik biasa tidak lagi membukanya.
+- Tab proyek dan tab file bisa digeser ke posisi lain di barisnya.
+- Terminal kembali saat KlikVibe dibuka lagi: tab dan namanya sama, output terakhirnya (redup), dan agen yang tadi berjalan dijalankan lagi di percakapan terakhirnya (Claude Code, Codex, Gemini CLI, OpenCode, Kimi CLI, Copilot CLI, dan Cursor CLI; agen lain diketikkan untuk kamu jalankan). Menutup proyek melupakan terminalnya.
+
 ## 0.3.2
 
 Title bar dalam mode layar penuh di macOS.

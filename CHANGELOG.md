@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+Terminals come back after a restart with the agent in its last conversation, ⌘-click on files and folders in the terminal, and tabs you can drag.
+
+- Files and folders named in the terminal open with ⌘-click (Ctrl+click on Windows and Linux), also folders, files that .gitignore leaves out, and plain names such as `SKILL.md` when one project file goes by it. A file opens in the editor (at its line), a folder in the file tree. Web addresses open the same way; a plain click no longer opens them.
+- Project tabs and file tabs can be dragged to another place in their row.
+- Terminals come back when KlikVibe opens again: the same tabs and names, their last output (dimmed), and the agent that was running, started again in its last conversation (Claude Code, Codex, Gemini CLI, OpenCode, Kimi CLI, Copilot CLI and Cursor CLI; other agents are typed for you to start). Closing a project forgets its terminals.
+
 ## 0.3.2
 
 The title bar in full screen on macOS.
