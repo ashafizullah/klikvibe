@@ -16,6 +16,7 @@
   import { errorText, ipc } from "../lib/ipc";
   import { hasSource } from "../lib/media";
   import { fileIcon } from "../lib/fileIcons";
+  import { moveItem, reorder } from "../lib/reorder";
 
   const project = useProject();
   const tab = $derived(project.activeTab());
@@ -102,14 +103,14 @@
 
 <section class="editor">
   {#if project.tabs.length}
-    <div class="tabs" role="tablist">
+    <div class="tabs" role="tablist" use:reorder={(from, to) => moveItem(project.tabs, from, to)}>
       {#each project.tabs as tb (tb.id)}
-        <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1">
+        <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1" data-reorder>
           <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
             <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
             <span class="tab-name ellipsis">{tb.title}</span>
           </button>
-          <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
+          <button class="tab-close" data-no-reorder class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
             <span class="dot"></span><Icon name="close" size={12} />
           </button>
         </div>
@@ -218,6 +219,11 @@
     background: var(--panel);
     border-bottom: 1px solid var(--line);
     scrollbar-width: none;
+  }
+  .tab:global(.dragging) {
+    position: relative;
+    z-index: 2;
+    opacity: 0.85;
   }
   .tab {
     display: flex;
