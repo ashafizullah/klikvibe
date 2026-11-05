@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+Stage, unstage and revert each file in the Git panel, and create, rename and delete files in the file tree.
 
 - Staging in the Git panel: each change has buttons to revert it and to stage it (or unstage a staged one), also in its right-click menu. Staged files get a section of their own with Unstage all, the rest Stage all, and the commit button commits only what is staged ("Commit 2 staged"), or everything when nothing is.
 - Files: right-click a file or folder (or the empty part of the tree, or the buttons in its header) for New file, New folder, Rename and Delete. A new name may hold folders (lib/util.ts); a new file opens; open tabs follow a rename; a checkpoint is taken before a delete, so it can be brought back.

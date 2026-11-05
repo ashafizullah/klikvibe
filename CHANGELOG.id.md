@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Belum dirilis
+## 0.3.0
+
+Stage, unstage, dan batalkan tiap file di panel Git, serta buat, ganti nama, dan hapus file di pohon file.
 
 - Staging di panel Git: setiap perubahan punya tombol untuk membatalkannya dan untuk men-stage-nya (atau unstage yang sudah di-stage), juga di menu klik kanannya. File yang di-stage punya bagian sendiri dengan Unstage semua, sisanya Stage semua, dan tombol commit hanya meng-commit yang di-stage ("Commit 2 staged"), atau semuanya kalau tidak ada yang di-stage.
 - Files: klik kanan file atau folder (atau bagian kosong pohon, atau tombol di header-nya) untuk File baru, Folder baru, Ganti nama, dan Hapus. Nama baru boleh berisi folder (lib/util.ts); file baru langsung terbuka; tab yang terbuka ikut saat di-rename; checkpoint dibuat sebelum menghapus, jadi bisa dikembalikan.
