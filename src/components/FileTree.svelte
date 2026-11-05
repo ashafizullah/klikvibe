@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { loadDir, project } from "../lib/project.svelte";
+  import { useProject } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
 
-  const root = $derived(project.current?.root ?? "");
+  const project = useProject();
+  const root = project.root;
   const entries = $derived(project.tree.get(root) ?? []);
 
   // A clock for the "just changed" marks, so they fade without other changes.
@@ -14,7 +15,7 @@
   onDestroy(() => clearInterval(timer));
 
   function refresh() {
-    for (const dir of [...project.tree.keys()]) loadDir(dir);
+    for (const dir of [...project.tree.keys()]) project.loadDir(dir);
   }
 
   function collapse() {

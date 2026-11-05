@@ -6,10 +6,11 @@
   import { indentWithTab } from "@codemirror/commands";
   import { darkroomHighlight, darkroomTheme } from "../lib/editor";
   import { loadLanguage } from "../lib/languages";
-  import { saveTab, type Tab } from "../lib/project.svelte";
+  import { useProject, type Tab } from "../lib/project.svelte";
   import { settings } from "../lib/settings.svelte";
 
   let { tab }: { tab: Tab } = $props();
+  const project = useProject();
 
   let host: HTMLDivElement;
   let view: EditorView | null = null;
@@ -30,7 +31,7 @@
         doc: tab.text,
         extensions: [
           basicSetup,
-          keymap.of([indentWithTab, { key: "Mod-s", preventDefault: true, run: () => (saveTab(tab), true) }]),
+          keymap.of([indentWithTab, { key: "Mod-s", preventDefault: true, run: () => (project.saveTab(tab), true) }]),
           darkroomTheme,
           darkroomHighlight,
           language.of([]),

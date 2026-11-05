@@ -71,6 +71,9 @@ A running KlikVibe also opens a folder passed to a second launch (`klikvibe <fol
 | | macOS | Windows / Linux |
 |---|---|---|
 | Open folder | ⌘O | Ctrl+O |
+| Open another project (new project tab) | ⌘T | Ctrl+T |
+| Next / previous project | Ctrl+Tab / Ctrl+Shift+Tab | Ctrl+Tab / Ctrl+Shift+Tab |
+| Go to project 1–9 | ⌘1–⌘9 | Ctrl+1–Ctrl+9 |
 | Save | ⌘S | Ctrl+S |
 | Close tab | ⌘W | Ctrl+W |
 | Files panel | ⌘B | Ctrl+B |

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Open several projects at once, each in its own tab in the title bar. Every project keeps its own files, Git panel and terminals, so an agent keeps running in one project while you look at another.
+
 ## 0.1.0
 
 The first release of KlikVibe, a light code editor for vibe coding.

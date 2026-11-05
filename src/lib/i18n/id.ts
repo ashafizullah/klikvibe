@@ -16,7 +16,9 @@ const id: Record<Key, string> = {
   "home.missing": "Folder tidak ditemukan",
   "home.forget": "Hapus dari daftar",
 
-  "bar.home": "Kembali ke daftar proyek",
+  "bar.home": "Daftar proyek",
+  "bar.openAnother": "Buka proyek lain",
+  "bar.closeProject": "Tutup proyek",
   "bar.files": "File",
   "bar.git": "Git",
   "bar.terminal": "Terminal",

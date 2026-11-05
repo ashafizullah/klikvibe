@@ -1,10 +1,13 @@
 <script lang="ts">
   // Shells in the project folder: one for the agent, more for a dev server or tests.
-  import { project } from "../lib/project.svelte";
+  import { useProject } from "../lib/project.svelte";
   import { AGENTS, persist, settings, type Agent } from "../lib/settings.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
+
+  let { shown }: { shown: boolean } = $props();
+  const project = useProject();
 
   interface Shell {
     id: number;
@@ -15,7 +18,7 @@
   let shells = $state<Shell[]>([{ id: nextId++, exited: false }]);
   let active = $state(1);
   const refs = $state<Record<number, TerminalSession>>({});
-  const cwd = $derived(project.current?.root ?? "");
+  const cwd = project.root;
   const agent = $derived(AGENTS.find((a) => a.id === settings.agent) ?? AGENTS[0]);
 
   function add() {
@@ -85,7 +88,7 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} {cwd} visible={s.id === active && settings.showTerminal} onexit={() => (s.exited = true)} />
+        <TerminalSession bind:this={refs[s.id]} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
       {/each}
     {/if}
   </div>

@@ -2,7 +2,7 @@
 // version is offered here and installed only when the user agrees.
 import { listen } from "@tauri-apps/api/event";
 import { errorText, ipc, type Release } from "./ipc";
-import { closeProject, project } from "./project.svelte";
+import { closeAllProjects } from "./project.svelte";
 import { busy, toast } from "./ui.svelte";
 import { t } from "./i18n/index.svelte";
 
@@ -29,9 +29,9 @@ export async function checkForUpdates() {
   }
 }
 
-/** Closes the project (asking about unsaved edits), then installs and restarts. */
+/** Closes the projects (asking about unsaved edits), then installs and restarts. */
 export async function installUpdate() {
-  if (project.current && !(await closeProject())) return;
+  if (!(await closeAllProjects())) return;
   await busy(t("update.installing"), () => ipc.installUpdate());
 }
 

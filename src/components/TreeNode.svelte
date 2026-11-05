@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { Entry } from "../lib/ipc";
-  import { changeFor, folderChanged, isFresh, openFile, project, toggleDir } from "../lib/project.svelte";
+  import { useProject } from "../lib/project.svelte";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
 
   let { entry, depth, now }: { entry: Entry; depth: number; now: number } = $props();
+  const project = useProject();
 
   const open = $derived(entry.dir && project.expanded.has(entry.path));
   const children = $derived(open ? (project.tree.get(entry.path) ?? []) : []);
-  const change = $derived(entry.dir ? undefined : changeFor(entry.path));
-  const changedInside = $derived(entry.dir && folderChanged(entry.path));
-  const fresh = $derived(isFresh(entry.path, now));
+  const change = $derived(entry.dir ? undefined : project.changeFor(entry.path));
+  const changedInside = $derived(entry.dir && project.folderChanged(entry.path));
+  const fresh = $derived(project.isFresh(entry.path, now));
   const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
   const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
 </script>
@@ -20,7 +21,7 @@
   class:active
   class:fresh
   style:padding-left="{8 + depth * 14}px"
-  onclick={() => (entry.dir ? toggleDir(entry.path) : openFile(entry.path))}
+  onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path))}
   title={entry.path}
 >
   {#if entry.dir}

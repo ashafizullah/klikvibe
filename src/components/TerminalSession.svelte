@@ -31,8 +31,8 @@
     const fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
     xterm.open(host);
-    // Let the app-level Ctrl+` toggle through instead of sending it to the shell.
-    xterm.attachCustomKeyEventHandler((e) => !(e.ctrlKey && e.key === "`"));
+    // Let the app shortcuts (Ctrl+`, Ctrl+Tab, Mod+1..9) through instead of sending them to the shell.
+    xterm.attachCustomKeyEventHandler((e) => !(e.ctrlKey && (e.key === "`" || e.key === "Tab")) && !((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key)));
     fitAddon.fit();
     term = xterm;
     fit = fitAddon;

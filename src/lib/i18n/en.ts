@@ -14,7 +14,9 @@ const en = {
   "home.missing": "Folder not found",
   "home.forget": "Remove from list",
 
-  "bar.home": "Back to projects",
+  "bar.home": "Projects",
+  "bar.openAnother": "Open another project",
+  "bar.closeProject": "Close project",
   "bar.files": "Files",
   "bar.git": "Git",
   "bar.terminal": "Terminal",

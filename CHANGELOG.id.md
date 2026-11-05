@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Belum dirilis
+
+- Buka beberapa proyek sekaligus, masing-masing di tab sendiri di bilah judul. Tiap proyek punya file, panel Git dan terminalnya sendiri, jadi agent tetap jalan di satu proyek saat kamu melihat proyek lain.
+
 ## 0.1.0
 
 Rilis pertama KlikVibe, editor kode ringan untuk vibe coding.

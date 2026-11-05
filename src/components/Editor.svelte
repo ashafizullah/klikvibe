@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeTab, closeTab, isDirty, project, reloadTab, saveTab } from "../lib/project.svelte";
+  import { isDirty, useProject } from "../lib/project.svelte";
   import { languageName } from "../lib/languages";
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
@@ -9,15 +9,16 @@
   import CodeView from "./CodeView.svelte";
   import DiffView from "./DiffView.svelte";
 
-  const tab = $derived(activeTab());
-  const rel = $derived(tab && project.current ? relative(project.current.root, tab.path) : null);
+  const project = useProject();
+  const tab = $derived(project.activeTab());
+  const rel = $derived(tab ? relative(project.root, tab.path) : null);
   const ICON = { file: "code", diff: "diff", commit: "commit" } as const;
 
   function onAux(e: MouseEvent, id: string) {
     // Middle click closes, as in browsers.
     if (e.button === 1) {
       e.preventDefault();
-      closeTab(id);
+      project.closeTab(id);
     }
   }
 
@@ -36,7 +37,7 @@
             <Icon name={ICON[tb.kind]} size={13} />
             <span class="tab-name">{tb.title}</span>
           </button>
-          <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
+          <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
             <span class="dot"></span><Icon name="close" size={12} />
           </button>
         </div>
@@ -49,7 +50,7 @@
       <div class="banner">
         <Icon name="alert" size={14} />
         <span>{t("tabs.changedOnDisk")}</span>
-        <button class="btn small" onclick={() => reloadTab(tab)}>{t("tabs.reload")}</button>
+        <button class="btn small" onclick={() => project.reloadTab(tab)}>{t("tabs.reload")}</button>
         <button class="btn small ghost" onclick={() => (tab.changedOnDisk = false)}>{t("tabs.keepMine")}</button>
       </div>
     {/if}
@@ -70,7 +71,7 @@
         <span class="mono path">{rel ?? tab.path}</span>
         <span class="spacer"></span>
         {#if isDirty(tab)}
-          <button class="btn ghost tiny" onclick={() => saveTab(tab)}><Icon name="save" size={12} />{t("tabs.save")} <span class="kbd">{mod}S</span></button>
+          <button class="btn ghost tiny" onclick={() => project.saveTab(tab)}><Icon name="save" size={12} />{t("tabs.save")} <span class="kbd">{mod}S</span></button>
         {/if}
         <button class="btn ghost tiny" class:on={settings.wrap} onclick={toggleWrap} title={t("tabs.wrap")}><Icon name="wrap" size={12} /></button>
         <span>{languageName(tab.title)}</span>

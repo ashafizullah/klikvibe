@@ -1,10 +1,11 @@
 <script lang="ts">
   import { parseDiff, stats } from "../lib/diff";
-  import { openFile, type Tab } from "../lib/project.svelte";
+  import { useProject, type Tab } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
 
   let { tab }: { tab: Tab } = $props();
+  const project = useProject();
 
   const rows = $derived(parseDiff(tab.text));
   const count = $derived(stats(rows));
@@ -18,7 +19,7 @@
     <span class="stat del">−{count.removed}</span>
     <div class="spacer"></div>
     {#if tab.kind === "diff"}
-      <button class="btn ghost small" onclick={() => openFile(tab.path)}><Icon name="code" size={13} />{t("diff.openFile")}</button>
+      <button class="btn ghost small" onclick={() => project.openFile(tab.path)}><Icon name="code" size={13} />{t("diff.openFile")}</button>
     {/if}
   </div>
   <div class="rows">

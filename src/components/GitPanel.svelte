@@ -1,22 +1,24 @@
 <script lang="ts">
-  import { commitAll, initRepo, openCommit, openDiff, project, pull, push, refreshGit } from "../lib/project.svelte";
+  import { useProject } from "../lib/project.svelte";
   import { ago } from "../lib/time";
   import { i18n, t, type Key } from "../lib/i18n/index.svelte";
   import { mod } from "../lib/ui.svelte";
   import Icon from "./Icon.svelte";
+
+  const project = useProject();
 
   const git = $derived(project.git);
   const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
 
   function setTab(tab: "changes" | "history") {
     project.gitTab = tab;
-    if (tab === "history") refreshGit(true);
+    if (tab === "history") project.refreshGit(true);
   }
 
   function onKey(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      commitAll();
+      project.commitAll();
     }
   }
 
@@ -29,7 +31,7 @@
 <section class="git">
   <div class="panel-head">
     <span class="panel-title">Git</span>
-    <button class="icon-btn" onclick={() => refreshGit(true)} title={t("git.refresh")} aria-label={t("git.refresh")}><Icon name="refresh" size={13} /></button>
+    <button class="icon-btn" onclick={() => project.refreshGit(true)} title={t("git.refresh")} aria-label={t("git.refresh")}><Icon name="refresh" size={13} /></button>
   </div>
 
   {#if !git}
@@ -38,7 +40,7 @@
     <div class="norepo">
       <Icon name="branch" size={26} stroke={1.5} />
       <p>{t("git.notRepo")}</p>
-      <button class="btn primary" onclick={initRepo} disabled={!!project.gitBusy}><Icon name="plus" size={13} />{t("git.init")}</button>
+      <button class="btn primary" onclick={project.initRepo} disabled={!!project.gitBusy}><Icon name="plus" size={13} />{t("git.init")}</button>
     </div>
   {:else}
     <div class="sync">
@@ -48,11 +50,11 @@
         {#if git.upstream}<span class="upstream mono">→ {git.upstream}</span>{/if}
       </div>
       <div class="sync-buttons">
-        <button class="btn small" onclick={pull} disabled={!!project.gitBusy || !git.upstream} title={t("git.pullHint")}>
+        <button class="btn small" onclick={project.pull} disabled={!!project.gitBusy || !git.upstream} title={t("git.pullHint")}>
           <Icon name={project.gitBusy === "pull" ? "loader" : "pull"} size={13} class={project.gitBusy === "pull" ? "spin" : ""} />{t("git.pull")}
           {#if git.behind}<span class="count">{git.behind}</span>{/if}
         </button>
-        <button class="btn small" class:primary={git.ahead > 0} onclick={push} disabled={!!project.gitBusy} title={git.upstream ? t("git.pushHint") : t("git.publishHint")}>
+        <button class="btn small" class:primary={git.ahead > 0} onclick={project.push} disabled={!!project.gitBusy} title={git.upstream ? t("git.pushHint") : t("git.publishHint")}>
           <Icon name={project.gitBusy === "push" ? "loader" : "push"} size={13} class={project.gitBusy === "push" ? "spin" : ""} />{git.upstream ? t("git.push") : t("git.publish")}
           {#if git.ahead}<span class="count">{git.ahead}</span>{/if}
         </button>
@@ -76,14 +78,14 @@
           onkeydown={onKey}
           spellcheck="false"
         ></textarea>
-        <button class="btn primary" onclick={commitAll} disabled={!!project.gitBusy || !git.changes.length || !project.commitMessage.trim()} title={`${t("git.commitHint")} (${mod}↵)`}>
+        <button class="btn primary" onclick={() => project.commitAll()} disabled={!!project.gitBusy || !git.changes.length || !project.commitMessage.trim()} title={`${t("git.commitHint")} (${mod}↵)`}>
           <Icon name={project.gitBusy === "commit" ? "loader" : "check"} size={13} class={project.gitBusy === "commit" ? "spin" : ""} />{t("git.commitAll")}
         </button>
       </div>
       <div class="list">
         {#each git.changes as c (c.path)}
           {@const p = split(c.path)}
-          <button class="change" onclick={() => openDiff(c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
+          <button class="change" onclick={() => project.openDiff(c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
             <span class="name">{p.name}</span>
             <span class="dir">{p.dir}</span>
             <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
@@ -95,7 +97,7 @@
     {:else}
       <div class="list">
         {#each project.log as c (c.hash)}
-          <button class="commit-row" onclick={() => openCommit(c)} title={c.hash}>
+          <button class="commit-row" onclick={() => project.openCommit(c)} title={c.hash}>
             <span class="subject">{c.subject}</span>
             <span class="meta">
               {#if c.local}<span class="local" title={t("git.notPushed")}><Icon name="arrow-up" size={10} /></span>{/if}

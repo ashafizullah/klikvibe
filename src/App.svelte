@@ -3,19 +3,18 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { errorText, ipc, type Project } from "./lib/ipc";
-  import { activeTab, closeTab, isDirty, openProject, project, saveTab } from "./lib/project.svelte";
+  import { currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
   import { persist, settings } from "./lib/settings.svelte";
   import { toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
   import { initUpdates } from "./lib/updates.svelte";
   import Home from "./components/Home.svelte";
   import TitleBar from "./components/TitleBar.svelte";
-  import FileTree from "./components/FileTree.svelte";
-  import Editor from "./components/Editor.svelte";
-  import GitPanel from "./components/GitPanel.svelte";
-  import TerminalPanel from "./components/TerminalPanel.svelte";
+  import ProjectView from "./components/ProjectView.svelte";
   import Toasts from "./components/Toasts.svelte";
   import Icon from "./components/Icon.svelte";
+
+  const project = $derived(currentProject());
 
   onMount(() => {
     document.documentElement.lang = i18n.locale;
@@ -25,10 +24,10 @@
     return () => off.then((f) => f());
   });
 
-  // The window title follows the project and the active file.
+  // The window title follows the project in front and its active file.
   $effect(() => {
-    const tab = activeTab();
-    const name = project.current?.name;
+    const tab = project?.activeTab();
+    const name = project?.current.name;
     const title = name ? `${tab ? `${isDirty(tab) ? "• " : ""}${tab.title} — ` : ""}${name} — KlikVibe` : "KlikVibe";
     getCurrentWindow().setTitle(title).catch(() => {});
   });
@@ -49,73 +48,58 @@
 
   function onKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
     if (e.ctrlKey && e.key === "`") {
       e.preventDefault();
-      if (project.current) toggle("showTerminal");
-    } else if (mod && !e.shiftKey && e.key.toLowerCase() === "o") {
+      if (project) toggle("showTerminal");
+    } else if (e.ctrlKey && e.key === "Tab") {
+      // Next / previous project tab.
+      e.preventDefault();
+      cycleProject(e.shiftKey ? -1 : 1);
+    } else if (mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
+      const p = workspace.projects[Number(e.key) - 1];
+      if (p) {
+        e.preventDefault();
+        showProject(p.root);
+      }
+    } else if (mod && !e.shiftKey && key === "o") {
       e.preventDefault();
       pick();
-    } else if (!project.current) {
+    } else if (mod && !e.shiftKey && key === "t") {
+      e.preventDefault();
+      showProject(null);
+    } else if (!project) {
       return;
-    } else if (mod && !e.shiftKey && e.key.toLowerCase() === "s") {
+    } else if (mod && !e.shiftKey && key === "s") {
       e.preventDefault();
-      saveTab();
-    } else if (mod && !e.shiftKey && e.key.toLowerCase() === "w") {
+      project.saveTab();
+    } else if (mod && !e.shiftKey && key === "w") {
       e.preventDefault();
-      if (project.active) closeTab(project.active);
-    } else if (mod && !e.shiftKey && e.key.toLowerCase() === "b") {
+      if (project.active) project.closeTab(project.active);
+    } else if (mod && !e.shiftKey && key === "b") {
       e.preventDefault();
       toggle("showTree");
-    } else if (mod && e.shiftKey && e.key.toLowerCase() === "g") {
+    } else if (mod && e.shiftKey && key === "g") {
       e.preventDefault();
       toggle("showGit");
     }
   }
 
   function beforeUnload(e: BeforeUnloadEvent) {
-    if (project.tabs.some(isDirty)) e.preventDefault();
-  }
-
-  /** Drags a side panel's edge; `dir` is +1 for the left panel, -1 for the right one. */
-  function resize(e: PointerEvent, key: "treeWidth" | "gitWidth", dir: 1 | -1) {
-    const startX = e.clientX;
-    const start = settings[key];
-    const el = e.currentTarget as HTMLElement;
-    el.classList.add("active");
-    const move = (ev: PointerEvent) => (settings[key] = Math.min(560, Math.max(180, start + dir * (ev.clientX - startX))));
-    const up = () => {
-      el.classList.remove("active");
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      persist();
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    if (workspace.projects.some((p) => p.dirty)) e.preventDefault();
   }
 </script>
 
 <svelte:window onkeydown={onKeydown} onbeforeunload={beforeUnload} />
 
 <div class="app">
-  {#if project.current}
+  {#if workspace.projects.length}
     <TitleBar />
-    <div class="main">
-      {#if settings.showTree}
-        <div class="side" style:width="{settings.treeWidth}px"><FileTree /></div>
-        <div class="resizer" role="separator" aria-orientation="vertical" onpointerdown={(e) => resize(e, "treeWidth", 1)}></div>
-      {/if}
-      <div class="center">
-        <Editor />
-        {#key project.current.root}
-          <TerminalPanel />
-        {/key}
-      </div>
-      {#if settings.showGit}
-        <div class="resizer" role="separator" aria-orientation="vertical" onpointerdown={(e) => resize(e, "gitWidth", -1)}></div>
-        <div class="side right" style:width="{settings.gitWidth}px"><GitPanel /></div>
-      {/if}
-    </div>
-  {:else}
+  {/if}
+  {#each workspace.projects as p (p.root)}
+    <ProjectView project={p} shown={p.root === workspace.active} />
+  {/each}
+  {#if !project}
     <Home />
   {/if}
 
@@ -130,26 +114,6 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
-  }
-  .main {
-    flex: 1;
-    display: flex;
-    min-height: 0;
-  }
-  .side {
-    flex: none;
-    min-width: 0;
-    border-right: 1px solid var(--line);
-  }
-  .side.right {
-    border-right: none;
-    border-left: 1px solid var(--line);
-  }
-  .center {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
   }
   .busy {
     position: fixed;

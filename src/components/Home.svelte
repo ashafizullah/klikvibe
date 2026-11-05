@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { getVersion } from "@tauri-apps/api/app";
   import { errorText, ipc, type RecentProject } from "../lib/ipc";
-  import { openProject } from "../lib/project.svelte";
+  import { openProject, workspace } from "../lib/project.svelte";
   import { AGENTS } from "../lib/settings.svelte";
   import { isMac, mod, toast } from "../lib/ui.svelte";
   import { checkForUpdates, updates } from "../lib/updates.svelte";
@@ -52,7 +52,7 @@
 
 <div class="home">
   <aside>
-    {#if isMac}<div class="traffic" data-tauri-drag-region></div>{/if}
+    {#if isMac && !workspace.projects.length}<div class="traffic" data-tauri-drag-region></div>{/if}
     <div class="brand" data-tauri-drag-region>
       <img src="/icon.png" alt="" width="32" height="32" draggable="false" />
       <span class="wordmark">Klik<em>Vibe</em></span>

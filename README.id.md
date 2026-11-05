@@ -71,6 +71,9 @@ Kalau KlikVibe sudah berjalan, peluncuran kedua dengan folder (`klikvibe <folder
 | | macOS | Windows / Linux |
 |---|---|---|
 | Buka folder | ⌘O | Ctrl+O |
+| Buka proyek lain (tab proyek baru) | ⌘T | Ctrl+T |
+| Proyek berikutnya / sebelumnya | Ctrl+Tab / Ctrl+Shift+Tab | Ctrl+Tab / Ctrl+Shift+Tab |
+| Ke proyek 1–9 | ⌘1–⌘9 | Ctrl+1–Ctrl+9 |
 | Simpan | ⌘S | Ctrl+S |
 | Tutup tab | ⌘W | Ctrl+W |
 | Panel file | ⌘B | Ctrl+B |
