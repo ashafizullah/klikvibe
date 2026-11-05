@@ -23,6 +23,9 @@
 
   /** Checkpoints newer than this were taken since the user last opened the tab. */
   let newSince = $state(project.checkpointsSeen);
+  // A partly staged file shows in both lists.
+  const staged = $derived(git ? git.changes.filter((c) => c.staged) : []);
+  const working = $derived(git ? git.changes.filter((c) => c.unstaged) : []);
   const unseen = $derived(git ? git.changes.filter((c) => project.isUnseen(c.path)).length : 0);
 
   function setTab(tab: "changes" | "history" | "checkpoints") {
@@ -53,7 +56,7 @@
   function onKey(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
-      project.commitAll();
+      project.commit();
     }
   }
 
@@ -66,6 +69,8 @@
       { label: t("ask.changes"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`${t("ask.uncommitted", { path: `@${c.path}` })} `) },
       "sep",
       { label: t("git.menu.openDiff"), run: () => project.openDiff(c) },
+      ...(c.unstaged && c.kind !== "conflict" ? [{ label: t("git.stage"), run: () => project.stage([c.path]) }] : []),
+      ...(c.staged ? [{ label: t("git.unstage"), run: () => project.unstage([c.path]) }] : []),
       { label: t("git.menu.openFile"), disabled: gone, run: () => project.openFile(abs) },
       "sep",
       { label: untracked ? t("git.menu.delete") : t("git.menu.discard"), disabled: c.kind === "conflict", run: () => project.discard(c) },
@@ -157,6 +162,34 @@
   };
 </script>
 
+{#snippet changeRow(c: Change, inIndex: boolean)}
+  {@const p = split(c.path)}
+  <div class="change">
+    <button class="change-main" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
+      <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
+      <span class="name ellipsis">{p.name}</span>
+      <span class="dir ellipsis">{p.dir}</span>
+    </button>
+    <span class="row-actions">
+      {#if inIndex}
+        <button class="icon-btn" onclick={() => project.unstage([c.path])} title={t("git.unstage")} aria-label={t("git.unstage")}><Icon name="minus" size={13} /></button>
+      {:else}
+        <button
+          class="icon-btn"
+          onclick={() => project.discard(c)}
+          disabled={c.kind === "conflict"}
+          title={c.kind === "untracked" ? t("git.menu.delete") : t("git.menu.discard")}
+          aria-label={c.kind === "untracked" ? t("git.menu.delete") : t("git.menu.discard")}
+        >
+          <Icon name="rotate-ccw" size={12} />
+        </button>
+        <button class="icon-btn" onclick={() => project.stage([c.path])} title={t("git.stage")} aria-label={t("git.stage")}><Icon name="plus" size={13} /></button>
+      {/if}
+    </span>
+    <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
+  </div>
+{/snippet}
+
 {#snippet fileList(c: { hash: string; short: string }, full = true)}
   {@const files = project.commitFiles.get(c.hash)}
   {#if files === "loading" || files === undefined}
@@ -247,8 +280,14 @@
           onkeydown={onKey}
           spellcheck="false"
         ></textarea>
-        <button class="btn primary" onclick={() => project.commitAll()} disabled={!!project.gitBusy || !git.changes.length || !project.commitMessage.trim()} title={`${t("git.commitHint")} (${mod}↵)`}>
-          <Icon name={project.gitBusy === "commit" ? "loader" : "check"} size={13} class={project.gitBusy === "commit" ? "spin" : ""} />{t("git.commitAll")}
+        <button
+          class="btn primary"
+          onclick={() => project.commit()}
+          disabled={!!project.gitBusy || !git.changes.length || !project.commitMessage.trim()}
+          title={`${staged.length ? t("git.commitStagedHint") : t("git.commitHint")} (${mod}↵)`}
+        >
+          <Icon name={project.gitBusy === "commit" ? "loader" : "check"} size={13} class={project.gitBusy === "commit" ? "spin" : ""} />
+          {staged.length ? t("git.commitStaged", { count: staged.length }) : t("git.commitAll")}
         </button>
       </div>
       <div class="list">
@@ -259,16 +298,23 @@
             <button class="btn ghost tiny" onclick={() => project.markAllSeen()}>{t("unseen.markAll")}</button>
           </div>
         {/if}
-        {#each git.changes as c (c.path)}
-          {@const p = split(c.path)}
-          <button class="change" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
-            <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
-            <span class="name ellipsis">{p.name}</span>
-            <span class="dir ellipsis">{p.dir}</span>
-            <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
-          </button>
+        {#if staged.length}
+          <div class="section">
+            <span>{t("git.staged")}</span><span class="count-badge">{staged.length}</span>
+            <button class="btn ghost tiny" onclick={() => project.unstage(staged.map((c) => c.path))}>{t("git.unstageAll")}</button>
+          </div>
+          {#each staged as c (c.path)}{@render changeRow(c, true)}{/each}
+          {#if working.length}
+            <div class="section">
+              <span>{t("git.changes")}</span><span class="count-badge">{working.length}</span>
+              <button class="btn ghost tiny" onclick={() => project.stage(working.map((c) => c.path))}>{t("git.stageAll")}</button>
+            </div>
+          {/if}
+        {/if}
+        {#each working as c (c.path)}
+          {@render changeRow(c, false)}
         {:else}
-          <p class="empty-note clean"><Icon name="check" size={14} />{t("git.clean")}</p>
+          {#if !staged.length}<p class="empty-note clean"><Icon name="check" size={14} />{t("git.clean")}</p>{/if}
         {/each}
       </div>
     {:else if project.gitTab === "checkpoints"}
@@ -451,16 +497,58 @@
     padding-bottom: 12px;
   }
   .change {
-    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 26px;
+    padding-right: 10px;
+    font-size: 12.5px;
+  }
+  .change-main {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 26px;
-    padding: 0 10px 0 12px;
+    padding: 0 4px 0 12px;
     border: none;
     background: none;
     text-align: left;
-    font-size: 12.5px;
+  }
+  /* Revert, stage and unstage show on the row under the pointer (or with the keyboard). */
+  .row-actions {
+    display: flex;
+    flex: none;
+    opacity: 0;
+  }
+  .change:hover .row-actions,
+  .row-actions:focus-within {
+    opacity: 1;
+  }
+  .row-actions .icon-btn {
+    width: 22px;
+    height: 22px;
+    color: var(--muted);
+  }
+  .row-actions .icon-btn:hover:not(:disabled) {
+    color: var(--text);
+  }
+  .section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px 4px 14px;
+    font: 500 10px/1.4 var(--mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .section .btn {
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--sans);
   }
   .change:hover,
   .commit-row:hover {

@@ -165,10 +165,33 @@ pub async fn git_commit_file_diff(
     blocking(move || git::commit_file_diff(&root, &hash, &path, from.as_deref())).await
 }
 
+/// Commits what is staged, or (`all`) everything.
 #[tauri::command]
-pub async fn git_commit(projects: State<'_, Projects>, root: String, message: String) -> AppResult<String> {
+pub async fn git_commit(projects: State<'_, Projects>, root: String, message: String, all: bool) -> AppResult<String> {
     let root = root_of(&projects, &root)?;
-    blocking(move || git::commit(&root, &message)).await
+    blocking(move || git::commit(&root, &message, all)).await
+}
+
+/// Paths as Git reports them (relative to the project), checked before they reach Git.
+fn rel_paths(paths: &[String]) -> AppResult<Vec<String>> {
+    if paths.is_empty() {
+        return Err(AppError::msg("No files given"));
+    }
+    paths.iter().map(|p| relative(p).map(String::from)).collect()
+}
+
+#[tauri::command]
+pub async fn git_stage(projects: State<'_, Projects>, root: String, paths: Vec<String>) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    let paths = rel_paths(&paths)?;
+    blocking(move || git::stage(&root, &paths)).await
+}
+
+#[tauri::command]
+pub async fn git_unstage(projects: State<'_, Projects>, root: String, paths: Vec<String>) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    let paths = rel_paths(&paths)?;
+    blocking(move || git::unstage(&root, &paths)).await
 }
 
 #[tauri::command]

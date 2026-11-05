@@ -598,10 +598,22 @@ export class ProjectState {
     }
   }
 
-  async commitAll() {
+  /** Commits what is staged, or everything when nothing is. */
+  async commit() {
     const message = this.commitMessage.trim();
     if (!message) return toast(t("git.needMessage"), "error");
-    if (await this.gitAction("commit", (r) => ipc.gitCommit(r, message), t("git.committed"))) this.commitMessage = "";
+    const all = !this.git?.changes.some((c) => c.staged);
+    if (await this.gitAction("commit", (r) => ipc.gitCommit(r, message, all), t("git.committed"))) this.commitMessage = "";
+  }
+
+  async stage(paths: string[]) {
+    await ipc.gitStage(this.root, paths).catch((e) => toast(errorText(e), "error"));
+    this.refreshGit();
+  }
+
+  async unstage(paths: string[]) {
+    await ipc.gitUnstage(this.root, paths).catch((e) => toast(errorText(e), "error"));
+    this.refreshGit();
   }
 
   /** Throws away a file's changes (deletes it when Git doesn't track it), after asking. */

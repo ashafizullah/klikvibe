@@ -94,6 +94,8 @@ pub fn run() {
             commands::git_commit_files,
             commands::git_commit_file_diff,
             commands::git_commit,
+            commands::git_stage,
+            commands::git_unstage,
             commands::git_push,
             commands::git_pull,
             commands::git_init,

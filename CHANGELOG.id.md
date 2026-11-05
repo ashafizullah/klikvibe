@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Belum dirilis
+
+- Staging di panel Git: setiap perubahan punya tombol untuk membatalkannya dan untuk men-stage-nya (atau unstage yang sudah di-stage), juga di menu klik kanannya. File yang di-stage punya bagian sendiri dengan Unstage semua, sisanya Stage semua, dan tombol commit hanya meng-commit yang di-stage ("Commit 2 staged"), atau semuanya kalau tidak ada yang di-stage.
+
 ## 0.2.0
 
 Beberapa proyek sekaligus, checkpoint untuk membatalkan yang dilakukan agen, tugas paralel di worktree, server MCP untuk agenmu, dan banyak lagi untuk vibe coding.

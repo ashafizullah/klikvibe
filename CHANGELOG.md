@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Staging in the Git panel: each change has buttons to revert it and to stage it (or unstage a staged one), also in its right-click menu. Staged files get a section of their own with Unstage all, the rest Stage all, and the commit button commits only what is staged ("Commit 2 staged"), or everything when nothing is.
+
 ## 0.2.0
 
 Several projects at once, checkpoints to undo what an agent did, parallel tasks in worktrees, an MCP server for your agent, and a lot more for vibe coding.

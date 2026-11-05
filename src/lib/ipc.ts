@@ -40,7 +40,10 @@ export interface Change {
   path: string;
   from: string | null;
   kind: ChangeKind;
+  /** Some of it is staged (in the next commit). */
   staged: boolean;
+  /** Some of it isn't: a partly staged file is both. */
+  unstaged: boolean;
 }
 export interface GitStatus {
   repo: boolean;
@@ -136,7 +139,10 @@ export const ipc = {
   gitShow: (root: string, hash: string) => invoke<string>("git_show", { root, hash }),
   gitCommitFiles: (root: string, hash: string) => invoke<CommitFile[]>("git_commit_files", { root, hash }),
   gitCommitFileDiff: (root: string, hash: string, path: string, from: string | null) => invoke<string>("git_commit_file_diff", { root, hash, path, from }),
-  gitCommit: (root: string, message: string) => invoke<string>("git_commit", { root, message }),
+  /** `all`: stage everything first; otherwise only what is staged is committed. */
+  gitCommit: (root: string, message: string, all: boolean) => invoke<string>("git_commit", { root, message, all }),
+  gitStage: (root: string, paths: string[]) => invoke<void>("git_stage", { root, paths }),
+  gitUnstage: (root: string, paths: string[]) => invoke<void>("git_unstage", { root, paths }),
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),

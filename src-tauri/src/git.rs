@@ -85,7 +85,10 @@ pub struct Change {
     pub from: Option<String>,
     /// added, modified, deleted, renamed, untracked or conflict.
     pub kind: String,
+    /// Something of it is in the index (to be committed).
     pub staged: bool,
+    /// Something of it in the working tree isn't (a file can be both: partly staged).
+    pub unstaged: bool,
 }
 
 #[derive(Serialize, Default, Debug)]
@@ -131,21 +134,33 @@ pub fn parse_status(out: &str) -> Status {
             let parts: Vec<&str> = rest.splitn(8, ' ').collect();
             if parts.len() == 8 {
                 let xy = parts[0];
-                s.changes.push(Change { path: parts[7].into(), from: None, kind: kind(xy).into(), staged: !xy.starts_with('.') });
+                s.changes.push(Change {
+                    path: parts[7].into(),
+                    from: None,
+                    kind: kind(xy).into(),
+                    staged: !xy.starts_with('.'),
+                    unstaged: !xy.ends_with('.'),
+                });
             }
         } else if let Some(rest) = line.strip_prefix("2 ") {
             // XY sub mH mI mW hH hI Xscore path, then the old path as the next field
             let parts: Vec<&str> = rest.splitn(9, ' ').collect();
             if parts.len() == 9 {
                 let from = fields.next().map(String::from);
-                s.changes.push(Change { path: parts[8].into(), from, kind: "renamed".into(), staged: !parts[0].starts_with('.') });
+                s.changes.push(Change {
+                    path: parts[8].into(),
+                    from,
+                    kind: "renamed".into(),
+                    staged: !parts[0].starts_with('.'),
+                    unstaged: !parts[0].ends_with('.'),
+                });
             }
         } else if let Some(rest) = line.strip_prefix("u ") {
             if let Some(path) = rest.splitn(10, ' ').nth(9) {
-                s.changes.push(Change { path: path.into(), from: None, kind: "conflict".into(), staged: false });
+                s.changes.push(Change { path: path.into(), from: None, kind: "conflict".into(), staged: false, unstaged: true });
             }
         } else if let Some(path) = line.strip_prefix("? ") {
-            s.changes.push(Change { path: path.into(), from: None, kind: "untracked".into(), staged: false });
+            s.changes.push(Change { path: path.into(), from: None, kind: "untracked".into(), staged: false, unstaged: true });
         }
     }
     s
@@ -324,13 +339,37 @@ pub fn commit_file_diff(root: &Path, hash: &str, path: &str, from: Option<&str>)
     run(root, &args)
 }
 
-/// Stages everything and commits it.
-pub fn commit(root: &Path, message: &str) -> AppResult<String> {
+/// Commits what is staged; with `all`, stages everything first.
+pub fn commit(root: &Path, message: &str, all: bool) -> AppResult<String> {
     if message.trim().is_empty() {
         return Err(AppError::msg("Write a commit message first"));
     }
-    run(root, &["add", "--all"])?;
+    if all {
+        run(root, &["add", "--all"])?;
+    }
     run_all(root, &["commit", "-m", message])
+}
+
+/// Adds files (paths as Git reports them, taken literally) to the next commit, deletions included.
+pub fn stage(root: &Path, paths: &[String]) -> AppResult<()> {
+    let mut args = vec!["--literal-pathspecs", "add", "-A", "--"];
+    args.extend(paths.iter().map(String::as_str));
+    run(root, &args)?;
+    Ok(())
+}
+
+/// Takes files out of the next commit; their changes stay in the working tree.
+pub fn unstage(root: &Path, paths: &[String]) -> AppResult<()> {
+    let has_head = run(root, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok();
+    // Before the first commit there is nothing to restore the index from.
+    let mut args = if has_head {
+        vec!["--literal-pathspecs", "restore", "--staged", "--"]
+    } else {
+        vec!["--literal-pathspecs", "rm", "--cached", "-q", "-r", "--"]
+    };
+    args.extend(paths.iter().map(String::as_str));
+    run(root, &args)?;
+    Ok(())
 }
 
 /// The URL of the "origin" remote (else the first remote), for web links; None without remotes.
@@ -680,6 +719,7 @@ mod tests {
                 ("notes.md", "untracked", false)
             ]
         );
+        assert_eq!(s.changes.iter().map(|c| c.unstaged).collect::<Vec<_>>(), [true, false, false, true]);
         assert_eq!(s.changes[2].from.as_deref(), Some("lib/a.ts"));
     }
 
@@ -709,7 +749,7 @@ mod tests {
         std::fs::write(dir.join("a.txt"), "one\n").unwrap();
         assert_eq!(status(&dir).unwrap().changes[0].kind, "untracked");
         assert!(diff(&dir, "a.txt").unwrap().contains("+one"));
-        commit(&dir, "First").unwrap();
+        commit(&dir, "First", true).unwrap();
         std::fs::write(dir.join("a.txt"), "two\n").unwrap();
         assert!(diff(&dir, "a.txt").unwrap().contains("+two"));
         let log = log(&dir, 10, true).unwrap();
@@ -720,7 +760,7 @@ mod tests {
         let first = &log[0].hash;
         assert_eq!(commit_files(&dir, first).unwrap()[0].kind, "added");
         std::fs::write(dir.join("b.txt"), "x\ny\n").unwrap();
-        commit(&dir, "Second").unwrap();
+        commit(&dir, "Second", true).unwrap();
         let second = log_head(&dir);
         let files = commit_files(&dir, &second).unwrap();
         let paths: Vec<(&str, &str, Option<u32>)> = files.iter().map(|f| (f.path.as_str(), f.kind.as_str(), f.added)).collect();
@@ -747,6 +787,39 @@ mod tests {
     }
 
     #[test]
+    fn stages_and_commits_only_what_is_staged() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-stage-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        // Before the first commit, unstaging works too.
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        stage(&dir, &["a.txt".into()]).unwrap();
+        unstage(&dir, &["a.txt".into()]).unwrap();
+        assert!(!status(&dir).unwrap().changes[0].staged);
+        std::fs::write(dir.join("*.txt"), "glob-looking name\n").unwrap();
+        commit(&dir, "First", true).unwrap();
+
+        std::fs::write(dir.join("a.txt"), "two\n").unwrap();
+        std::fs::write(dir.join("b.txt"), "new\n").unwrap();
+        // "*.txt" is a file name here, not a pattern: a.txt stays unstaged.
+        std::fs::write(dir.join("*.txt"), "changed\n").unwrap();
+        stage(&dir, &["b.txt".into(), "*.txt".into()]).unwrap();
+        let st = status(&dir).unwrap();
+        let staged: Vec<&str> = st.changes.iter().filter(|c| c.staged).map(|c| c.path.as_str()).collect();
+        assert_eq!(staged.len(), 2);
+        assert!(!st.changes.iter().find(|c| c.path == "a.txt").unwrap().staged);
+
+        commit(&dir, "Only staged", false).unwrap();
+        let left = status(&dir).unwrap().changes;
+        assert_eq!(left.len(), 1);
+        assert_eq!((left[0].path.as_str(), left[0].staged, left[0].unstaged), ("a.txt", false, true));
+        assert!(commit(&dir, "Nothing staged", false).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn discards_literally() {
         let dir = std::env::temp_dir().join(format!("klikvibe-discard-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -760,7 +833,7 @@ mod tests {
         assert!(!dir.join("first.txt").exists());
         std::fs::write(dir.join("a.txt"), "one\n").unwrap();
         std::fs::write(dir.join("b.txt"), "one\n").unwrap();
-        commit(&dir, "First").unwrap();
+        commit(&dir, "First", true).unwrap();
         std::fs::write(dir.join("a.txt"), "two\n").unwrap();
         std::fs::write(dir.join("b.txt"), "two\n").unwrap();
         // A glob-looking name matches nothing, and leaves the others alone.
@@ -790,7 +863,7 @@ mod tests {
         run(&dir, &["config", "user.name", "Test"]).unwrap();
         std::fs::write(dir.join(".gitignore"), "build/\n").unwrap();
         std::fs::write(dir.join("a.txt"), "one\n").unwrap();
-        commit(&dir, "First").unwrap();
+        commit(&dir, "First", true).unwrap();
         // The user's own staged change must survive everything below.
         std::fs::write(dir.join("staged.txt"), "staged\n").unwrap();
         run(&dir, &["add", "staged.txt"]).unwrap();
@@ -845,7 +918,7 @@ mod tests {
         run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
         run(&dir, &["config", "user.name", "Test"]).unwrap();
         std::fs::write(dir.join("a.txt"), "one\n").unwrap();
-        commit(&dir, "First").unwrap();
+        commit(&dir, "First", true).unwrap();
 
         assert_eq!(task_slug("  Fix the Login page! "), "fix-the-login-page");
         let wt = add_worktree(&dir, "Fix login").unwrap();
@@ -858,7 +931,7 @@ mod tests {
 
         // The task commits in its own folder, then merges into the main one.
         std::fs::write(wt.join("b.txt"), "task\n").unwrap();
-        commit(&wt, "Task work").unwrap();
+        commit(&wt, "Task work", true).unwrap();
         assert!(!dir.join("b.txt").exists());
         merge_task(&wt, "fix-login").unwrap();
         assert!(dir.join("b.txt").exists());
