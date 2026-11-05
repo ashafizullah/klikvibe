@@ -32,6 +32,7 @@
 - Tanya agen: klik kanan kode (baris yang dipilih), file, folder, diff, perubahan, atau commit lalu pilih "Tanya agen tentang ini"; rujukan seperti `@src/app.ts baris 12-30` ditempel ke terminal agen untuk kamu lengkapi dan kirim. Tombol Prompt di terminal berisi prompt siap pakai dan prompt buatanmu.
 - MCP: enam tool baru untuk agen. `read_terminal` (output terbaru terminal lain, misalnya error dev server), `create_checkpoint` (dengan catatan), `list_checkpoints`, `restore_checkpoint` (hanya setelah kamu setujui di KlikVibe), `show_commit`, dan `reveal_in_files`. Checkpoint bisa diberi catatan, yang tampil di tab Checkpoint.
 - KlikVibe terbuka lagi seperti saat ditinggalkan: proyek, tab file, dan proyek yang di depan, termasuk setelah update.
+- Buka di GitHub, GitLab, atau Bitbucket: repositori, branch, commit, atau file di baris yang dipilih (dari panel Git, History, editor, dan breadcrumb); setelah push branch fitur, satu klik membuat pull (merge) request. Bisa untuk remote SSH dan HTTPS serta GitLab self-hosted.
 
 ## 0.1.0
 

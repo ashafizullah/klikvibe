@@ -8,6 +8,8 @@ import type { EditorView } from "@codemirror/view";
 import { errorText, ipc, type Change, type Checkpoint, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
+import { forgeName, isMergeRequest, newRequestUrl, parseRemote, type Remote } from "./forge";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { t } from "./i18n/index.svelte";
 import { confirm, toast } from "./ui.svelte";
 import { persist, settings } from "./settings.svelte";
@@ -101,6 +103,8 @@ export class ProjectState {
   terminals: (() => { index: number; name: string; active: boolean; agent: boolean; tail: (lines: number) => string }[]) | null = null;
   /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
   askAgent: ((text: string) => void) | null = null;
+  /** Where the repository lives on the web (from its remote), for "Open on GitHub" and the like. */
+  remote = $state<Remote | null>(null);
   /** The history commit showing its files, if any. */
   expandedCommit = $state<string | null>(null);
   /** The files of commits opened in the history (commits don't change, so they stay). */
@@ -136,6 +140,7 @@ export class ProjectState {
   async start() {
     await this.loadDir(this.root);
     this.refreshGit(true);
+    this.loadRemote();
     // A starting point, so the first change an agent makes can be undone.
     if (settings.checkpoints) this.takeCheckpoint("opened");
     ipc.watchProject(this.root).catch((e) => toast(errorText(e), "error"));
@@ -163,6 +168,11 @@ export class ProjectState {
       this.expanded.delete(path);
       if (path === this.root) toast(errorText(e), "error");
     }
+  }
+
+  async loadRemote() {
+    const url = await ipc.gitRemote(this.root).catch(() => null);
+    if (!this.closed) this.remote = url ? parseRemote(url) : null;
   }
 
   // ---- checkpoints ----
@@ -506,6 +516,8 @@ export class ProjectState {
       try {
         const status = await ipc.gitStatus(this.root);
         if (this.closed) return;
+        // A remote added or a branch published from the terminal: the web links follow.
+        if (status.upstream !== this.git?.upstream) this.loadRemote();
         this.git = status;
         if (log && status.repo) this.log = await ipc.gitLog(this.root, settings.historyAll);
       } catch (e) {
@@ -588,7 +600,18 @@ export class ProjectState {
     }
   }
 
-  push = () => this.gitAction("push", ipc.gitPush, t("git.pushed"));
+  push = async () => {
+    const pushed = await this.gitAction("push", ipc.gitPush, t("git.pushed"));
+    if (!pushed) return;
+    await this.loadRemote();
+    // A pushed feature branch is one click from a pull (merge) request.
+    const branch = this.git?.branch;
+    const url = branch && this.remote && !["main", "master"].includes(branch) ? newRequestUrl(this.remote, branch) : null;
+    if (url && branch && this.remote) {
+      const label = t(isMergeRequest(this.remote) ? "forge.newMR" : "forge.newPR", { name: forgeName(this.remote) });
+      toast(t("forge.pushedBranch", { branch }), "ok", { label, run: () => openUrl(url) }, 12_000);
+    }
+  };
   pull = () => this.gitAction("pull", ipc.gitPull, t("git.pulled"));
   initRepo = () => this.gitAction("init", ipc.gitInit, t("git.initialized"));
 }

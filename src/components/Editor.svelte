@@ -5,6 +5,8 @@
   import { persist, settings } from "../lib/settings.svelte";
   import { copyText, mod, openMenu, openMenuBelow, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
   import { join } from "../lib/paths";
+  import { fileUrl, forgeName } from "../lib/forge";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import CodeView from "./CodeView.svelte";
@@ -50,8 +52,11 @@
   }
 
   function fileMenu(el: Element, path: string) {
+    const r = project.remote;
+    const web = r && rel && project.git?.branch ? fileUrl(r, project.git.branch, rel) : null;
     openMenuBelow(el, [
       { label: t("crumbs.revealFile"), run: () => project.revealInTree(path) },
+      ...(web && r ? [{ label: t("forge.open", { name: forgeName(r) }), disabled: !project.git?.upstream, run: () => openUrl(web) }] : []),
       "sep",
       { label: t("menu.copyPath"), run: () => copyText(path) },
       { label: t("menu.copyRelative"), run: () => copyText(rel ?? path) },

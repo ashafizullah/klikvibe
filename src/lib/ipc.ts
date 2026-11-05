@@ -134,6 +134,7 @@ export const ipc = {
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),
+  gitRemote: (root: string) => invoke<string | null>("git_remote", { root }),
   checkpointCreate: (root: string, reason: string, note?: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason, note: note ?? null }),
   checkpointList: (root: string) => invoke<Checkpoint[]>("checkpoint_list", { root }),
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),

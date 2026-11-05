@@ -32,6 +32,7 @@
 - Ask the agent: right-click code (the selection's lines), a file, a folder, a diff, a change or a commit and pick "Ask the agent about this"; a reference such as `@src/app.ts lines 12-30` is pasted into the agent's terminal for you to finish and send. The Prompts button in the terminal holds ready-made prompts and your own.
 - MCP: six more tools for your agent. `read_terminal` (the other terminals' recent output, e.g. dev server errors), `create_checkpoint` (with a note), `list_checkpoints`, `restore_checkpoint` (only after you agree in KlikVibe), `show_commit` and `reveal_in_files`. Checkpoints can carry a note, shown in the Checkpoints tab.
 - KlikVibe opens again where you left it: the projects, their file tabs and the one in front, also after an update.
+- Open on GitHub, GitLab or Bitbucket: the repository, the branch, a commit, or the file at the selected lines (from the Git panel, History, the editor and the breadcrumb); after pushing a feature branch, one click starts a pull (merge) request. Works with SSH and HTTPS remotes and self-hosted GitLab.
 
 ## 0.1.0
 

@@ -97,6 +97,7 @@ pub fn run() {
             commands::git_push,
             commands::git_pull,
             commands::git_init,
+            commands::git_remote,
             commands::checkpoint_create,
             commands::checkpoint_list,
             commands::checkpoint_restore,

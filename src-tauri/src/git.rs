@@ -333,6 +333,16 @@ pub fn commit(root: &Path, message: &str) -> AppResult<String> {
     run_all(root, &["commit", "-m", message])
 }
 
+/// The URL of the "origin" remote (else the first remote), for web links; None without remotes.
+pub fn remote_url(root: &Path) -> Option<String> {
+    let name = match run(root, &["remote"]) {
+        Ok(list) if list.lines().any(|l| l.trim() == "origin") => "origin".to_string(),
+        Ok(list) => list.lines().next()?.trim().to_string(),
+        Err(_) => return None,
+    };
+    run(root, &["remote", "get-url", &name]).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
 /// Pushes the branch, setting its upstream on the first push.
 pub fn push(root: &Path) -> AppResult<String> {
     let has_upstream = run(root, &["rev-parse", "--abbrev-ref", "@{u}"]).is_ok();

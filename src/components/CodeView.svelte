@@ -11,6 +11,8 @@
   import { selectAll } from "@codemirror/commands";
   import { gotoLine, openSearchPanel } from "@codemirror/search";
   import { errorText, ipc } from "../lib/ipc";
+  import { fileUrl, forgeName } from "../lib/forge";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import { relative } from "../lib/paths";
   import { copyText, mod, modAlt, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -127,6 +129,11 @@
       "sep",
     ];
     if (isDirty(tab)) items.push({ label: t("tabs.save"), hint: `${mod}S`, run: () => project.saveTab(tab) });
+    const web = project.remote && project.git?.branch ? fileUrl(project.remote, project.git.branch, rel, first, sel.empty ? undefined : last) : null;
+    if (web && project.remote) {
+      const pushed = !!project.git?.upstream;
+      items.push({ label: t("forge.open", { name: forgeName(project.remote) }), disabled: !pushed, hint: pushed ? undefined : "↑", run: () => openUrl(web) });
+    }
     if (change) items.push({ label: t("git.menu.openDiff"), run: () => project.openDiff(change) });
     items.push(
       { label: t("menu.copyPath"), run: () => copyText(tab.path) },

@@ -2,7 +2,9 @@
   import { useProject } from "../lib/project.svelte";
   import { ago } from "../lib/time";
   import { i18n, t, type Key } from "../lib/i18n/index.svelte";
-  import { copyText, mod, openMenu, reveal, revealLabel } from "../lib/ui.svelte";
+  import { copyText, mod, openMenu, openMenuBelow, reveal, revealLabel, type MenuItem } from "../lib/ui.svelte";
+  import { branchUrl, commitUrl, forgeName, isMergeRequest, newRequestUrl } from "../lib/forge";
+  import { openUrl } from "@tauri-apps/plugin-opener";
   import type { Change, Commit } from "../lib/ipc";
   import { join } from "../lib/paths";
   import Icon from "./Icon.svelte";
@@ -88,11 +90,29 @@
     project.refreshGit(true);
   }
 
+  /** The repository, this branch and a new pull (merge) request on the web. */
+  function webMenu(el: Element) {
+    const r = project.remote;
+    if (!r) return;
+    const name = forgeName(r);
+    const branch = git?.branch;
+    const pushed = !!git?.upstream;
+    const br = branch ? branchUrl(r, branch) : null;
+    const pr = branch ? newRequestUrl(r, branch) : null;
+    const items: MenuItem[] = [{ label: t("forge.openRepo", { name }), run: () => openUrl(r.base) }];
+    if (br) items.push({ label: t("forge.openBranch", { name }), disabled: !pushed, hint: pushed ? undefined : "↑", run: () => openUrl(br) });
+    if (pr) items.push("sep", { label: t(isMergeRequest(r) ? "forge.newMR" : "forge.newPR", { name }), disabled: !pushed, run: () => openUrl(pr) });
+    openMenuBelow(el, items);
+  }
+
   function commitMenu(e: MouseEvent, c: Commit) {
     openMenu(e, [
       { label: t("ask.changes"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`${t("ask.commit", { hash: c.short })} `) },
       "sep",
       { label: t("git.menu.openCommit"), run: () => project.openCommit(c) },
+      ...(project.remote && commitUrl(project.remote, c.hash)
+        ? [{ label: t("forge.open", { name: forgeName(project.remote) }), disabled: c.local, hint: c.local ? "↑" : undefined, run: () => openUrl(commitUrl(project.remote!, c.hash)!) }]
+        : []),
       "sep",
       { label: t("menu.copyHash"), run: () => copyText(c.hash) },
       { label: t("git.menu.copyMessage"), run: () => copyText(c.subject) },
@@ -154,6 +174,11 @@
         <Icon name="branch" size={13} />
         <span class="mono">{git.branch ?? t("git.detached")}</span>
         {#if git.upstream}<span class="upstream ellipsis mono">→ {git.upstream}</span>{/if}
+        {#if project.remote}
+          <button class="icon-btn web" onclick={(e) => webMenu(e.currentTarget)} title={t("forge.open", { name: forgeName(project.remote) })} aria-label={t("forge.open", { name: forgeName(project.remote) })}>
+            <Icon name="external" size={12} />
+          </button>
+        {/if}
       </div>
       <div class="sync-buttons">
         <button class="btn small" onclick={project.pull} disabled={!!project.gitBusy || !git.upstream} title={t("git.pullHint")}>
@@ -610,6 +635,12 @@
   }
   .cp-files {
     margin: 0 0 6px 30px;
+  }
+  .web {
+    width: 22px;
+    height: 22px;
+    margin-left: auto;
+    color: var(--muted);
   }
   .scope {
     flex: none;

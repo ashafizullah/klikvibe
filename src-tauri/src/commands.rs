@@ -237,6 +237,13 @@ pub async fn checkpoint_clear(projects: State<'_, Projects>, root: String) -> Ap
     blocking(move || git::clear_checkpoints(&root)).await
 }
 
+/// The project's remote URL (origin, else the first), for links to GitHub, GitLab or Bitbucket.
+#[tauri::command]
+pub async fn git_remote(projects: State<'_, Projects>, root: String) -> AppResult<Option<String>> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || Ok(git::remote_url(&root))).await
+}
+
 #[tauri::command]
 pub async fn git_init(projects: State<'_, Projects>, root: String) -> AppResult<String> {
     let root = root_of(&projects, &root)?;
