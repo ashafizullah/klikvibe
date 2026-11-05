@@ -91,6 +91,50 @@ pub async fn search_text(projects: State<'_, Projects>, root: String, query: Str
     blocking(move || files::search_text(&root, &query, include.as_deref())).await
 }
 
+/// A new empty file, or a folder, named `name` (folders on the way allowed) in folder `dir`.
+#[tauri::command]
+pub async fn create_entry(projects: State<'_, Projects>, dir: String, name: String, folder: bool) -> AppResult<String> {
+    let path = projects.fresh(&dir, &name)?;
+    let shown = path.display().to_string();
+    blocking(move || files::create(&path, folder)).await?;
+    Ok(shown)
+}
+
+/// Renames a file or folder in place; returns the new path.
+#[tauri::command]
+pub async fn rename_entry(projects: State<'_, Projects>, path: String, name: String) -> AppResult<String> {
+    let from = projects.existing(&path)?;
+    let root = projects.project_of(&from).ok_or_else(|| AppError::msg("That is outside the open project"))?;
+    if from == root {
+        return Err(AppError::msg("The project folder itself can't be renamed here"));
+    }
+    let name = files::plain_name(&name)?.to_string();
+    let parent = from.parent().ok_or_else(|| AppError::msg("Invalid path"))?.display().to_string();
+    let to = projects.fresh(&parent, &name)?;
+    let shown = to.display().to_string();
+    blocking(move || Ok(std::fs::rename(&from, &to)?)).await?;
+    Ok(shown)
+}
+
+/// Deletes a file or a folder with everything in it.
+#[tauri::command]
+pub async fn delete_entry(projects: State<'_, Projects>, path: String) -> AppResult<()> {
+    let target = projects.existing(&path)?;
+    let root = projects.project_of(&target).ok_or_else(|| AppError::msg("That is outside the open project"))?;
+    if target == root || target.strip_prefix(&root).is_ok_and(|rel| rel.components().next().is_some_and(|c| c.as_os_str() == ".git")) {
+        return Err(AppError::msg("KlikVibe doesn't delete the project folder or anything in .git"));
+    }
+    blocking(move || {
+        if target.is_dir() {
+            std::fs::remove_dir_all(&target)?
+        } else {
+            std::fs::remove_file(&target)?
+        }
+        Ok(())
+    })
+    .await
+}
+
 #[tauri::command]
 pub async fn read_file(projects: State<'_, Projects>, path: String) -> AppResult<FileText> {
     let file = projects.existing(&path)?;

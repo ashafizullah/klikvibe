@@ -143,6 +143,38 @@ impl Projects {
         Ok(target)
     }
 
+    /// Where something new named `name` (a file or folder name, or a relative
+    /// path such as "src/lib/util.ts") would go in folder `dir`: inside an open
+    /// project, never in `.git`, not there yet. Every folder on the way that
+    /// already exists is resolved and checked, so a symlink can't lead outside.
+    pub fn fresh(&self, dir: &str, name: &str) -> AppResult<PathBuf> {
+        let dir = self.existing(dir)?;
+        if !dir.is_dir() {
+            return Err(AppError::msg("Not a folder"));
+        }
+        let rel = Path::new(name.trim());
+        let parts: Vec<_> = rel.components().collect();
+        if parts.is_empty() || !parts.iter().all(|c| matches!(c, Component::Normal(n) if *n != ".git")) {
+            return Err(AppError::msg("Use a plain name (folders with /), without .. or .git"));
+        }
+        let mut at = dir;
+        for part in parts {
+            at = at.join(part);
+            if at.symlink_metadata().is_ok() {
+                at = self.existing(&at.display().to_string())?;
+            }
+        }
+        if at.symlink_metadata().is_ok() {
+            return Err(AppError::msg(format!("{} already exists", name.trim())));
+        }
+        Ok(at)
+    }
+
+    /// The top folder of the open project holding `resolved`, if any.
+    pub fn project_of(&self, resolved: &Path) -> Option<PathBuf> {
+        self.inside(resolved).ok()
+    }
+
     fn inside(&self, resolved: &Path) -> AppResult<PathBuf> {
         self.open
             .lock()
@@ -202,6 +234,29 @@ mod tests {
         assert!(projects.writable(&ok).is_ok());
         assert!(projects.writable(&dir.join(".git/config").display().to_string()).is_err());
         assert!(projects.writable(&format!("{}/src/../../escape.txt", dir.display())).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn new_entries_stay_inside_the_project() {
+        let dir = temp();
+        let projects = Projects::new(dir.join("data"));
+        projects.admit(&dir).unwrap();
+        let root = dir.display().to_string();
+        assert_eq!(projects.fresh(&root, "src/lib/new.ts").unwrap(), dunce(dir.canonicalize().unwrap()).join("src/lib/new.ts"));
+        assert!(projects.fresh(&root, "src/main.rs").is_err(), "exists");
+        assert!(projects.fresh(&root, "../escape.txt").is_err());
+        assert!(projects.fresh(&root, ".git/config").is_err());
+        assert!(projects.fresh(&root, "/etc/x").is_err());
+        assert!(projects.fresh(&root, "  ").is_err());
+        #[cfg(unix)]
+        {
+            let outside = std::env::temp_dir().join(format!("klikvibe-outside-{}", uuid::Uuid::new_v4()));
+            std::fs::create_dir_all(&outside).unwrap();
+            std::os::unix::fs::symlink(&outside, dir.join("link")).unwrap();
+            assert!(projects.fresh(&root, "link/x.txt").is_err(), "a symlink can't lead outside");
+            std::fs::remove_dir_all(outside).unwrap();
+        }
         std::fs::remove_dir_all(dir).unwrap();
     }
 

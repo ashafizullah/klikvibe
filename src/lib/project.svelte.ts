@@ -315,6 +315,80 @@ export class ProjectState {
     document.querySelector(`[data-path="${CSS.escape(path)}"]`)?.scrollIntoView({ block: "center" });
   }
 
+  // ---- new, renamed and deleted files ----
+
+  /** Asks for a name and makes a new file (opened) or folder in `dir`; "src/x.ts" makes the folders too. */
+  async newEntry(dir: string, folder: boolean) {
+    const where = relative(this.root, dir) || this.current.name;
+    const name = await prompt({
+      title: folder ? t("files.newFolderTitle") : t("files.newFileTitle"),
+      message: t("files.newBody", { where }),
+      confirm: t("files.create"),
+      placeholder: folder ? "components" : "index.ts",
+    });
+    if (!name) return;
+    try {
+      const path = await ipc.createEntry(dir, name, folder);
+      await this.revealInTree(path, folder);
+      if (!folder) await this.openFile(path);
+    } catch (e) {
+      toast(errorText(e), "error");
+    }
+  }
+
+  /** The open tabs showing `path` or something inside it (a folder). */
+  private tabsUnder(path: string) {
+    return this.tabs.filter((tb) => tb.path === path || tb.path.startsWith(path + "/") || tb.path.startsWith(path + "\\"));
+  }
+
+  async renameEntry(path: string, isDir: boolean) {
+    const old = baseName(path);
+    const name = await prompt({ title: t("files.renameTitle", { name: old }), message: t("files.renameBody"), confirm: t("files.rename"), value: old });
+    if (!name || name === old) return;
+    if (this.tabsUnder(path).some(isDirty)) return toast(t("files.saveFirst"), "error");
+    try {
+      const to = await ipc.renameEntry(path, name);
+      // Open tabs follow the file (or the files in the folder) to the new name.
+      for (const tb of this.tabsUnder(path)) {
+        const moved = to + tb.path.slice(path.length);
+        const wasActive = this.active === tb.id;
+        tb.path = moved;
+        if (tb.kind === "file") {
+          tb.id = `file:${moved}`;
+          tb.title = baseName(moved);
+        }
+        if (wasActive) this.active = tb.id;
+      }
+      await this.loadDir(dirName(path));
+      await this.revealInTree(to, isDir);
+    } catch (e) {
+      toast(errorText(e), "error");
+    }
+  }
+
+  async deleteEntry(path: string, isDir: boolean) {
+    const name = baseName(path);
+    // A checkpoint first, so it can come back from the Checkpoints tab.
+    const canUndo = settings.checkpoints && !this.checkpointsOff;
+    const ok = await confirm({
+      title: t("files.deleteTitle", { name }),
+      message: `${isDir ? t("files.deleteFolderBody") : t("files.deleteFileBody")} ${canUndo ? t("files.deleteUndo") : t("files.deleteNoUndo")}`,
+      confirm: t("files.delete"),
+      danger: true,
+    });
+    if (!ok) return;
+    if (canUndo) await this.takeCheckpoint("before-delete");
+    for (const tb of this.tabsUnder(path)) await this.closeTab(tb.id, true);
+    try {
+      await ipc.deleteEntry(path);
+      toast(t("files.deleted", { name }), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      this.loadDir(dirName(path));
+    }
+  }
+
   toggleDir(path: string) {
     if (this.expanded.has(path)) {
       this.expanded.delete(path);

@@ -8,7 +8,7 @@
   import { matchNames } from "../lib/search";
   import { fileIcon } from "../lib/fileIcons";
   import { join } from "../lib/paths";
-  import { mod, toast } from "../lib/ui.svelte";
+  import { mod, openMenu, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
@@ -26,6 +26,15 @@
   function refresh() {
     for (const dir of [...project.tree.keys()]) project.loadDir(dir);
     if (project.allFiles) project.loadAllFiles();
+  }
+
+  /** Right-click on the empty part of the tree: new things at the project's top. */
+  function rootMenu(e: MouseEvent) {
+    if ((e.target as Element).closest(".node, .result, .line")) return;
+    openMenu(e, [
+      { label: t("files.newFile"), icon: "file-plus", run: () => project.newEntry(root, false) },
+      { label: t("files.newFolder"), icon: "folder-plus", run: () => project.newEntry(root, true) },
+    ]);
   }
 
   function collapse() {
@@ -144,6 +153,8 @@
 <section class="tree">
   <div class="panel-head">
     <span class="panel-title">{t("tree.title")}</span>
+    <button class="icon-btn" onclick={() => project.newEntry(root, false)} title={t("files.newFileTitle")} aria-label={t("files.newFileTitle")}><Icon name="file-plus" size={13} /></button>
+    <button class="icon-btn" onclick={() => project.newEntry(root, true)} title={t("files.newFolderTitle")} aria-label={t("files.newFolderTitle")}><Icon name="folder-plus" size={13} /></button>
     <button class="icon-btn" onclick={refresh} title={t("tree.refresh")} aria-label={t("tree.refresh")}><Icon name="refresh" size={13} /></button>
     <button class="icon-btn" onclick={collapse} title={t("tree.collapse")} aria-label={t("tree.collapse")}><Icon name="down" size={13} /></button>
   </div>
@@ -184,7 +195,7 @@
     {/if}
   </div>
 
-  <div class="items" role="tree">
+  <div class="items" role="tree" oncontextmenu={rootMenu}>
     {#if !searching}
       {#if mode === "names" && focused}<p class="hint">{t("search.hint")}</p>{/if}
       {#each entries as entry (entry.path)}

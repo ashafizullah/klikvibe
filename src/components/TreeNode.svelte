@@ -4,7 +4,7 @@
   import { mediaKind } from "../lib/media";
   import { fileIcon } from "../lib/fileIcons";
   import { errorText, ipc } from "../lib/ipc";
-  import { relative } from "../lib/paths";
+  import { dirName, relative } from "../lib/paths";
   import { copyText, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -21,6 +21,16 @@
   const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
   function menu(e: MouseEvent) {
     const rel = relative(project.root, entry.path) ?? entry.path;
+    // New things go in this folder, or next to this file.
+    const folder = entry.dir ? entry.path : dirName(entry.path);
+    const manage: MenuItem[] = [
+      "sep",
+      { label: t("files.newFile"), icon: "file-plus", run: () => project.newEntry(folder, false) },
+      { label: t("files.newFolder"), icon: "folder-plus", run: () => project.newEntry(folder, true) },
+      "sep",
+      { label: t("files.renameMenu"), run: () => project.renameEntry(entry.path, entry.dir) },
+      { label: t("files.deleteMenu"), run: () => project.deleteEntry(entry.path, entry.dir) },
+    ];
     const where: MenuItem[] = [
       { label: t("menu.copyPath"), run: () => copyText(entry.path) },
       { label: t("menu.copyRelative"), run: () => copyText(rel) },
@@ -31,6 +41,7 @@
         { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`@${rel}/ `) },
         "sep",
         { label: open ? t("menu.collapse") : t("menu.expand"), run: () => project.toggleDir(entry.path) },
+        ...manage,
         "sep",
         ...where,
       ]);
@@ -53,6 +64,7 @@
         ? [{ label: t("media.openExternally"), run: () => ipc.openExternally(entry.path).catch((err) => toast(errorText(err), "error")) }]
         : []),
       ...git,
+      ...manage,
       "sep",
       ...where,
     ]);

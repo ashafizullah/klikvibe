@@ -130,6 +130,10 @@ export const ipc = {
   listFiles: (root: string) => invoke<FileList>("list_files", { root }),
   searchText: (root: string, query: string, include: string | null) => invoke<TextSearch>("search_text", { root, query, include }),
   writeFile: (path: string, text: string) => invoke<void>("write_file", { path, text }),
+  /** Returns the new file's or folder's path. */
+  createEntry: (dir: string, name: string, folder: boolean) => invoke<string>("create_entry", { dir, name, folder }),
+  renameEntry: (path: string, name: string) => invoke<string>("rename_entry", { path, name }),
+  deleteEntry: (path: string) => invoke<void>("delete_entry", { path }),
   openExternally: (path: string) => invoke<void>("open_externally", { path }),
   clipboardText: () => invoke<string>("clipboard_text"),
 

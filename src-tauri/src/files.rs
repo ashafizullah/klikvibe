@@ -203,6 +203,29 @@ fn snippet(path: &str, line_no: usize, line: &str, start: usize, end: usize) -> 
     }
 }
 
+/// Makes a new empty file (with the folders on the way) or a new folder; `path` comes from Projects::fresh.
+pub fn create(path: &Path, folder: bool) -> AppResult<()> {
+    if folder {
+        std::fs::create_dir_all(path)?;
+    } else {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::OpenOptions::new().write(true).create_new(true).open(path)?;
+    }
+    Ok(())
+}
+
+/// A name for renaming: one plain file or folder name.
+pub fn plain_name(name: &str) -> AppResult<&str> {
+    let n = name.trim();
+    let mut parts = Path::new(n).components();
+    match (parts.next(), parts.next()) {
+        (Some(std::path::Component::Normal(c)), None) if c != ".git" => Ok(n),
+        _ => Err(crate::error::AppError::msg("Use a plain name, without / or ..")),
+    }
+}
+
 pub fn write(path: &Path, text: &str) -> AppResult<()> {
     std::fs::write(path, text)?;
     Ok(())
