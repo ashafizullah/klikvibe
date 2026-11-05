@@ -3,11 +3,15 @@
   import { languageName } from "../lib/languages";
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
-  import { mod } from "../lib/ui.svelte";
+  import { mod, toast } from "../lib/ui.svelte";
+  import type { Tab } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import CodeView from "./CodeView.svelte";
   import DiffView from "./DiffView.svelte";
+  import MediaView from "./MediaView.svelte";
+  import { errorText, ipc } from "../lib/ipc";
+  import { hasSource } from "../lib/media";
 
   const project = useProject();
   const tab = $derived(project.activeTab());
@@ -22,6 +26,12 @@
     }
   }
 
+  const tabIcon = (tb: Tab) => (tb.kind === "file" && tb.media ? tb.media : ICON[tb.kind]);
+
+  function openExternally(path: string) {
+    ipc.openExternally(path).catch((e) => toast(errorText(e), "error"));
+  }
+
   function toggleWrap() {
     settings.wrap = !settings.wrap;
     persist();
@@ -34,7 +44,7 @@
       {#each project.tabs as tb (tb.id)}
         <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1">
           <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} title={tb.path}>
-            <Icon name={ICON[tb.kind]} size={13} />
+            <Icon name={tabIcon(tb)} size={13} />
             <span class="tab-name">{tb.title}</span>
           </button>
           <button class="tab-close" class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
@@ -55,7 +65,11 @@
       </div>
     {/if}
     {#if tab.kind === "file"}
-      {#if tab.loading}
+      {#if tab.media}
+        {#key tab.id}
+          <MediaView {tab} onopen={() => openExternally(tab.path)} />
+        {/key}
+      {:else if tab.loading}
         <p class="empty-note">{t("common.loading")}</p>
       {:else if tab.binary || tab.tooLarge}
         <div class="notice">
@@ -73,8 +87,16 @@
         {#if isDirty(tab)}
           <button class="btn ghost tiny" onclick={() => project.saveTab(tab)}><Icon name="save" size={12} />{t("tabs.save")} <span class="kbd">{mod}S</span></button>
         {/if}
-        <button class="btn ghost tiny" class:on={settings.wrap} onclick={toggleWrap} title={t("tabs.wrap")}><Icon name="wrap" size={12} /></button>
-        <span>{languageName(tab.title)}</span>
+        {#if tab.media}
+          {#if hasSource(tab.path)}
+            <button class="btn ghost tiny" onclick={() => project.showSource(tab)}><Icon name="code" size={12} />{t("media.source")}</button>
+          {/if}
+          <button class="btn ghost tiny" onclick={() => openExternally(tab.path)}><Icon name="external" size={12} />{t("media.openExternally")}</button>
+          <span>{t(`media.${tab.media}`)}</span>
+        {:else}
+          <button class="btn ghost tiny" class:on={settings.wrap} onclick={toggleWrap} title={t("tabs.wrap")}><Icon name="wrap" size={12} /></button>
+          <span>{languageName(tab.title)}</span>
+        {/if}
       </footer>
     {:else}
       {#key tab.id}

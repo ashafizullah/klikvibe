@@ -43,6 +43,16 @@ const en = {
   "editor.tipGit": "See each change as a diff in the Git panel",
   "editor.tipTree": "Files the agent just touched pulse in the tree",
 
+  "media.openExternally": "Open in default app",
+  "media.source": "View source",
+  "media.error": "This file couldn't be shown here. Open it in its default app instead.",
+  "media.actualSize": "Click for actual size",
+  "media.fit": "Click to fit the window",
+  "media.image": "Image",
+  "media.video": "Video",
+  "media.audio": "Audio",
+  "media.pdf": "PDF",
+
   "diff.changes": "Changes in {name}",
   "diff.commit": "Commit {hash}",
   "diff.none": "No changes.",

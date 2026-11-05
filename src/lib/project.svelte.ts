@@ -7,6 +7,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import { errorText, ipc, type Change, type Commit, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
+import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
 import { toast } from "./ui.svelte";
 
@@ -26,9 +27,11 @@ export interface Tab {
   tooLarge: boolean;
   /** The file changed on disk while it had unsaved edits here. */
   changedOnDisk: boolean;
-  /** Bumped when the text is replaced from outside the editor (a reload). */
+  /** Bumped when the text is replaced from outside the editor (a reload), or a previewed file changes. */
   revision: number;
   loading: boolean;
+  /** Shown as a preview (image, video, audio, PDF) instead of as text. */
+  media: MediaKind | null;
 }
 
 /** How long a file stays marked as "just changed" in the tree. */
@@ -39,7 +42,7 @@ export const isDirty = (tab: Tab) => tab.kind === "file" && tab.text !== tab.sav
 const lastLines = (s: string) => s.trim().split("\n").slice(-3).join("\n");
 
 function newTab(kind: TabKind, id: string, title: string, path: string): Tab {
-  return { id, kind, title, path, text: "", saved: "", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true };
+  return { id, kind, title, path, text: "", saved: "", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null };
 }
 
 /** One open project. */
@@ -147,7 +150,17 @@ export class ProjectState {
 
   async openFile(path: string) {
     const { tab, fresh } = this.show(newTab("file", `file:${path}`, baseName(path), path));
-    if (fresh) await this.readInto(tab);
+    if (!fresh) return;
+    tab.media = mediaKind(path);
+    if (tab.media) tab.loading = false;
+    else await this.readInto(tab);
+  }
+
+  /** Switches a previewed text file (an SVG) to its source. */
+  async showSource(tab: Tab) {
+    tab.media = null;
+    tab.loading = true;
+    await this.readInto(tab);
   }
 
   async openDiff(change: Change) {
@@ -190,7 +203,7 @@ export class ProjectState {
   }
 
   async saveTab(tab: Tab | undefined = this.activeTab()) {
-    if (!tab || tab.kind !== "file" || tab.binary || tab.tooLarge) return;
+    if (!tab || tab.kind !== "file" || tab.media || tab.binary || tab.tooLarge) return;
     try {
       await ipc.writeFile(tab.path, tab.text);
       tab.saved = tab.text;
@@ -229,7 +242,9 @@ export class ProjectState {
     }
     for (const tab of this.tabs) {
       if (changed && !changed.has(tab.path)) continue;
-      if (tab.kind === "file") {
+      if (tab.kind === "file" && tab.media) {
+        tab.revision++;
+      } else if (tab.kind === "file") {
         if (!isDirty(tab)) this.readInto(tab);
         else tab.changedOnDisk = true;
       } else if (tab.kind === "diff") {

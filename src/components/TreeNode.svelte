@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Entry } from "../lib/ipc";
   import { useProject } from "../lib/project.svelte";
+  import { mediaKind } from "../lib/media";
   import Icon from "./Icon.svelte";
   import TreeNode from "./TreeNode.svelte";
 
@@ -29,7 +30,7 @@
     <Icon name={open ? "open" : "folder"} size={14} class="kind dir" />
   {:else}
     <span class="chev-space"></span>
-    <Icon name="code" size={14} class="kind" />
+    <Icon name={mediaKind(entry.name) ?? "code"} size={14} class="kind" />
   {/if}
   <span class="label-text {change?.kind ?? ''}" class:inside={changedInside}>{entry.name}</span>
   {#if fresh}<span class="fresh-dot" aria-hidden="true"></span>{/if}

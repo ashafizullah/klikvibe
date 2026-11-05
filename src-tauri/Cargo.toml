@@ -31,6 +31,8 @@ ignore = "0.4"
 # Telling the window when files change on disk (an agent at work).
 notify = "8"
 notify-debouncer-mini = "0.7"
+# Decoding file paths in media:// URLs.
+percent-encoding = "2"
 tauri-plugin-updater = "2"
 
 # Debug builds keep line numbers for backtraces but not full debug info.

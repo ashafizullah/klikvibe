@@ -2083,6 +2083,7 @@ dependencies = [
  "ignore",
  "notify",
  "notify-debouncer-mini",
+ "percent-encoding",
  "portable-pty",
  "serde",
  "serde_json",

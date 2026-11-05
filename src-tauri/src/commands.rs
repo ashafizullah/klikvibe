@@ -11,6 +11,7 @@ use std::path::{Component, Path, PathBuf};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> AppResult<T> + Send + 'static) -> AppResult<T> {
     tauri::async_runtime::spawn_blocking(f).await.map_err(|e| AppError::msg(e.to_string()))?
@@ -85,6 +86,17 @@ pub async fn read_file(projects: State<'_, Projects>, path: String) -> AppResult
 pub async fn write_file(projects: State<'_, Projects>, path: String, text: String) -> AppResult<()> {
     let file = projects.writable(&path)?;
     blocking(move || files::write(&file, &text)).await
+}
+
+/// Opens a media file (image, video, audio, PDF) in its default app. Nothing
+/// else: opening an arbitrary project file this way could run it.
+#[tauri::command]
+pub fn open_externally(app: AppHandle, projects: State<'_, Projects>, path: String) -> AppResult<()> {
+    let file = projects.existing(&path)?;
+    if crate::media::mime(&file).is_none() {
+        return Err(AppError::msg("Only images, video, audio and PDFs open this way"));
+    }
+    app.opener().open_path(file.display().to_string(), None::<&str>).map_err(|e| AppError::msg(e.to_string()))
 }
 
 // ---- git ----

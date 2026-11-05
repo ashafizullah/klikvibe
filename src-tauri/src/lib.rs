@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod files;
 mod git;
+mod media;
 mod projects;
 mod terminal;
 mod updater;
@@ -43,6 +44,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Images, video, audio and PDFs from the open projects (see media.rs).
+        .register_asynchronous_uri_scheme_protocol("media", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || responder.respond(media::serve(&app.state::<projects::Projects>(), &request)));
+        })
         .manage(terminal::Terminals::default())
         .manage(watch::Watchers::default())
         .setup(|app| {
@@ -70,6 +76,7 @@ pub fn run() {
             commands::list_dir,
             commands::read_file,
             commands::write_file,
+            commands::open_externally,
             commands::git_status,
             commands::git_log,
             commands::git_diff,

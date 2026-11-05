@@ -45,6 +45,16 @@ const id: Record<Key, string> = {
   "editor.tipGit": "Lihat setiap perubahan sebagai diff di panel Git",
   "editor.tipTree": "File yang baru disentuh agen berkedip di pohon file",
 
+  "media.openExternally": "Buka di aplikasi bawaan",
+  "media.source": "Lihat kode",
+  "media.error": "File ini tidak bisa ditampilkan di sini. Buka di aplikasi bawaannya saja.",
+  "media.actualSize": "Klik untuk ukuran asli",
+  "media.fit": "Klik agar pas di jendela",
+  "media.image": "Gambar",
+  "media.video": "Video",
+  "media.audio": "Audio",
+  "media.pdf": "PDF",
+
   "diff.changes": "Perubahan di {name}",
   "diff.commit": "Commit {hash}",
   "diff.none": "Tidak ada perubahan.",
