@@ -5,15 +5,22 @@
   import { t } from "../lib/i18n/index.svelte";
   import { updates } from "../lib/updates.svelte";
   import Icon from "./Icon.svelte";
+  import { isLastPanel, setLayout, togglePanel } from "../lib/layout";
+  import { treeShown } from "../lib/grid";
   import McpBadge from "./McpBadge.svelte";
 
   const project = $derived(currentProject());
   const git = $derived(project?.git);
 
-  function toggle(key: "showTree" | "showGit" | "showTerminal") {
-    settings[key] = !settings[key];
-    persist();
-  }
+  const columns = $derived(settings.layout === "columns");
+  const TERMINAL = { key: "showTerminal", icon: "terminal", label: "bar.terminal", keys: "Ctrl+`" } as const;
+  const CODE_AND_GIT = [
+    { key: "showTree", icon: "panel-left", label: "bar.files", keys: `${mod}B` },
+    { key: "showCode", icon: "code", label: "bar.code", keys: `${mod}⇧E` },
+    { key: "showGit", icon: "panel-right", label: "bar.git", keys: `${mod}⇧G` },
+  ] as const;
+  // In the order the panels sit on screen.
+  const PANELS = $derived(columns ? [TERMINAL, ...CODE_AND_GIT] : [...CODE_AND_GIT, TERMINAL]);
 
   /** Closes projects one by one; stops when the user keeps unsaved edits in one. */
   async function closeMany(list: ProjectState[]) {
@@ -77,14 +84,28 @@
   </button>
   {#if project}
     <div class="toggles">
-      <button class="icon-btn" class:on={settings.showTree} onclick={() => toggle("showTree")} title={`${t("bar.files")} (${mod}B)`} aria-label={t("bar.files")} aria-pressed={settings.showTree}>
-        <Icon name="panel-left" size={15} />
-      </button>
-      <button class="icon-btn" class:on={settings.showTerminal} onclick={() => toggle("showTerminal")} title={t("bar.terminal") + " (Ctrl+`)"} aria-label={t("bar.terminal")} aria-pressed={settings.showTerminal}>
-        <Icon name="terminal" size={15} />
-      </button>
-      <button class="icon-btn" class:on={settings.showGit} onclick={() => toggle("showGit")} title={`${t("bar.git")} (${mod}⇧G)`} aria-label={t("bar.git")} aria-pressed={settings.showGit}>
-        <Icon name="panel-right" size={15} />
+      {#each PANELS as p (p.key)}
+        {@const on = p.key === "showTree" ? settings.showCode && treeShown(settings) : settings[p.key]}
+        <button
+          class="icon-btn"
+          class:on
+          onclick={() => togglePanel(p.key)}
+          disabled={isLastPanel(p.key)}
+          title={`${t(p.label)} (${p.keys})`}
+          aria-label={t(p.label)}
+          aria-pressed={on}
+        >
+          <Icon name={p.icon} size={15} />
+        </button>
+      {/each}
+      <span class="sep"></span>
+      <button
+        class="icon-btn"
+        onclick={() => setLayout(columns ? "classic" : "columns")}
+        title={columns ? t("bar.layoutClassic") : t("bar.layoutColumns")}
+        aria-label={columns ? t("bar.layoutClassic") : t("bar.layoutColumns")}
+      >
+        <Icon name={columns ? "panel-bottom" : "columns"} size={15} />
       </button>
     </div>
   {/if}
@@ -256,7 +277,14 @@
   }
   .toggles {
     display: flex;
+    align-items: center;
     gap: 2px;
     flex: none;
+  }
+  .sep {
+    width: 1px;
+    height: 16px;
+    margin: 0 4px;
+    background: var(--line);
   }
 </style>

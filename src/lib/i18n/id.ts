@@ -23,6 +23,9 @@ const id: Record<Key, string> = {
   "bar.closeProject": "Tutup proyek",
   "bar.files": "File",
   "bar.git": "Git",
+  "bar.code": "Kode",
+  "bar.layoutColumns": "Berdampingan: Terminal | Kode | Git",
+  "bar.layoutClassic": "Terminal di bawah kode",
   "bar.terminal": "Terminal",
 
   "tree.title": "File",

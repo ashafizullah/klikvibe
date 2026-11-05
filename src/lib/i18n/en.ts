@@ -21,6 +21,9 @@ const en = {
   "bar.closeProject": "Close project",
   "bar.files": "Files",
   "bar.git": "Git",
+  "bar.code": "Code",
+  "bar.layoutColumns": "Side by side: Terminal | Code | Git",
+  "bar.layoutClassic": "Terminal under the code",
   "bar.terminal": "Terminal",
 
   "tree.title": "Files",

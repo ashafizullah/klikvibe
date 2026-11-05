@@ -4,7 +4,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { errorText, ipc, type Project } from "./lib/ipc";
   import { currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
-  import { persist, settings } from "./lib/settings.svelte";
+  import { settings } from "./lib/settings.svelte";
   import { toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
   import { initUpdates } from "./lib/updates.svelte";
@@ -17,6 +17,7 @@
   import AboutDialog from "./components/AboutDialog.svelte";
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
+  import { togglePanel } from "./lib/layout";
   import Icon from "./components/Icon.svelte";
 
   const project = $derived(currentProject());
@@ -47,17 +48,12 @@
     }
   }
 
-  function toggle(key: "showTree" | "showGit" | "showTerminal") {
-    settings[key] = !settings[key];
-    persist();
-  }
-
   function onKeydown(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.ctrlKey && e.key === "`") {
       e.preventDefault();
-      if (project) toggle("showTerminal");
+      if (project) togglePanel("showTerminal");
     } else if (e.ctrlKey && e.key === "Tab") {
       // Next / previous project tab.
       e.preventDefault();
@@ -84,10 +80,13 @@
       if (project.active) project.closeTab(project.active);
     } else if (mod && !e.shiftKey && key === "b") {
       e.preventDefault();
-      toggle("showTree");
+      togglePanel("showTree");
     } else if (mod && e.shiftKey && key === "g") {
       e.preventDefault();
-      toggle("showGit");
+      togglePanel("showGit");
+    } else if (mod && e.shiftKey && key === "e") {
+      e.preventDefault();
+      togglePanel("showCode");
     }
   }
 

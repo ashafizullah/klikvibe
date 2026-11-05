@@ -2,12 +2,14 @@
   // Shells in the project folder: one for the agent, more for a dev server or tests.
   import { useProject } from "../lib/project.svelte";
   import { persist, settings } from "../lib/settings.svelte";
+  import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, agentById } from "../lib/agents";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
 
-  let { shown }: { shown: boolean } = $props();
+  /** `fill`: the terminal takes its whole area (a column) instead of a resizable height under the code. */
+  let { shown, fill }: { shown: boolean; fill: boolean } = $props();
   const project = useProject();
 
   interface Shell {
@@ -60,7 +62,7 @@
   }
 </script>
 
-{#if !settings.showTerminal}
+{#if !settings.showTerminal && !fill}
   <!-- Hidden terminals keep running; this strip brings them back. -->
   <button class="collapsed" onclick={() => ((settings.showTerminal = true), persist())} title={`${t("terminal.show")} (Ctrl+\`)`}>
     <Icon name="terminal" size={13} />
@@ -72,8 +74,8 @@
   </button>
 {/if}
 
-<section class="terminal" class:hidden={!settings.showTerminal} style:height="{settings.terminalHeight}px" aria-label={t("terminal.title")}>
-  <div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>
+<section class="terminal" class:hidden={!settings.showTerminal} class:fill style:height={fill ? null : `${settings.terminalHeight}px`} aria-label={t("terminal.title")}>
+  {#if !fill}<div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>{/if}
   <div class="head">
     <span class="title"><Icon name="terminal" size={14} />{t("terminal.title")}</span>
     <div class="shells">
@@ -96,7 +98,9 @@
         <Icon name="sparkles" size={13} />{t("terminal.runAgent")}
       </button>
     </div>
-    <button class="icon-btn" onclick={() => ((settings.showTerminal = false), persist())} title={t("terminal.hide")} aria-label={t("terminal.hide")}><Icon name="down" /></button>
+    <button class="icon-btn" onclick={() => togglePanel("showTerminal")} disabled={isLastPanel("showTerminal")} title={t("terminal.hide")} aria-label={t("terminal.hide")}>
+      <Icon name={fill ? "close" : "down"} size={fill ? 14 : 16} />
+    </button>
   </div>
   <div class="body">
     {#if cwd}
@@ -110,6 +114,7 @@
 <style>
   .terminal {
     position: relative;
+    z-index: 1;
     flex: none;
     display: flex;
     flex-direction: column;
@@ -118,6 +123,11 @@
   }
   .terminal.hidden {
     display: none;
+  }
+  .terminal.fill {
+    flex: 1;
+    min-height: 0;
+    border-top: none;
   }
   .collapsed {
     height: 28px;

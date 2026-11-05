@@ -149,6 +149,8 @@
     display: flex;
     flex-direction: column;
     background: var(--canvas);
+    /* A tall terminal squeezes this area; nothing in it may spill over the terminal. */
+    overflow: hidden;
   }
   .tabs {
     height: 34px;
@@ -282,10 +284,13 @@
   }
   .welcome {
     flex: 1;
+    min-height: 0;
     display: flex;
-    align-items: center;
+    /* Centered while it fits; once it doesn't, it stays at the top and the terminal covers the rest. */
+    align-items: safe center;
     justify-content: center;
     padding: 24px;
+    overflow: hidden;
   }
   .welcome-card {
     max-width: 460px;

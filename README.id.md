@@ -95,6 +95,7 @@ Kalau KlikVibe sudah berjalan, peluncuran kedua dengan folder (`klikvibe <folder
 | Simpan | ⌘S | Ctrl+S |
 | Tutup tab | ⌘W | Ctrl+W |
 | Panel file | ⌘B | Ctrl+B |
+| Panel kode | ⌘⇧E | Ctrl+Shift+E |
 | Panel Git | ⌘⇧G | Ctrl+Shift+G |
 | Terminal | Ctrl+` | Ctrl+` |
 | Commit (di kotak pesan) | ⌘↵ | Ctrl+Enter |

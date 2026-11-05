@@ -4,13 +4,23 @@
 /** auto: download in the background, install on quit; notify: ask first; off: only on request. */
 export type UpdateMode = "auto" | "notify" | "off";
 
+/** classic: the terminal under the code; columns: Terminal | Code | Git side by side. */
+export type Layout = "classic" | "columns";
+
 interface Stored {
+  layout: Layout;
   showTree: boolean;
+  /** The file tree in the columns layout: off by default, the editor's tabs are enough there. */
+  showTreeColumns: boolean;
+  /** The code column: the editor (and the file tree with it). */
+  showCode: boolean;
   showGit: boolean;
   showTerminal: boolean;
   treeWidth: number;
   gitWidth: number;
   terminalHeight: number;
+  /** The terminal column's width in the columns layout. */
+  terminalWidth: number;
   /** The agent the terminal's quick button types and the MCP setup is shown for (an id from agents.ts). */
   agent: string;
   /** Run the local MCP server for the user's agent. */
@@ -29,12 +39,16 @@ export let hadSettings = false;
 
 function load(): Stored {
   const fallback: Stored = {
+    layout: "classic",
     showTree: true,
+    showTreeColumns: false,
+    showCode: true,
     showGit: true,
     showTerminal: true,
     treeWidth: 250,
     gitWidth: 320,
     terminalHeight: 280,
+    terminalWidth: 560,
     agent: "claude",
     mcpEnabled: false,
     fontSize: 13,
