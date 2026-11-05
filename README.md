@@ -15,6 +15,8 @@
   <img src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-stable-000000?logo=rust" alt="Rust">
+  <a href="https://github.com/ashafizullah/klikvibe/releases/latest"><img src="https://img.shields.io/github/v/release/ashafizullah/klikvibe?include_prereleases&label=release" alt="Release"></a>
+  <a href="https://github.com/ashafizullah/klikvibe/releases"><img src="https://img.shields.io/github/downloads/ashafizullah/klikvibe/total?color=7c3aed" alt="Downloads"></a>
 </p>
 
 <p align="center">
@@ -37,9 +39,23 @@
 - **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no server.
 - English and Bahasa Indonesia.
 
-## Install and run
+## Install
 
-No release builds yet. To run from source you need [Bun](https://bun.sh/), stable Rust and Git. On Linux, also install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
+**macOS** (Apple Silicon + Intel, macOS 11 or later): run this in Terminal to install or update:
+```sh
+curl -fsSL https://raw.githubusercontent.com/ashafizullah/klikvibe/main/install.sh | bash
+```
+Or download `KlikVibe_*_universal.dmg` from the [latest release](https://github.com/ashafizullah/klikvibe/releases/latest), open it and drag KlikVibe into Applications. It is signed and notarized by Apple.
+
+**Windows**: download `KlikVibe_*_x64-setup.exe` (or the `.msi`) from the [latest release](https://github.com/ashafizullah/klikvibe/releases/latest).
+
+**Linux** (x86_64): download the `.deb`, `.rpm` or `.AppImage`.
+
+KlikVibe checks for a new version once a day and installs it when you agree. Git must be installed; the agent you want to run (Claude Code, Codex, Gemini CLI) too.
+
+## Build from source
+
+You need [Bun](https://bun.sh/), stable Rust and Git. On Linux, also install the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
 
 ```sh
 bun install

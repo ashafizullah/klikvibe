@@ -15,6 +15,8 @@
   <img src="https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white" alt="Tauri 2">
   <img src="https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white" alt="Svelte 5">
   <img src="https://img.shields.io/badge/Rust-stable-000000?logo=rust" alt="Rust">
+  <a href="https://github.com/ashafizullah/klikvibe/releases/latest"><img src="https://img.shields.io/github/v/release/ashafizullah/klikvibe?include_prereleases&label=release" alt="Release"></a>
+  <a href="https://github.com/ashafizullah/klikvibe/releases"><img src="https://img.shields.io/github/downloads/ashafizullah/klikvibe/total?color=7c3aed" alt="Downloads"></a>
 </p>
 
 <p align="center">
@@ -37,9 +39,23 @@
 - **Kecil dan offline.** Tauri 2 + Svelte 5 + Rust. Tanpa akun, tanpa telemetri, tanpa server.
 - Bahasa Inggris dan Bahasa Indonesia.
 
-## Instal dan jalankan
+## Instal
 
-Belum ada build rilis. Untuk menjalankan dari kode sumber, Anda butuh [Bun](https://bun.sh/), Rust stable, dan Git. Di Linux, pasang juga [prasyarat Tauri](https://v2.tauri.app/start/prerequisites/#linux).
+**macOS** (Apple Silicon + Intel, macOS 11 atau lebih baru): jalankan ini di Terminal untuk memasang atau memperbarui:
+```sh
+curl -fsSL https://raw.githubusercontent.com/ashafizullah/klikvibe/main/install.sh | bash
+```
+Atau unduh `KlikVibe_*_universal.dmg` dari [rilis terbaru](https://github.com/ashafizullah/klikvibe/releases/latest), buka, lalu seret KlikVibe ke Applications. Aplikasi ini sudah ditandatangani dan dinotarisasi Apple.
+
+**Windows**: unduh `KlikVibe_*_x64-setup.exe` (atau `.msi`) dari [rilis terbaru](https://github.com/ashafizullah/klikvibe/releases/latest).
+
+**Linux** (x86_64): unduh `.deb`, `.rpm`, atau `.AppImage`.
+
+KlikVibe memeriksa versi baru sekali sehari dan memasangnya setelah Anda setuju. Git harus sudah terpasang, begitu juga agen yang ingin Anda jalankan (Claude Code, Codex, Gemini CLI).
+
+## Build dari kode sumber
+
+Anda butuh [Bun](https://bun.sh/), Rust stable, dan Git. Di Linux, pasang juga [prasyarat Tauri](https://v2.tauri.app/start/prerequisites/#linux).
 
 ```sh
 bun install
