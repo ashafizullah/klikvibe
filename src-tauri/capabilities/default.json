@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window calls KlikVibe's own commands, confirmation dialogs, opening links and folders, and window dragging.",
+  "description": "The main window calls KlikVibe's own commands, opening links and folders, and window dragging.",
   "windows": [
     "main"
   ],
@@ -11,7 +11,6 @@
     "core:window:allow-internal-toggle-maximize",
     "core:window:allow-set-title",
     "core:app:allow-version",
-    "dialog:allow-ask",
     "opener:allow-open-url",
     "opener:allow-default-urls",
     "opener:allow-reveal-item-in-dir"

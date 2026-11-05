@@ -8,12 +8,14 @@
   import Icon from "./Icon.svelte";
 
   const alert = $derived(ui.alert);
-  const ICON = { update: "sparkles", success: "check", error: "alert" } as const;
+  const ICON = { update: "sparkles", success: "check", error: "alert", warning: "alert", danger: "alert" } as const;
   let box = $state<HTMLDivElement>();
 
-  // The last button (the main action) takes the focus, so Enter picks it.
+  // The main action (the last button) takes the focus so Enter picks it; when it destroys something, Cancel does.
   $effect(() => {
-    if (alert) tick().then(() => box?.querySelector<HTMLButtonElement>(".actions .btn:last-child")?.focus());
+    if (!alert) return;
+    const safe = alert.actions?.some((a) => a.danger);
+    tick().then(() => box?.querySelector<HTMLButtonElement>(safe ? ".actions .btn:first-child" : ".actions .btn:last-child")?.focus());
   });
 </script>
 
@@ -35,7 +37,7 @@
       {/if}
       <div class="actions">
         {#each alert.actions ?? [{ label: t("mcp.close"), value: "ok", primary: true }] as a (a.value)}
-          <button class="btn" class:primary={a.primary} onclick={() => closeAlert(a.value)}>{a.label}</button>
+          <button class="btn" class:primary={a.primary} class:danger={a.danger} onclick={() => closeAlert(a.value)}>{a.label}</button>
         {/each}
       </div>
     </div>
@@ -82,6 +84,14 @@
   .success .badge {
     background: color-mix(in srgb, var(--ok) 16%, transparent);
     color: var(--ok);
+  }
+  .warning .badge {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+  }
+  .danger .badge {
+    background: color-mix(in srgb, var(--danger) 16%, transparent);
+    color: var(--danger);
   }
   .error .badge {
     background: color-mix(in srgb, var(--accent-2) 16%, transparent);

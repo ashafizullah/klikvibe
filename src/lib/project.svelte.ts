@@ -3,14 +3,13 @@
 // while an agent (or anything else) changes files.
 import { getContext, setContext } from "svelte";
 import { listen } from "@tauri-apps/api/event";
-import { ask } from "@tauri-apps/plugin-dialog";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import type { EditorView } from "@codemirror/view";
 import { errorText, ipc, type Change, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
-import { toast } from "./ui.svelte";
+import { confirm, toast } from "./ui.svelte";
 import { settings } from "./settings.svelte";
 
 /** commitFile: one file's changes in a commit. */
@@ -54,6 +53,17 @@ function selectLines(view: EditorView, line: number, endLine: number) {
   const to = doc.line(Math.min(Math.max(from.number, endLine), doc.lines));
   view.dispatch({ selection: { anchor: from.from, head: to.to }, scrollIntoView: true });
   view.focus();
+}
+
+/** Asks before unsaved edits in `tabs` are thrown away (closing them, or their project). */
+function confirmDiscard(tabs: Tab[], project?: string): Promise<boolean> {
+  const one = tabs.length === 1;
+  return confirm({
+    title: project ? t("tabs.closeProjectTitle", { name: project }) : one ? t("tabs.discardTitle", { name: tabs[0].title }) : t("tabs.discardManyTitle"),
+    message: one ? t("tabs.discardBody", { name: tabs[0].title }) : t("tabs.discardManyBody", { count: tabs.length }),
+    confirm: project ? t("tabs.closeWithoutSaving") : t("tabs.discardConfirm"),
+    danger: true,
+  });
 }
 
 /** One open project. */
@@ -266,7 +276,7 @@ export class ProjectState {
     const i = this.tabs.findIndex((t) => t.id === id);
     if (i < 0) return;
     const tab = this.tabs[i];
-    if (!force && isDirty(tab) && !(await ask(t("tabs.discard", { name: tab.title }), { title: "KlikVibe", kind: "warning" }))) return;
+    if (!force && isDirty(tab) && !(await confirmDiscard([tab]))) return;
     this.tabs.splice(i, 1);
     if (this.active === id) this.active = this.tabs[Math.min(i, this.tabs.length - 1)]?.id ?? null;
   }
@@ -275,10 +285,7 @@ export class ProjectState {
   async closeTabs(ids: string[], keep?: string) {
     const closing = new Set(ids);
     const dirty = this.tabs.filter((tb) => closing.has(tb.id) && isDirty(tb));
-    if (dirty.length) {
-      const question = dirty.length === 1 ? t("tabs.discard", { name: dirty[0].title }) : t("tabs.discardMany", { count: dirty.length });
-      if (!(await ask(question, { title: "KlikVibe", kind: "warning" }))) return;
-    }
+    if (dirty.length && !(await confirmDiscard(dirty))) return;
     const at = this.tabs.findIndex((tb) => tb.id === this.active);
     this.tabs = this.tabs.filter((tb) => !closing.has(tb.id));
     if (this.active && closing.has(this.active)) {
@@ -407,9 +414,13 @@ export class ProjectState {
   async discard(change: Change) {
     const untracked = change.kind === "untracked";
     const name = baseName(change.path);
-    const question = untracked ? t("git.deleteAsk", { name }) : t("git.discardAsk", { name });
-    const okLabel = untracked ? t("git.menu.delete") : t("git.menu.discard");
-    if (!(await ask(question, { title: "KlikVibe", kind: "warning", okLabel, cancelLabel: t("common.cancel") }))) return;
+    const ok = await confirm({
+      title: untracked ? t("git.deleteTitle", { name }) : t("git.discardTitle", { name }),
+      message: untracked ? t("git.deleteBody") : t("git.discardBody"),
+      confirm: untracked ? t("git.menu.delete") : t("git.menu.discard"),
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await ipc.gitDiscard(this.root, change.path, change.from, untracked);
       // Its diff is now empty; a new file is gone altogether.
@@ -471,7 +482,7 @@ export function showProject(root: string | null) {
 /** Closes a project tab (and its terminals); false when the user keeps unsaved edits. */
 export async function closeProject(p: ProjectState): Promise<boolean> {
   const dirty = p.tabs.filter(isDirty);
-  if (dirty.length && !(await ask(`${p.current.name}: ${t("tabs.discardMany", { count: dirty.length })}`, { title: "KlikVibe", kind: "warning" }))) return false;
+  if (dirty.length && !(await confirmDiscard(dirty, p.current.name))) return false;
   const i = workspace.projects.indexOf(p);
   if (i < 0) return true;
   workspace.projects.splice(i, 1);

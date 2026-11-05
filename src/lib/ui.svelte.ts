@@ -12,12 +12,22 @@ export interface Toast {
 
 /** An in-app message with buttons (AlertDialog). */
 export interface AlertOptions {
-  tone: "update" | "success" | "error";
+  tone: "update" | "success" | "error" | "warning" | "danger";
   title: string;
   message: string;
   /** Release notes, rendered as safe Markdown. */
   markdown?: string;
-  actions?: { label: string; value: string; primary?: boolean }[];
+  /** The last one is the main action. With a `danger` action, Cancel (not it) has the focus. */
+  actions?: { label: string; value: string; primary?: boolean; danger?: boolean }[];
+}
+
+export interface ConfirmOptions {
+  title: string;
+  message: string;
+  /** The label of the button that goes ahead, e.g. "Discard changes". */
+  confirm: string;
+  /** Something is lost for good: a red button, and Cancel has the focus. */
+  danger?: boolean;
 }
 
 /** A right-click menu entry, or "sep" for a divider. */
@@ -36,6 +46,20 @@ export const ui = $state({
 export function showAlert(options: AlertOptions): Promise<string | null> {
   ui.alert?.resolve(null);
   return new Promise((resolve) => (ui.alert = { ...options, resolve }));
+}
+
+/** A yes/no question in the app's own dialog; true when the user goes ahead. */
+export async function confirm(o: ConfirmOptions): Promise<boolean> {
+  const choice = await showAlert({
+    tone: o.danger ? "danger" : "warning",
+    title: o.title,
+    message: o.message,
+    actions: [
+      { label: t("common.cancel"), value: "cancel" },
+      { label: o.confirm, value: "ok", primary: !o.danger, danger: o.danger },
+    ],
+  });
+  return choice === "ok";
 }
 
 export function closeAlert(value: string | null) {

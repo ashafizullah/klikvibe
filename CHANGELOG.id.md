@@ -17,6 +17,7 @@
 - Tooltip di semua tombol: arahkan kursor ke ikon untuk melihat fungsinya dan pintasannya.
 - Graph commit di riwayat Git: garis branch dan merge, label branch dan tag, penanda commit yang sedang dipakai, dan pilihan antara branch ini atau semua branch. Klik commit untuk melihat daftar file yang diubah (dengan jumlah baris ditambah dan dihapus) dan membuka diff tiap file; commit lengkapnya tinggal satu klik lagi.
 - Diff berdampingan: versi lama di kiri, versi baru di kanan, dua versi baris yang diedit sejajar dengan bagian yang berubah disorot. Tombol di header diff mengembalikan ke satu kolom.
+- Pertanyaan seperti "Buang perubahan?" memakai dialog KlikVibe sendiri, bukan dialog sistem; untuk tindakan yang tidak bisa dibatalkan tombolnya merah dan fokus ada di Batal.
 
 ## 0.1.0
 
