@@ -4,8 +4,10 @@
   import { i18n, t, type Key } from "../lib/i18n/index.svelte";
   import { copyText, mod, openMenu, openMenuBelow, reveal, revealLabel, type MenuItem } from "../lib/ui.svelte";
   import { branchUrl, commitUrl, forgeName, isMergeRequest, newRequestUrl } from "../lib/forge";
+  import { mergeTask, newTask, openTask, removeTask } from "../lib/project.svelte";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import type { Change, Commit } from "../lib/ipc";
+  import { ipc } from "../lib/ipc";
+  import type { Change, Commit, Worktree } from "../lib/ipc";
   import { join } from "../lib/paths";
   import Icon from "./Icon.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
@@ -98,6 +100,28 @@
     project.refreshGit(true);
   }
 
+  /** Parallel tasks: a new one, the others to open, and for a task, merging it back or removing it. */
+  async function tasksMenu(el: Element) {
+    const list: Worktree[] = await ipc.worktreeList(project.root).catch(() => []);
+    const main = list.find((w) => w.main);
+    const here = list.find((w) => w.path === project.root);
+    const items: MenuItem[] = [{ label: t("tasks.new"), icon: "plus", run: () => newTask(project) }];
+    const others = list.filter((w) => w.path !== project.root);
+    if (others.length) {
+      items.push("sep");
+      for (const w of others) {
+        const folder = w.path.split(/[\\/]/).pop() ?? w.path;
+        items.push({ label: w.main ? t("tasks.mainFolder", { name: folder }) : (w.branch ?? folder), icon: w.main ? "project" : "branch", hint: w.main ? undefined : folder, run: () => openTask(project, w.path) });
+      }
+    }
+    if (here && !here.main && here.branch) {
+      const branch = here.branch;
+      const into = main?.branch ?? "main";
+      items.push("sep", { label: t("tasks.mergeInto", { into }), icon: "pull", run: () => mergeTask(project, branch, into) }, { label: t("tasks.removeThis"), run: () => removeTask(project) });
+    }
+    openMenuBelow(el, items);
+  }
+
   /** The repository, this branch and a new pull (merge) request on the web. */
   function webMenu(el: Element) {
     const r = project.remote;
@@ -182,6 +206,9 @@
         <Icon name="branch" size={13} />
         <span class="mono">{git.branch ?? t("git.detached")}</span>
         {#if git.upstream}<span class="upstream ellipsis mono">→ {git.upstream}</span>{/if}
+        <button class="icon-btn tasks" class:alone={!project.remote} onclick={(e) => tasksMenu(e.currentTarget)} title={t("tasks.title")} aria-label={t("tasks.title")}>
+          <Icon name="branch-plus" size={12} />
+        </button>
         {#if project.remote}
           <button class="icon-btn web" onclick={(e) => webMenu(e.currentTarget)} title={t("forge.open", { name: forgeName(project.remote) })} aria-label={t("forge.open", { name: forgeName(project.remote) })}>
             <Icon name="external" size={12} />
@@ -688,11 +715,14 @@
   .cp-files {
     margin: 0 0 6px 30px;
   }
-  .web {
+  .web,
+  .tasks {
     width: 22px;
     height: 22px;
-    margin-left: auto;
     color: var(--muted);
+  }
+  .tasks {
+    margin-left: auto;
   }
   .scope {
     flex: none;

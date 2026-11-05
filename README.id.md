@@ -31,6 +31,7 @@
 - **Tahu saat agen butuh Anda.** Saat agen selesai bekerja lalu diam (menunggu jawaban, atau sudah selesai), KlikVibe menampilkan notifikasi, jadi Anda bisa mengerjakan hal lain sambil menunggu. Path di output-nya bisa diklik untuk membuka file di baris itu.
 - **Batalkan yang dilakukan agen.** Checkpoint menyimpan file Anda selama agen bekerja, terpisah dari commit; kembalikan salah satunya untuk kembali ke sebelum sebuah perubahan.
 - **Arahkan agen ke kode.** Klik kanan kode, file, atau diff lalu pilih "Tanya agen tentang ini" untuk menempelkan rujukannya ke terminal agen.
+- **Agen paralel.** Mulai tugas di branch dan folder sendiri (git worktree), biarkan satu agen bekerja di sana sementara agen lain di folder utama, lalu merge kembali.
 - **Pekerjaan agen terlihat langsung.** Pohon file, file yang terbuka, dan panel Git mengikuti isi disk saat file berubah. File yang baru disentuh berkedip di pohon file, dan file yang terbuka dimuat ulang sendiri, kecuali ada editan yang belum Anda simpan di sana.
 - **Kode saat Anda butuh.** CodeMirror 6 dengan pewarnaan sintaks untuk bahasa-bahasa umum, pencarian, dan edit lalu simpan (`⌘S` / `Ctrl+S`). Gambar, video, audio, dan PDF tampil sebagai pratinjau; file biner lain dan file yang sangat besar tidak dibuka.
 - **Git tanpa pindah aplikasi.**

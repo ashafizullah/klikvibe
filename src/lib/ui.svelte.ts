@@ -18,6 +18,8 @@ export interface AlertOptions {
   message: string;
   /** Release notes, rendered as safe Markdown. */
   markdown?: string;
+  /** A text field (prompt): the main action resolves with what was typed. */
+  input?: { placeholder?: string; value?: string };
   /** The last one is the main action. With a `danger` action, Cancel (not it) has the focus. */
   actions?: { label: string; value: string; primary?: boolean; danger?: boolean }[];
 }
@@ -67,6 +69,21 @@ export async function confirm(o: ConfirmOptions): Promise<boolean> {
     ],
   });
   return choice === "ok";
+}
+
+/** Asks for a line of text in the app's own dialog; null when cancelled or left empty. */
+export async function prompt(o: { title: string; message: string; confirm: string; placeholder?: string; value?: string }): Promise<string | null> {
+  const answer = await showAlert({
+    tone: "update",
+    title: o.title,
+    message: o.message,
+    input: { placeholder: o.placeholder, value: o.value },
+    actions: [
+      { label: t("common.cancel"), value: "\u0000cancel" },
+      { label: o.confirm, value: "\u0000ok", primary: true },
+    ],
+  });
+  return answer && answer !== "\u0000cancel" && answer.trim() ? answer.trim() : null;
 }
 
 export function closeAlert(value: string | null) {

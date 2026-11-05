@@ -11,12 +11,23 @@
   const alert = $derived(ui.alert);
   const ICON = { update: "sparkles", success: "check", error: "alert", warning: "alert", danger: "alert" } as const;
   let box = $state<HTMLDivElement>();
+  let text = $state("");
+  $effect(() => {
+    text = alert?.input?.value ?? "";
+  });
+
+  /** With a text field, the main action answers with the text. */
+  function choose(value: string) {
+    closeAlert(alert?.input && value === "\u0000ok" ? text : value);
+  }
 
   // The main action (the last button) takes the focus so Enter picks it; when it destroys something, Cancel does.
   $effect(() => {
     if (!alert) return;
     const safe = alert.actions?.some((a) => a.danger);
-    tick().then(() => box?.querySelector<HTMLButtonElement>(safe ? ".actions .btn:first-child" : ".actions .btn:last-child")?.focus());
+    tick().then(() =>
+      (alert?.input ? box?.querySelector<HTMLElement>("input.answer") : box?.querySelector<HTMLButtonElement>(safe ? ".actions .btn:first-child" : ".actions .btn:last-child"))?.focus(),
+    );
   });
 </script>
 
@@ -30,13 +41,22 @@
           <p id="alert-message">{alert.message}</p>
         </div>
       </div>
+      {#if alert.input}
+        <input
+          class="field answer"
+          bind:value={text}
+          placeholder={alert.input.placeholder}
+          spellcheck="false"
+          onkeydown={(e) => e.key === "Enter" && (e.preventDefault(), choose("\u0000ok"))}
+        />
+      {/if}
       {#if alert.markdown}
         <!-- Escaped first, then a fixed set of tags (markdown.ts). -->
         <div class="notes">{@html renderMarkdown(alert.markdown)}</div>
       {/if}
       <div class="actions">
         {#each alert.actions ?? [{ label: t("mcp.close"), value: "ok", primary: true }] as a (a.value)}
-          <button class="btn" class:primary={a.primary} class:danger={a.danger} onclick={() => closeAlert(a.value)}>{a.label}</button>
+          <button class="btn" class:primary={a.primary} class:danger={a.danger} onclick={() => choose(a.value)}>{a.label}</button>
         {/each}
       </div>
     </div>

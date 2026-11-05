@@ -78,6 +78,12 @@ export interface Checkpoint {
   note: string;
   files: number;
 }
+export interface Worktree {
+  path: string;
+  branch: string | null;
+  /** The repository's main folder. */
+  main: boolean;
+}
 export interface FsChanged {
   root: string;
   paths: string[];
@@ -135,6 +141,11 @@ export const ipc = {
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),
   gitRemote: (root: string) => invoke<string | null>("git_remote", { root }),
+  worktreeList: (root: string) => invoke<Worktree[]>("worktree_list", { root }),
+  worktreeAdd: (root: string, name: string) => invoke<Project>("worktree_add", { root, name }),
+  worktreeOpen: (root: string, path: string) => invoke<Project>("worktree_open", { root, path }),
+  worktreeMerge: (root: string, branch: string) => invoke<string>("worktree_merge", { root, branch }),
+  worktreeRemove: (root: string, path: string, force: boolean) => invoke<void>("worktree_remove", { root, path, force }),
   checkpointCreate: (root: string, reason: string, note?: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason, note: note ?? null }),
   checkpointList: (root: string) => invoke<Checkpoint[]>("checkpoint_list", { root }),
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),

@@ -4,7 +4,7 @@
 //! credentials fails with Git's own message.
 use crate::error::{AppError, AppResult};
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
@@ -417,11 +417,12 @@ pub fn ignore(file: &Path, rel: &str, dir: bool) -> AppResult<()> {
 //
 // Snapshots of the working tree while an agent works, so its changes can be
 // undone even before anything is committed. Each is a commit on a ref of its
-// own (refs/klikvibe/checkpoints, which `git push` leaves alone), built from a
+// own (refs/worktree/klikvibe/checkpoints: per worktree, so a task folder and the
+// main folder keep separate ones, and `git push` leaves it alone), built from a
 // separate index (.git/klikvibe-index), so the user's index, staging, stash,
 // branches and history are never touched. `.gitignore` applies, as for `git add -A`.
 
-const CHECKPOINTS: &str = "refs/klikvibe/checkpoints";
+const CHECKPOINTS: &str = "refs/worktree/klikvibe/checkpoints";
 const CHECKPOINT_AUTHOR: [(&str, &str); 4] = [
     ("GIT_AUTHOR_NAME", "KlikVibe"),
     ("GIT_AUTHOR_EMAIL", "checkpoints@klikvibe.local"),
@@ -553,6 +554,100 @@ pub fn clear_checkpoints(root: &Path) -> AppResult<()> {
         run(root, &["update-ref", "-d", CHECKPOINTS])?;
     }
     let _ = std::fs::remove_file(index);
+    Ok(())
+}
+
+// ---- worktrees: parallel tasks ----
+//
+// A task gets its own branch and its own folder next to the repository
+// (<repo>.worktrees/<repo>-<task>), opened as a project of its own so an
+// agent can work there while another works in the main folder.
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Worktree {
+    pub path: String,
+    /// None when detached.
+    pub branch: Option<String>,
+    /// The repository's main folder (not a linked worktree).
+    pub main: bool,
+}
+
+/// Parses `git worktree list --porcelain`.
+pub fn parse_worktrees(out: &str) -> Vec<Worktree> {
+    let mut list: Vec<Worktree> = Vec::new();
+    for line in out.lines() {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            let main = list.is_empty();
+            list.push(Worktree { path: path.into(), branch: None, main });
+        } else if let (Some(branch), Some(last)) = (line.strip_prefix("branch "), list.last_mut()) {
+            last.branch = Some(branch.trim_start_matches("refs/heads/").into());
+        }
+    }
+    list
+}
+
+pub fn worktrees(root: &Path) -> AppResult<Vec<Worktree>> {
+    Ok(parse_worktrees(&run(root, &["worktree", "list", "--porcelain"])?))
+}
+
+/// A task name as a branch and folder name: lower case, letters, digits and dashes.
+pub fn task_slug(name: &str) -> String {
+    let mut slug = String::new();
+    for c in name.trim().to_lowercase().chars() {
+        if c.is_ascii_alphanumeric() {
+            slug.push(c);
+        } else if !slug.ends_with('-') && !slug.is_empty() {
+            slug.push('-');
+        }
+    }
+    slug.trim_end_matches('-').chars().take(48).collect()
+}
+
+/// Makes a worktree for a new task on a new branch from the current commit; returns its folder.
+pub fn add_worktree(root: &Path, name: &str) -> AppResult<PathBuf> {
+    let slug = task_slug(name);
+    if slug.is_empty() {
+        return Err(AppError::msg("Give the task a name with letters or digits"));
+    }
+    let main = worktrees(root)?.into_iter().find(|w| w.main).ok_or_else(|| AppError::msg("No repository here"))?;
+    let main = PathBuf::from(main.path);
+    let repo = main.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "repo".into());
+    let parent = main.parent().ok_or_else(|| AppError::msg("The repository has no parent folder"))?;
+    let dir = parent.join(format!("{repo}.worktrees")).join(format!("{repo}-{slug}"));
+    if dir.exists() {
+        return Err(AppError::msg(format!("{} already exists", dir.display())));
+    }
+    let dir_s = dir.display().to_string();
+    run_all(root, &["worktree", "add", "-b", &slug, &dir_s])?;
+    Ok(dir)
+}
+
+/// The repository's main folder, for merging into it and removing worktrees from it.
+fn main_worktree(root: &Path) -> AppResult<PathBuf> {
+    worktrees(root)?.into_iter().find(|w| w.main).map(|w| PathBuf::from(w.path)).ok_or_else(|| AppError::msg("No repository here"))
+}
+
+/// Merges a task's branch into whatever the main folder has checked out (a merge commit, so the task stays visible).
+pub fn merge_task(root: &Path, branch: &str) -> AppResult<String> {
+    if branch.is_empty() || branch.starts_with('-') || run(root, &["check-ref-format", "--branch", branch]).is_err() {
+        return Err(AppError::msg("Invalid branch"));
+    }
+    run_all(&main_worktree(root)?, &["merge", "--no-ff", "--no-edit", branch])
+}
+
+/// Removes a task's worktree folder (`force`: even with uncommitted changes); the branch stays.
+pub fn remove_worktree(root: &Path, path: &str, force: bool) -> AppResult<()> {
+    let known = worktrees(root)?;
+    if !known.iter().any(|w| !w.main && w.path == path) {
+        return Err(AppError::msg("That folder isn't one of this repository's task worktrees"));
+    }
+    let mut args = vec!["worktree", "remove"];
+    if force {
+        args.push("--force");
+    }
+    args.push(path);
+    run_all(&main_worktree(root)?, &args)?;
     Ok(())
 }
 
@@ -739,6 +834,50 @@ mod tests {
         assert!(checkpoints(&dir, 10).unwrap().is_empty());
         assert!(restore_checkpoint(&dir, "not-a-hash").is_err());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn tasks_in_worktrees_merge_back() {
+        let base = std::env::temp_dir().join(format!("klikvibe-wt-{}", uuid::Uuid::new_v4()));
+        let dir = base.join("app");
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        commit(&dir, "First").unwrap();
+
+        assert_eq!(task_slug("  Fix the Login page! "), "fix-the-login-page");
+        let wt = add_worktree(&dir, "Fix login").unwrap();
+        assert!(wt.ends_with("app.worktrees/app-fix-login"));
+        let list = worktrees(&dir).unwrap();
+        assert_eq!(list.len(), 2);
+        assert!(list[0].main && !list[1].main);
+        assert_eq!(list[1].branch.as_deref(), Some("fix-login"));
+        assert!(add_worktree(&dir, "fix login").is_err(), "the folder exists");
+
+        // The task commits in its own folder, then merges into the main one.
+        std::fs::write(wt.join("b.txt"), "task\n").unwrap();
+        commit(&wt, "Task work").unwrap();
+        assert!(!dir.join("b.txt").exists());
+        merge_task(&wt, "fix-login").unwrap();
+        assert!(dir.join("b.txt").exists());
+        assert!(merge_task(&dir, "--evil").is_err());
+
+        // Each folder keeps its own checkpoints (refs under refs/worktree/ aren't shared).
+        checkpoint(&dir, "opened", "").unwrap().unwrap();
+        checkpoint(&wt, "opened", "").unwrap().unwrap();
+        assert_eq!(checkpoints(&dir, 10).unwrap().len(), 1);
+        assert_eq!(checkpoints(&wt, 10).unwrap().len(), 1);
+
+        // Uncommitted changes keep the folder unless forced.
+        std::fs::write(wt.join("c.txt"), "draft\n").unwrap();
+        let wt_s = list[1].path.clone();
+        assert!(remove_worktree(&dir, &wt_s, false).is_err());
+        remove_worktree(&dir, &wt_s, true).unwrap();
+        assert!(!wt.exists());
+        assert!(remove_worktree(&dir, &dir.display().to_string(), true).is_err(), "never the main folder");
+        std::fs::remove_dir_all(base).unwrap();
     }
 
     #[test]

@@ -2,7 +2,7 @@
 //! projects (see projects.rs); slow work runs off the main thread.
 use crate::error::{AppError, AppResult};
 use crate::files::{self, Entry, FileList, FileText, TextSearch};
-use crate::git::{self, Checkpoint, Commit, CommitFile, Status};
+use crate::git::{self, Checkpoint, Commit, CommitFile, Status, Worktree};
 use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
 use crate::terminal::{TerminalEvent, Terminals};
@@ -242,6 +242,46 @@ pub async fn checkpoint_clear(projects: State<'_, Projects>, root: String) -> Ap
 pub async fn git_remote(projects: State<'_, Projects>, root: String) -> AppResult<Option<String>> {
     let root = root_of(&projects, &root)?;
     blocking(move || Ok(git::remote_url(&root))).await
+}
+
+// ---- worktrees ----
+
+#[tauri::command]
+pub async fn worktree_list(projects: State<'_, Projects>, root: String) -> AppResult<Vec<Worktree>> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::worktrees(&root)).await
+}
+
+/// Makes a worktree for a new task and opens it as a project (the user asked for it).
+#[tauri::command]
+pub async fn worktree_add(projects: State<'_, Projects>, root: String, name: String) -> AppResult<Project> {
+    let root = root_of(&projects, &root)?;
+    let dir = blocking(move || git::add_worktree(&root, &name)).await?;
+    projects.admit(&dir)
+}
+
+/// Opens one of the repository's worktrees as a project; only folders Git lists as its worktrees.
+#[tauri::command]
+pub async fn worktree_open(projects: State<'_, Projects>, root: String, path: String) -> AppResult<Project> {
+    let root = root_of(&projects, &root)?;
+    let wanted = path.clone();
+    let known = blocking(move || git::worktrees(&root)).await?;
+    if !known.iter().any(|w| w.path == wanted) {
+        return Err(AppError::msg("That folder isn't one of this repository's worktrees"));
+    }
+    projects.admit(Path::new(&path))
+}
+
+#[tauri::command]
+pub async fn worktree_merge(projects: State<'_, Projects>, root: String, branch: String) -> AppResult<String> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::merge_task(&root, &branch)).await
+}
+
+#[tauri::command]
+pub async fn worktree_remove(projects: State<'_, Projects>, root: String, path: String, force: bool) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::remove_worktree(&root, &path, force)).await
 }
 
 #[tauri::command]

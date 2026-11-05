@@ -11,7 +11,7 @@ import { mediaKind, type MediaKind } from "./media";
 import { forgeName, isMergeRequest, newRequestUrl, parseRemote, type Remote } from "./forge";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { t } from "./i18n/index.svelte";
-import { confirm, toast } from "./ui.svelte";
+import { confirm, prompt, toast } from "./ui.svelte";
 import { persist, settings } from "./settings.svelte";
 import { treeKey } from "./grid";
 
@@ -712,6 +712,65 @@ export function cycleProject(dir: 1 | -1) {
   const i = list.findIndex((p) => p.root === workspace.active);
   const next = i < 0 ? (dir > 0 ? 0 : list.length - 1) : (i + dir + list.length) % list.length;
   workspace.active = list[next].root;
+}
+
+// ---- parallel tasks (git worktrees) ----
+
+/** A new task: its own branch and folder from the current commit, opened as a project. */
+export async function newTask(p: ProjectState) {
+  const name = await prompt({ title: t("tasks.newTitle"), message: t("tasks.newBody"), confirm: t("tasks.create"), placeholder: t("tasks.placeholder") });
+  if (!name) return;
+  try {
+    const task = await ipc.worktreeAdd(p.root, name);
+    await openProject(task);
+    toast(t("tasks.ready", { name: task.name }), "ok", undefined, 8000);
+  } catch (e) {
+    toast(errorText(e), "error", undefined, 0);
+  }
+}
+
+export async function openTask(p: ProjectState, path: string) {
+  try {
+    await openProject(await ipc.worktreeOpen(p.root, path));
+  } catch (e) {
+    toast(errorText(e), "error");
+  }
+}
+
+/** Merges a task's branch into the main folder's branch, then offers to remove the task. */
+export async function mergeTask(p: ProjectState, branch: string, into: string) {
+  if (p.git?.changes.length) return toast(t("tasks.commitFirst"), "error", undefined, 9000);
+  const ok = await confirm({ title: t("tasks.mergeTitle", { branch, into }), message: t("tasks.mergeBody", { branch, into }), confirm: t("tasks.merge") });
+  if (!ok) return;
+  try {
+    const out = await ipc.worktreeMerge(p.root, branch);
+    toast(`${t("tasks.merged", { branch, into })}${out ? `\n${out.trim().split("\n").slice(-2).join("\n")}` : ""}`, "ok");
+    workspace.projects.forEach((x) => x.refreshGit(true));
+    await removeTask(p, true);
+  } catch (e) {
+    // Conflicts and the like: Git's own words; they are resolved in the main folder's terminal.
+    toast(errorText(e), "error", undefined, 0);
+  }
+}
+
+/** Removes a task's folder (its branch stays), closing its project first. */
+export async function removeTask(p: ProjectState, merged = false) {
+  const dirty = !!p.git?.changes.length;
+  const ok = await confirm({
+    title: t("tasks.removeTitle", { name: p.current.name }),
+    message: dirty ? t("tasks.removeDirty") : merged ? t("tasks.removeMerged") : t("tasks.removeBody"),
+    confirm: t("tasks.remove"),
+    danger: dirty,
+  });
+  if (!ok) return;
+  const root = p.root;
+  if (!(await closeProject(p))) return;
+  try {
+    await ipc.worktreeRemove(root, root, dirty);
+    toast(t("tasks.removed"), "ok");
+  } catch (e) {
+    toast(errorText(e), "error", undefined, 0);
+  }
 }
 
 // ---- the project a component belongs to ----
