@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.4.1
+
+Perbaikan KlikVibe yang tiba-tiba tertutup di macOS.
+
+- Diperbaiki: KlikVibe bisa tiba-tiba tertutup di macOS saat dipakai. Error kecil di dalam sistem jendela macOS menghentikan aplikasi alih-alih dicatat; sekarang dicatat dan KlikVibe tetap berjalan.
+
 ## 0.4.0
 
 Terminal kembali setelah restart dengan agen di percakapan terakhirnya, ⌘-klik file dan folder di terminal, dan tab yang bisa digeser.

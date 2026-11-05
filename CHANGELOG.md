@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+A fix for KlikVibe quitting suddenly on macOS.
+
+- Fixed: KlikVibe could quit suddenly on macOS while you worked. A harmless error inside the macOS window system ended the app instead of being logged; now it is logged and KlikVibe keeps running.
+
 ## 0.4.0
 
 Terminals come back after a restart with the agent in its last conversation, ⌘-click on files and folders in the terminal, and tabs you can drag.
