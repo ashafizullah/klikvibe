@@ -26,6 +26,9 @@ function current(): Saved {
   };
 }
 
+/** True while the session must stay as saved (an update restarting the app). */
+export const sessionHeld = () => restoring;
+
 /** Keeps the saved session as it is while projects close for a reason that isn't the user's (an update restarting the app). */
 export function holdSession(hold: boolean) {
   restoring = hold;

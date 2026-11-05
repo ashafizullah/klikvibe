@@ -10,6 +10,8 @@ export interface AgentDef {
   label: string;
   /** What starts it in a terminal. */
   command: string;
+  /** What starts it again in its last conversation in this folder, when it has that. */
+  resume?: string;
   mcp: (info: McpInfo) => McpSetup;
 }
 
@@ -24,24 +26,28 @@ export const AGENTS: AgentDef[] = [
     id: "claude",
     label: "Claude Code",
     command: "claude",
+    resume: "claude --continue",
     mcp: (i) => cmd(`claude mcp add --transport http --scope user ${NAME} ${i.url} --header "Authorization: ${auth(i)}"`),
   },
   {
     id: "codex",
     label: "Codex",
     command: "codex",
+    resume: "codex resume --last",
     mcp: (i) => file("~/.codex/config.toml", `[mcp_servers.${NAME}]\nurl = "${i.url}"\nhttp_headers = { "Authorization" = "${auth(i)}" }`),
   },
   {
     id: "gemini",
     label: "Gemini CLI",
     command: "gemini",
+    resume: "gemini --resume",
     mcp: (i) => cmd(`gemini mcp add --transport http --scope user ${NAME} ${i.url} --header "Authorization: ${auth(i)}"`),
   },
   {
     id: "opencode",
     label: "OpenCode",
     command: "opencode",
+    resume: "opencode --continue",
     mcp: (i) =>
       file(
         "~/.config/opencode/opencode.json",
@@ -76,6 +82,7 @@ export const AGENTS: AgentDef[] = [
     id: "kimi",
     label: "Kimi CLI",
     command: "kimi",
+    resume: "kimi --continue",
     mcp: (i) => cmd(`kimi mcp add --transport http ${NAME} ${i.url} --header "Authorization: ${auth(i)}"`),
   },
   {
@@ -88,6 +95,7 @@ export const AGENTS: AgentDef[] = [
     id: "copilot",
     label: "Copilot CLI",
     command: "copilot",
+    resume: "copilot --continue",
     mcp: (i) => file("~/.copilot/mcp-config.json", json({ mcpServers: { [NAME]: { type: "http", url: i.url, headers: { Authorization: auth(i) }, tools: ["*"] } } })),
   },
   {
@@ -100,6 +108,7 @@ export const AGENTS: AgentDef[] = [
     id: "cursor",
     label: "Cursor CLI",
     command: "cursor-agent",
+    resume: "cursor-agent resume",
     mcp: (i) => file("~/.cursor/mcp.json", json({ mcpServers: { [NAME]: { url: i.url, headers: { Authorization: auth(i) } } } })),
   },
   {

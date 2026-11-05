@@ -2,6 +2,7 @@ const en = {
   "common.loading": "Loading…",
   "common.cancel": "Cancel",
   "common.copied": "Copied",
+  "term.openHint": "{keys} to open",
 
   "home.start": "Start",
   "home.open": "Open folder",
@@ -344,6 +345,7 @@ const en = {
 
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
+  "terminal.restored": "Earlier output, from before KlikVibe was closed",
   "terminal.rename": "Rename",
   "terminal.resetName": "Use the automatic name",
   "terminal.renameHint": "double-click or right-click to rename",

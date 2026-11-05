@@ -77,6 +77,7 @@ pub fn run() {
             commands::watch_project,
             commands::unwatch_project,
             commands::list_dir,
+            commands::path_kinds,
             commands::list_files,
             commands::search_text,
             commands::read_file,

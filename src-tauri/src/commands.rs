@@ -77,6 +77,13 @@ pub async fn list_dir(projects: State<'_, Projects>, path: String) -> AppResult<
     blocking(move || files::list(&dir)).await
 }
 
+/// For each path: "file", "dir", or null when it isn't there (or is outside
+/// the open projects). For links in terminal output.
+#[tauri::command]
+pub fn path_kinds(projects: State<'_, Projects>, paths: Vec<String>) -> Vec<Option<&'static str>> {
+    paths.iter().map(|p| projects.existing(p).ok().map(|r| if r.is_dir() { "dir" } else { "file" })).collect()
+}
+
 /// Every file in an open project (`.gitignore` applied), for search by name.
 #[tauri::command]
 pub async fn list_files(projects: State<'_, Projects>, root: String) -> AppResult<FileList> {

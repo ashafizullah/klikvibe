@@ -4,6 +4,7 @@
   import { persist, settings } from "../lib/settings.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, agentById } from "../lib/agents";
+  import { sessionHeld } from "../lib/session.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
   import { CARGO_SCRIPTS, packageManager, packageScripts, type Script } from "../lib/scripts";
@@ -28,12 +29,50 @@
     url: string | null;
     /** A script to run once it starts. */
     run?: string;
+    /** Typed at the prompt once it starts, without Enter. */
+    prefill?: string;
+    /** Its output from before KlikVibe was closed. */
+    history?: string;
   }
 
   let nextId = 1;
   const shell = (run?: string): Shell => ({ id: nextId++, exited: false, name: null, auto: null, url: null, run });
-  let shells = $state<Shell[]>([shell()]);
-  let active = $state(1);
+
+  // ---- the terminals as they were when KlikVibe was closed ----
+
+  /** Saved per project: the terminals, their names, their last output and the agent each ran. */
+  interface SavedShell {
+    name: string | null;
+    agent: string | null;
+    history: string;
+  }
+  const SAVE_KEY = `klikvibe.terminals:${project.root}`;
+  /** Lines of output kept per terminal. */
+  const HISTORY_LINES = 300;
+
+  function restored(): { shells: Shell[]; active: number } | null {
+    let saved: { shells: SavedShell[]; active: number } | null = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
+    } catch {}
+    if (!saved?.shells?.length) return null;
+    const list = saved.shells.map((x) => {
+      const s = shell();
+      s.name = x.name;
+      s.history = x.history || undefined;
+      // An agent that was running starts again in its last conversation; one
+      // that can't resume is only typed, for the user to start.
+      const a = x.agent ? AGENTS.find((d) => d.id === x.agent) : undefined;
+      if (a?.resume) s.run = a.resume;
+      else if (a) s.prefill = a.command;
+      return s;
+    });
+    return { shells: list, active: list[Math.min(Math.max(0, saved.active), list.length - 1)].id };
+  }
+
+  const start = restored();
+  let shells = $state<Shell[]>(start?.shells ?? [shell()]);
+  let active = $state(start?.active ?? 1);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
   const agent = $derived(agentById(settings.agent));
@@ -107,9 +146,40 @@
   const terminals = () =>
     shells.map((s, i) => ({ index: i + 1, name: label(s, i), active: s.id === active, agent: isAgent(s), tail: (n: number) => refs[s.id]?.tail(n) ?? "" }));
   project.terminals = terminals;
+
+  // Kept up to date while it runs: KlikVibe can be quit (or the computer shut down) at any moment.
+  let lastSaved = "";
+  function save() {
+    const state = {
+      active: shells.findIndex((s) => s.id === active),
+      shells: shells.map((s): SavedShell => ({
+        name: s.name,
+        agent: isAgent(s) ? (AGENTS.find((a) => a.label === s.auto)?.id ?? null) : null,
+        history: refs[s.id]?.tail(HISTORY_LINES) ?? s.history ?? "",
+      })),
+    };
+    const json = JSON.stringify(state);
+    if (json === lastSaved) return;
+    lastSaved = json;
+    try {
+      localStorage.setItem(SAVE_KEY, json);
+    } catch {}
+  }
+  const saver = setInterval(save, 3000);
+  const saveNow = () => save();
+  window.addEventListener("pagehide", saveNow);
+
   onDestroy(() => {
+    clearInterval(saver);
+    window.removeEventListener("pagehide", saveNow);
     if (project.askAgent === askAgent) project.askAgent = null;
     if (project.terminals === terminals) project.terminals = null;
+    // The project was closed: its terminals don't come back next time. (An update keeps them.)
+    if (sessionHeld()) save();
+    else
+      try {
+        localStorage.removeItem(SAVE_KEY);
+      } catch {}
   });
 
   // ---- scripts and the preview ----
@@ -251,7 +321,7 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} run={s.run} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
+        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
       {/each}
     {/if}
   </div>

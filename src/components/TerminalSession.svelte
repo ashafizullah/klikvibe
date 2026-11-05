@@ -1,18 +1,18 @@
 <script lang="ts">
   // One shell in the project folder. The user drives everything typed into it.
   import { onDestroy, onMount } from "svelte";
-  import { Terminal } from "@xterm/xterm";
+  import { Terminal, type ILink } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
   import { errorText, ipc } from "../lib/ipc";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { useProject } from "../lib/project.svelte";
-  import { findLinks, projectPath } from "../lib/termLinks";
+  import { findLinks, projectPath, type TermLink } from "../lib/termLinks";
   import { needsYou } from "../lib/attention.svelte";
   import { agentIn, terminalName } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
   import { join } from "../lib/paths";
-  import { toast } from "../lib/ui.svelte";
+  import { isMac, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
 
   let {
@@ -22,6 +22,8 @@
     onname,
     onurl,
     run,
+    prefill,
+    history,
   }: {
     cwd: string;
     visible: boolean;
@@ -31,6 +33,10 @@
     onurl: (url: string) => void;
     /** A command to run once the shell has started (a script from the Scripts menu). */
     run?: string;
+    /** Typed at the prompt once the shell has started, without Enter. */
+    prefill?: string;
+    /** Output from before KlikVibe was last closed, shown dimmed above the new shell. */
+    history?: string;
   } = $props();
 
   // Output is scanned for a dev server's address; the tail of the last chunk joins the next, as an address can be split.
@@ -121,23 +127,57 @@
     };
   }
 
-  /** File paths (that exist in the project) and web addresses in the output, as links. */
+  /**
+   * Web addresses, and files and folders of the project named in the output
+   * (only the ones that exist), as links that open with ⌘-click (Ctrl+click):
+   * a file in the editor (at its line), a folder in the file tree.
+   */
   function links(xterm: Terminal) {
+    const hint = t("term.openHint", { keys: isMac ? "⌘-click" : "Ctrl+click" });
+    const open = (l: TermLink, kind: "url" | "file" | "dir", abs: string) => {
+      if (kind === "url") openUrl(l.target).catch((e) => toast(errorText(e), "error"));
+      else if (kind === "dir") project.revealInTree(abs, true);
+      else project.openFile(abs).then(() => l.line && project.revealLines(`file:${abs}`, l.line, l.line));
+    };
     return xterm.registerLinkProvider({
       provideLinks(y, callback) {
         const text = xterm.buffer.active.getLine(y - 1)?.translateToString(true) ?? "";
-        const found = findLinks(text).flatMap((l) => {
-          let activate: () => void;
-          if (l.kind === "url") activate = () => openUrl(l.target).catch((e) => toast(errorText(e), "error"));
-          else {
-            const rel = projectPath(l.target, project.root);
-            if (!rel || !project.hasFile(rel)) return [];
-            const abs = join(project.root, rel);
-            activate = () => project.openFile(abs).then(() => l.line && project.revealLines(`file:${abs}`, l.line, l.line));
-          }
-          return [{ range: { start: { x: l.start + 1, y }, end: { x: l.end, y } }, text: text.slice(l.start, l.end), activate, decorations: { underline: true, pointerCursor: true } }];
+        const link = (l: TermLink, kind: "url" | "file" | "dir", abs = ""): ILink => ({
+          range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
+          text: text.slice(l.start, l.end),
+          decorations: { underline: true, pointerCursor: true },
+          hover: () => (host.title = hint),
+          leave: () => (host.title = ""),
+          activate: (e) => {
+            if (isMac ? e.metaKey : e.ctrlKey) open(l, kind, abs);
+          },
         });
-        callback(found.length ? found : undefined);
+        const ready: ILink[] = [];
+        const unsure: { l: TermLink; abs: string }[] = [];
+        for (const l of findLinks(text)) {
+          if (l.kind === "url") {
+            ready.push(link(l, "url"));
+            continue;
+          }
+          const rel = projectPath(l.target, project.root);
+          if (!rel) continue;
+          if (project.hasFile(rel)) {
+            ready.push(link(l, "file", join(project.root, rel)));
+            continue;
+          }
+          // "templates/header.html" printed from somewhere deeper: the one project file ending so.
+          const deeper = l.loose ? [] : (project.allFiles?.filter((f) => f.endsWith(`/${rel}`)) ?? []);
+          if (deeper.length === 1) ready.push(link(l, "file", join(project.root, deeper[0])));
+          // Folders, and what .gitignore leaves out of the file list: asked of the disk.
+          else unsure.push({ l, abs: join(project.root, rel) });
+        }
+        const done = () => callback(ready.length ? ready.sort((a, b) => a.range.start.x - b.range.start.x) : undefined);
+        if (!unsure.length) return done();
+        ipc
+          .pathKinds(unsure.map((u) => u.abs))
+          .then((kinds) => unsure.forEach((u, i) => kinds[i] && ready.push(link(u.l, kinds[i]!, u.abs))))
+          .catch(() => {})
+          .finally(done);
       },
     });
   }
@@ -168,6 +208,10 @@
     fitAddon.fit();
     term = xterm;
     fit = fitAddon;
+    if (history) {
+      const rule = `── ${t("terminal.restored")} ──`;
+      xterm.write(`\x1b[2m${history.replace(/\r?\n/g, "\r\n")}\r\n${rule}\x1b[0m\r\n`);
+    }
 
     let disposed = false;
     ipc
@@ -189,6 +233,7 @@
           session = id;
           // The user picked this script to run: the shell runs it as if they had typed it.
           if (run) ipc.terminalWrite(id, `${run}\r`).catch(() => {});
+          else if (prefill) ipc.terminalWrite(id, prefill).catch(() => {});
         }
       })
       .catch((e) => toast(errorText(e), "error"));

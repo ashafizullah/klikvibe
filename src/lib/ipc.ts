@@ -128,6 +128,8 @@ export const ipc = {
   unwatchProject: (root: string) => invoke<void>("unwatch_project", { root }),
 
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
+  /** "file", "dir" or null (missing, or outside the open projects), per path. */
+  pathKinds: (paths: string[]) => invoke<("file" | "dir" | null)[]>("path_kinds", { paths }),
   readFile: (path: string) => invoke<FileText>("read_file", { path }),
   listFiles: (root: string) => invoke<FileList>("list_files", { root }),
   searchText: (root: string, query: string, include: string | null) => invoke<TextSearch>("search_text", { root, query, include }),

@@ -3,6 +3,8 @@
 // them:
 //   src/lib/x.ts:42:7    --> src/main.rs:10:5    ./app.ts    app.ts(12,5)
 //   /Users/me/proj/src/a.svelte:3
+// Any other word may name a file or folder too (store-assets, src/lib,
+// Makefile): those are "loose" candidates.
 // Paths are only candidates here; the terminal links the ones that exist.
 
 export interface TermLink {
@@ -14,11 +16,14 @@ export interface TermLink {
   target: string;
   line?: number;
   column?: number;
+  /** A plain word that may name a file or folder; only linked when it exists. */
+  loose?: boolean;
 }
 
 const URL_RE = /\bhttps?:\/\/[^\s"'<>`)\]]+/g;
 // A path has a folder part or an extension; then ":line[:col]" or "(line,col)".
 const PATH_RE = /(?:~|\.{1,2})?\/?(?:[\w@.+-]+\/)*[\w@+-][\w@.+-]*\.[A-Za-z0-9]+(?::(\d+)(?::(\d+))?|\((\d+),(\d+)\))?/g;
+const WORD_RE = /[\w@+-][\w@.+-]*(?:\/[\w@.+-]+)*\/?/g;
 
 export function findLinks(text: string): TermLink[] {
   const links: TermLink[] = [];
@@ -41,6 +46,14 @@ export function findLinks(text: string): TermLink[] {
     const line = Number(m[1] ?? m[3]) || undefined;
     const column = Number(m[2] ?? m[4]) || undefined;
     links.push({ kind: "path", start, end: start + full.length, target: path, line, column });
+  }
+  for (const m of text.matchAll(WORD_RE)) {
+    const start = m.index;
+    if (taken(start) || (start > 0 && /[\w@.\/-]/.test(text[start - 1]))) continue;
+    // "folder/" and the sentence's full stop aren't part of the name.
+    const word = m[0].replace(/[./]+$/, "");
+    if (word.length < 2 || /^v?[\d.]+$/i.test(word)) continue;
+    links.push({ kind: "path", start, end: start + word.length, target: word, loose: true });
   }
   return links.sort((a, b) => a.start - b.start);
 }

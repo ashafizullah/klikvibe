@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { findLinks, projectPath } from "./termLinks";
 
-const paths = (s: string) => findLinks(s).filter((l) => l.kind === "path").map((l) => [l.target, l.line, l.column]);
+const paths = (s: string) => findLinks(s).filter((l) => l.kind === "path" && !l.loose).map((l) => [l.target, l.line, l.column]);
+const words = (s: string) => findLinks(s).filter((l) => l.loose).map((l) => l.target);
 
 test("paths as compilers, tests and agents print them", () => {
   expect(paths("error: src/lib/x.ts:42:7 - Type 'a' is not assignable")).toEqual([["src/lib/x.ts", 42, 7]]);
@@ -19,10 +20,16 @@ test("versions, numbers and words are not paths", () => {
   expect(paths("bun v1.3.4")).toEqual([]);
 });
 
+test("other words are loose candidates: folders, names without an extension", () => {
+  expect(words("Yang kuubah di skill store-assets (dan src/lib/ juga).")).toEqual(["Yang", "kuubah", "di", "skill", "store-assets", "dan", "src/lib", "juga"]);
+  expect(words("- templates/header.html: safe area")).toEqual(["safe", "area"]);
+  expect(words("bun v1.3.4 in 2.5 s")).toEqual(["bun", "in"]);
+});
+
 test("web addresses, without the sentence's punctuation", () => {
-  const [l] = findLinks("Local:   http://localhost:5173/, see https://example.com/a?b=1.");
+  const [l] = findLinks("Local:   http://localhost:5173/, see https://example.com/a?b=1.").filter((x) => x.kind === "url");
   expect(l).toEqual({ kind: "url", start: 9, end: 31, target: "http://localhost:5173/," .slice(0, -1) });
-  expect(findLinks("see https://example.com/a?b=1.").map((x) => x.target)).toEqual(["https://example.com/a?b=1"]);
+  expect(findLinks("see https://example.com/a?b=1.").filter((x) => x.kind === "url").map((x) => x.target)).toEqual(["https://example.com/a?b=1"]);
 });
 
 test("printed paths become project paths", () => {
