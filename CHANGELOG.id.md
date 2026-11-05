@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Dalam mode layar penuh di macOS, title bar mulai dari tepi kiri, karena tombol jendela tersembunyi di sana.
+
 ## 0.3.1
 
 Folder yang di-gitignore tampil di pohon file, ikon file di panel Git, dan tampilan installer baru.

@@ -9,8 +9,20 @@
   import { treeShown } from "../lib/grid";
   import McpBadge from "./McpBadge.svelte";
   import { attention } from "../lib/attention.svelte";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
 
   const project = $derived(currentProject());
+
+  // macOS hides the window buttons in full screen, so the bar needn't leave room for them.
+  let fullscreen = $state(false);
+  $effect(() => {
+    if (!isMac) return;
+    const win = getCurrentWindow();
+    const check = () => win.isFullscreen().then((f) => (fullscreen = f), () => {});
+    check();
+    const off = win.onResized(check);
+    return () => void off.then((f) => f());
+  });
   const git = $derived(project?.git);
 
   const columns = $derived(settings.layout === "columns");
@@ -51,7 +63,7 @@
   }
 </script>
 
-<header class="bar" class:mac={isMac} data-tauri-drag-region>
+<header class="bar" class:mac={isMac && !fullscreen} data-tauri-drag-region>
   <button class="icon-btn" class:on={!project} onclick={() => showProject(null)} title={t("bar.home")} aria-label={t("bar.home")}><Icon name="home" size={15} /></button>
   <div class="projects" role="tablist" data-tauri-drag-region>
     {#each workspace.projects as p, i (p.root)}

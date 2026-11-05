@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- In full screen on macOS the title bar starts at the left edge, since the window buttons are hidden there.
+
 ## 0.3.1
 
 Gitignored folders show in the file tree, file icons in the Git panel, and new installer artwork.
