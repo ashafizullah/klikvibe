@@ -90,7 +90,18 @@
     const editable = !v.state.readOnly;
     const change = project.changeFor(tab.path);
     const done = () => v.focus();
+    const rel = relative(project.root, tab.path) ?? tab.path;
+    const first = v.state.doc.lineAt(sel.from).number;
+    // A selection ending at the start of a line doesn't include that line.
+    const last = v.state.doc.lineAt(sel.empty ? sel.to : Math.max(sel.from, sel.to - 1)).number;
+    const about = sel.empty
+      ? `@${rel} `
+      : first === last
+        ? `${t("ask.line", { path: `@${rel}`, line: first })} `
+        : `${t("ask.lines", { path: `@${rel}`, from: first, to: last })} `;
     const items: MenuItem[] = [
+      { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(about) },
+      "sep",
       {
         label: t("edit.cut"),
         hint: `${mod}X`,
@@ -119,7 +130,7 @@
     if (change) items.push({ label: t("git.menu.openDiff"), run: () => project.openDiff(change) });
     items.push(
       { label: t("menu.copyPath"), run: () => copyText(tab.path) },
-      { label: t("menu.copyRelative"), run: () => copyText(relative(project.root, tab.path) ?? tab.path) },
+      { label: t("menu.copyRelative"), run: () => copyText(rel) },
       { label: revealLabel(), run: () => reveal(tab.path) },
     );
     openMenu(e, items);

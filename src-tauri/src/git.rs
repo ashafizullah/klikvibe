@@ -45,7 +45,12 @@ fn git(root: &Path) -> Command {
 
 /// Runs git and returns its stdout, or its stderr as the error.
 fn run(root: &Path, args: &[&str]) -> AppResult<String> {
-    let out = git(root).args(args).output().map_err(|e| {
+    run_env(root, args, &[])
+}
+
+/// Like `run`, with extra environment variables (a separate index, a fixed author).
+fn run_env(root: &Path, args: &[&str], env: &[(&str, &str)]) -> AppResult<String> {
+    let out = git(root).args(args).envs(env.iter().copied()).output().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound { AppError::msg("Git isn't installed (or not on PATH)") } else { AppError::Io(e) }
     })?;
     if !out.status.success() {
@@ -398,6 +403,140 @@ pub fn ignore(file: &Path, rel: &str, dir: bool) -> AppResult<()> {
     Ok(())
 }
 
+// ---- checkpoints ----
+//
+// Snapshots of the working tree while an agent works, so its changes can be
+// undone even before anything is committed. Each is a commit on a ref of its
+// own (refs/klikvibe/checkpoints, which `git push` leaves alone), built from a
+// separate index (.git/klikvibe-index), so the user's index, staging, stash,
+// branches and history are never touched. `.gitignore` applies, as for `git add -A`.
+
+const CHECKPOINTS: &str = "refs/klikvibe/checkpoints";
+const CHECKPOINT_AUTHOR: [(&str, &str); 4] = [
+    ("GIT_AUTHOR_NAME", "KlikVibe"),
+    ("GIT_AUTHOR_EMAIL", "checkpoints@klikvibe.local"),
+    ("GIT_COMMITTER_NAME", "KlikVibe"),
+    ("GIT_COMMITTER_EMAIL", "checkpoints@klikvibe.local"),
+];
+
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Checkpoint {
+    pub hash: String,
+    pub short: String,
+    /// ISO 8601.
+    pub date: String,
+    /// Why it was taken: "opened", "changes", "before-restore" or "restored".
+    pub reason: String,
+    /// Files that differ from the checkpoint before it (all files for the first).
+    pub files: u32,
+}
+
+/// The separate index; checkpoints need the project folder to be the repository's top
+/// folder, since their paths are the repository's.
+fn checkpoint_index(root: &Path) -> AppResult<String> {
+    let top = run(root, &["rev-parse", "--show-toplevel"])
+        .map_err(|_| AppError::msg("Checkpoints need Git: this folder isn't a repository yet"))?;
+    let same = |a: &Path, b: &Path| a.canonicalize().ok() == b.canonicalize().ok();
+    if !same(Path::new(top.trim()), root) {
+        return Err(AppError::msg("Checkpoints work when the project folder is the repository's top folder"));
+    }
+    let git_dir = run(root, &["rev-parse", "--absolute-git-dir"])?;
+    Ok(Path::new(git_dir.trim()).join("klikvibe-index").display().to_string())
+}
+
+/// Takes a checkpoint of the working tree; None when nothing changed since the last one.
+pub fn checkpoint(root: &Path, reason: &str) -> AppResult<Option<Checkpoint>> {
+    let index = checkpoint_index(root)?;
+    let env = [("GIT_INDEX_FILE", index.as_str())];
+    run_env(root, &["add", "-A", "--", "."], &env)?;
+    let tree = run_env(root, &["write-tree"], &env)?.trim().to_string();
+    let parent = run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).ok().map(|s| s.trim().to_string());
+    let files = match &parent {
+        Some(p) => {
+            let before = run(root, &["rev-parse", &format!("{p}^{{tree}}")])?.trim().to_string();
+            if before == tree {
+                return Ok(None);
+            }
+            run(root, &["diff-tree", "-r", "--name-only", &before, &tree])?.lines().count()
+        }
+        None => run(root, &["ls-tree", "-r", "--name-only", &tree])?.lines().count(),
+    };
+    let reason: String = reason.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(40).collect();
+    let message = format!("{reason}\n\n{files}");
+    let mut args = vec!["commit-tree", tree.as_str(), "-m", message.as_str()];
+    if let Some(p) = &parent {
+        args.extend(["-p", p.as_str()]);
+    }
+    let commit = run_env(root, &args, &CHECKPOINT_AUTHOR)?.trim().to_string();
+    // Moves the ref only from where it was read (an empty old value: it must not exist yet).
+    run(root, &["update-ref", "-m", "KlikVibe checkpoint", CHECKPOINTS, &commit, parent.as_deref().unwrap_or("")])?;
+    Ok(checkpoints(root, 1)?.into_iter().next())
+}
+
+/// The newest checkpoints first.
+pub fn checkpoints(root: &Path, limit: u32) -> AppResult<Vec<Checkpoint>> {
+    if run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).is_err() {
+        return Ok(Vec::new());
+    }
+    let n = format!("-n{}", limit.clamp(1, 500));
+    let out = run(root, &["log", &n, "--format=%H%x1f%h%x1f%cI%x1f%s%x1f%b%x1e", CHECKPOINTS])?;
+    Ok(out
+        .split('\x1e')
+        .filter_map(|rec| {
+            let f: Vec<&str> = rec.trim_start_matches('\n').split('\x1f').collect();
+            (f.len() == 5).then(|| Checkpoint {
+                hash: f[0].into(),
+                short: f[1].into(),
+                date: f[2].into(),
+                reason: f[3].into(),
+                files: f[4].trim().parse().unwrap_or(0),
+            })
+        })
+        .collect())
+}
+
+/// Puts the working tree back as it was at checkpoint `hash`: files changed since
+/// are rewritten, files added since are deleted. The state before is saved as a
+/// checkpoint first, so this can be undone too. Ignored files are left alone.
+pub fn restore_checkpoint(root: &Path, hash: &str) -> AppResult<()> {
+    check_hash(hash)?;
+    checkpoint(root, "before-restore")?;
+    let current = run(root, &["rev-parse", "--verify", CHECKPOINTS])?.trim().to_string();
+    let changes = run(root, &["diff-tree", "-r", "-z", "--no-renames", "--name-status", hash, &current])?;
+    let mut fields = changes.split('\0').filter(|s| !s.is_empty());
+    let mut bring_back = Vec::new();
+    while let (Some(status), Some(path)) = (fields.next(), fields.next()) {
+        if status == "A" {
+            // Added since the checkpoint.
+            let file = root.join(path);
+            if !Path::new(path).components().all(|c| matches!(c, std::path::Component::Normal(_))) || !file.starts_with(root) {
+                continue;
+            }
+            let _ = std::fs::remove_file(&file);
+        } else {
+            bring_back.push(path.to_string());
+        }
+    }
+    for chunk in bring_back.chunks(200) {
+        let mut args = vec!["--literal-pathspecs", "restore", "--source", hash, "--worktree", "--"];
+        args.extend(chunk.iter().map(String::as_str));
+        run(root, &args)?;
+    }
+    checkpoint(root, "restored")?;
+    Ok(())
+}
+
+/// Forgets every checkpoint (Git can then reclaim their space).
+pub fn clear_checkpoints(root: &Path) -> AppResult<()> {
+    let index = checkpoint_index(root)?;
+    if run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).is_ok() {
+        run(root, &["update-ref", "-d", CHECKPOINTS])?;
+    }
+    let _ = std::fs::remove_file(index);
+    Ok(())
+}
+
 pub fn init(root: &Path) -> AppResult<String> {
     run_all(root, &["init"])
 }
@@ -525,6 +664,60 @@ mod tests {
         assert!(!dir.join("new.log").exists());
         discard(&dir, "a.txt", None, true).unwrap();
         assert!(dir.join("a.txt").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn checkpoints_snapshot_and_restore_without_touching_the_index() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-checkpoint-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        std::fs::write(dir.join(".gitignore"), "build/\n").unwrap();
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        commit(&dir, "First").unwrap();
+        // The user's own staged change must survive everything below.
+        std::fs::write(dir.join("staged.txt"), "staged\n").unwrap();
+        run(&dir, &["add", "staged.txt"]).unwrap();
+
+        let base = checkpoint(&dir, "opened").unwrap().unwrap();
+        assert_eq!(base.reason, "opened");
+        assert!(checkpoint(&dir, "changes").unwrap().is_none(), "nothing changed");
+
+        // An agent edits, adds and deletes; an ignored build folder appears.
+        std::fs::write(dir.join("a.txt"), "two\n").unwrap();
+        std::fs::write(dir.join("new.txt"), "new\n").unwrap();
+        std::fs::create_dir_all(dir.join("build")).unwrap();
+        std::fs::write(dir.join("build/out.js"), "x").unwrap();
+        let after = checkpoint(&dir, "changes").unwrap().unwrap();
+        assert_eq!(after.files, 2);
+        assert_eq!(checkpoints(&dir, 10).unwrap().len(), 2);
+
+        restore_checkpoint(&dir, &base.hash).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
+        assert!(!dir.join("new.txt").exists());
+        assert!(dir.join("build/out.js").exists(), "ignored files are left alone");
+        // Nothing had changed since "changes", so no before-restore copy; the restore can be undone from there.
+        let list = checkpoints(&dir, 10).unwrap();
+        assert_eq!(list.iter().map(|c| c.reason.as_str()).collect::<Vec<_>>(), ["restored", "changes", "opened"]);
+        restore_checkpoint(&dir, &list[1].hash).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "two\n");
+        assert!(dir.join("new.txt").exists());
+        // Edits after the last checkpoint are saved before a restore.
+        std::fs::write(dir.join("a.txt"), "three\n").unwrap();
+        restore_checkpoint(&dir, &base.hash).unwrap();
+        assert_eq!(checkpoints(&dir, 1).unwrap()[0].reason, "restored");
+        assert_eq!(checkpoints(&dir, 10).unwrap()[1].reason, "before-restore");
+
+        // HEAD, the index and the branch list are as the user left them.
+        assert_eq!(log(&dir, 10, true).unwrap().len(), 1);
+        assert!(status(&dir).unwrap().changes.iter().any(|c| c.path == "staged.txt" && c.staged));
+        assert!(run(&dir, &["branch", "--list"]).unwrap().lines().count() == 1);
+
+        clear_checkpoints(&dir).unwrap();
+        assert!(checkpoints(&dir, 10).unwrap().is_empty());
+        assert!(restore_checkpoint(&dir, "not-a-hash").is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }
 

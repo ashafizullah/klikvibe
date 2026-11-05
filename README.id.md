@@ -29,6 +29,8 @@
 - **Beberapa proyek sekaligus,** masing-masing di tab sendiri dengan file, panel Git, dan terminalnya sendiri, jadi agen tetap bekerja di satu proyek saat Anda melihat proyek lain.
 - **Agen melihat apa yang Anda lihat (MCP).** Aktifkan server MCP lokal dan tambahkan ke agen Anda dengan satu perintah: agen bisa membaca file dan kode yang sedang Anda pilih, melihat editan yang belum disimpan, serta membuka file dan diff di KlikVibe untuk Anda periksa.
 - **Tahu saat agen butuh Anda.** Saat agen selesai bekerja lalu diam (menunggu jawaban, atau sudah selesai), KlikVibe menampilkan notifikasi, jadi Anda bisa mengerjakan hal lain sambil menunggu. Path di output-nya bisa diklik untuk membuka file di baris itu.
+- **Batalkan yang dilakukan agen.** Checkpoint menyimpan file Anda selama agen bekerja, terpisah dari commit; kembalikan salah satunya untuk kembali ke sebelum sebuah perubahan.
+- **Arahkan agen ke kode.** Klik kanan kode, file, atau diff lalu pilih "Tanya agen tentang ini" untuk menempelkan rujukannya ke terminal agen.
 - **Pekerjaan agen terlihat langsung.** Pohon file, file yang terbuka, dan panel Git mengikuti isi disk saat file berubah. File yang baru disentuh berkedip di pohon file, dan file yang terbuka dimuat ulang sendiri, kecuali ada editan yang belum Anda simpan di sana.
 - **Kode saat Anda butuh.** CodeMirror 6 dengan pewarnaan sintaks untuk bahasa-bahasa umum, pencarian, dan edit lalu simpan (`⌘S` / `Ctrl+S`). Gambar, video, audio, dan PDF tampil sebagai pratinjau; file biner lain dan file yang sangat besar tidak dibuka.
 - **Git tanpa pindah aplikasi.**

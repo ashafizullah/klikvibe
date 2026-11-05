@@ -5,7 +5,7 @@ import { getContext, setContext, tick } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import type { EditorView } from "@codemirror/view";
-import { errorText, ipc, type Change, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
+import { errorText, ipc, type Change, type Checkpoint, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
@@ -77,7 +77,14 @@ export class ProjectState {
   active = $state<string | null>(null);
   git = $state<GitStatus | null>(null);
   log = $state<Commit[]>([]);
-  gitTab = $state<"changes" | "history">("changes");
+  gitTab = $state<"changes" | "history" | "checkpoints">("changes");
+  /** Snapshots of the files as an agent works (newest first); null until listed. */
+  checkpoints = $state<Checkpoint[] | null>(null);
+  /** Why checkpoints can't be taken here (not a repository, a subfolder of one), if so. */
+  checkpointsOff = $state<string | null>(null);
+  checkpointBusy = $state(false);
+  private checkpointTimer: ReturnType<typeof setTimeout> | null = null;
+  private changedSince = 0;
   commitMessage = $state("");
   /** The Git action running (commit, push, pull), if any. */
   gitBusy = $state<string | null>(null);
@@ -90,6 +97,8 @@ export class ProjectState {
   private fileSet: Set<string> | null = null;
   private filesLoading = false;
   private filesTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
+  askAgent: ((text: string) => void) | null = null;
   /** The history commit showing its files, if any. */
   expandedCommit = $state<string | null>(null);
   /** The files of commits opened in the history (commits don't change, so they stay). */
@@ -125,6 +134,8 @@ export class ProjectState {
   async start() {
     await this.loadDir(this.root);
     this.refreshGit(true);
+    // A starting point, so the first change an agent makes can be undone.
+    if (settings.checkpoints) this.takeCheckpoint("opened");
     ipc.watchProject(this.root).catch((e) => toast(errorText(e), "error"));
   }
 
@@ -133,6 +144,7 @@ export class ProjectState {
     this.closed = true;
     if (this.dirTimer) clearTimeout(this.dirTimer);
     if (this.filesTimer) clearTimeout(this.filesTimer);
+    if (this.checkpointTimer) clearTimeout(this.checkpointTimer);
     if (this.gitTimer) clearTimeout(this.gitTimer);
     ipc.unwatchProject(this.root).catch(() => {});
   }
@@ -148,6 +160,76 @@ export class ProjectState {
       this.tree.delete(path);
       this.expanded.delete(path);
       if (path === this.root) toast(errorText(e), "error");
+    }
+  }
+
+  // ---- checkpoints ----
+
+  /** A checkpoint once the files have been quiet for 4 s, and at least every minute while they keep changing. */
+  private checkpointSoon() {
+    // Tried even when they were off for this folder: after `git init` they start by themselves.
+    if (!settings.checkpoints) return;
+    const now = Date.now();
+    this.changedSince ||= now;
+    if (this.checkpointTimer) clearTimeout(this.checkpointTimer);
+    const wait = now - this.changedSince > 60_000 ? 0 : 4000;
+    this.checkpointTimer = setTimeout(() => {
+      this.checkpointTimer = null;
+      this.changedSince = 0;
+      this.takeCheckpoint("changes");
+    }, wait);
+  }
+
+  async takeCheckpoint(reason: string) {
+    try {
+      const made = await ipc.checkpointCreate(this.root, reason);
+      if (this.closed) return;
+      this.checkpointsOff = null;
+      if (made && this.checkpoints) this.checkpoints = [made, ...this.checkpoints];
+    } catch (e) {
+      // Not a repository (yet), or a subfolder of one: say so in the Checkpoints tab, quietly.
+      this.checkpointsOff = errorText(e);
+    }
+  }
+
+  async loadCheckpoints() {
+    try {
+      this.checkpoints = await ipc.checkpointList(this.root);
+    } catch (e) {
+      this.checkpointsOff = errorText(e);
+    }
+  }
+
+  /** Puts the files back as they were at `cp`, after asking (the current state is kept as a checkpoint). */
+  async restoreCheckpoint(cp: Checkpoint, when: string) {
+    const ok = await confirm({
+      title: t("checkpoints.restoreTitle", { when }),
+      message: t("checkpoints.restoreBody"),
+      confirm: t("checkpoints.restore"),
+      danger: true,
+    });
+    if (!ok) return;
+    this.checkpointBusy = true;
+    try {
+      await ipc.checkpointRestore(this.root, cp.hash);
+      toast(t("checkpoints.restored", { when }), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    } finally {
+      this.checkpointBusy = false;
+      this.loadCheckpoints();
+      this.refreshGit();
+    }
+  }
+
+  async clearCheckpoints() {
+    const ok = await confirm({ title: t("checkpoints.clearTitle"), message: t("checkpoints.clearBody"), confirm: t("checkpoints.clear"), danger: true });
+    if (!ok) return;
+    try {
+      await ipc.checkpointClear(this.root);
+      this.checkpoints = [];
+    } catch (e) {
+      toast(errorText(e), "error");
     }
   }
 
@@ -279,7 +361,7 @@ export class ProjectState {
     }
   }
 
-  async openCommit(commit: Commit) {
+  async openCommit(commit: Pick<Commit, "hash" | "short">) {
     const { tab, fresh } = this.show(newTab("commit", `commit:${commit.hash}`, commit.short, this.root));
     if (!fresh) return;
     try {
@@ -306,7 +388,7 @@ export class ProjectState {
   }
 
   /** One file's changes in a commit, in a tab. */
-  async openCommitFile(commit: Commit, file: CommitFile) {
+  async openCommitFile(commit: Pick<Commit, "hash" | "short">, file: CommitFile) {
     const id = `commitfile:${commit.hash}:${file.path}`;
     const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.path)));
     if (!fresh) return;
@@ -371,6 +453,7 @@ export class ProjectState {
 
   onChanged(e: FsChanged) {
     if (e.git) this.refreshGit(this.gitTab === "history");
+    if (e.many || e.paths.length) this.checkpointSoon();
     // Files may have come or gone: list them again (soon, once) if a search uses the list.
     if (this.allFiles && !this.filesTimer) this.filesTimer = setTimeout(() => ((this.filesTimer = null), this.loadAllFiles()), 600);
     const now = Date.now();

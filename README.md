@@ -29,6 +29,8 @@
 - **Several projects at once,** each in its own tab with its own files, Git panel and terminals, so an agent keeps working in one while you look at another.
 - **Your agent sees what you see (MCP).** Turn on the local MCP server and add it to your agent with one command: it can then read the file and the code you have selected, see unsaved edits, and open files and diffs in KlikVibe for you to review.
 - **Knows when the agent needs you.** When an agent has been working and goes quiet (waiting for an answer, or done), KlikVibe shows a notification, so you can do something else meanwhile. Paths in its output open the file at that line with a click.
+- **Undo what the agent did.** Checkpoints save your files as the agent works, apart from your commits; restore one to go back to before a change.
+- **Point the agent at code.** Right-click code, a file or a diff and pick "Ask the agent about this" to paste a reference into its terminal.
 - **Live view of the agent's work.** The file tree, open files and the Git panel follow the disk as files change. Files touched in the last moments pulse in the tree, and open files reload by themselves unless you have unsaved edits there.
 - **Code when you want it.** CodeMirror 6 with syntax highlighting for the common languages, search, and editing with save (`⌘S` / `Ctrl+S`). Images, video, audio and PDFs open as a preview; other binary files and very large files are not opened.
 - **Git without leaving.**

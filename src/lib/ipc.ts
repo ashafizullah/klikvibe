@@ -69,6 +69,14 @@ export interface CommitFile {
   added: number | null;
   removed: number | null;
 }
+export interface Checkpoint {
+  hash: string;
+  short: string;
+  date: string;
+  /** "opened", "changes", "before-restore" or "restored". */
+  reason: string;
+  files: number;
+}
 export interface FsChanged {
   root: string;
   paths: string[];
@@ -125,6 +133,10 @@ export const ipc = {
   gitPush: (root: string) => invoke<string>("git_push", { root }),
   gitPull: (root: string) => invoke<string>("git_pull", { root }),
   gitInit: (root: string) => invoke<string>("git_init", { root }),
+  checkpointCreate: (root: string, reason: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason }),
+  checkpointList: (root: string) => invoke<Checkpoint[]>("checkpoint_list", { root }),
+  checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),
+  checkpointClear: (root: string) => invoke<void>("checkpoint_clear", { root }),
   gitDiscard: (root: string, path: string, from: string | null, untracked: boolean) => invoke<void>("git_discard", { root, path, from, untracked }),
   gitIgnore: (root: string, path: string, dir: boolean) => invoke<void>("git_ignore", { root, path, dir }),
 

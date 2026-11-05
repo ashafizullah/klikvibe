@@ -28,6 +28,8 @@
 - Tab terminal diberi nama sesuai program yang berjalan di dalamnya ("Claude Code", "npm run dev", "vite"), dan kembali ke "Terminal 1" saat di prompt shell. Klik dua kali atau klik kanan tab untuk mengganti nama; nama buatanmu tetap dipakai sampai kamu memilih nama otomatis lagi.
 - Breadcrumb di atas editor (proyek › folder › file): folder menampilkan isinya untuk membuka file, file menawarkan Tampilkan di Files, path-nya dan Tampilkan di Finder. Tampilkan di Files membuka folder-foldernya di pohon file.
 - Item menu klik kanan kembali tampil dengan huruf biasa dan garis pemisahnya utuh; panah di breadcrumb tampil dengan benar.
+- Checkpoint: selama agen bekerja, KlikVibe menyimpan snapshot file setiap kali file berhenti berubah sejenak (dan paling lambat tiap menit), di ref Git tersendiri yang tidak pernah menyentuh commit, branch, index, atau stash-mu, dan tidak pernah ter-push. Tab Checkpoint di panel Git menampilkannya beserta file dan diff-nya; Kembalikan mengembalikan file seperti saat itu (kondisi saat ini disimpan dulu, jadi pengembalian pun bisa dibatalkan).
+- Tanya agen: klik kanan kode (baris yang dipilih), file, folder, diff, perubahan, atau commit lalu pilih "Tanya agen tentang ini"; rujukan seperti `@src/app.ts baris 12-30` ditempel ke terminal agen untuk kamu lengkapi dan kirim. Tombol Prompt di terminal berisi prompt siap pakai dan prompt buatanmu.
 
 ## 0.1.0
 

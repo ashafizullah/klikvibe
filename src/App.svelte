@@ -16,6 +16,7 @@
   import Tooltip from "./components/Tooltip.svelte";
   import McpDialog from "./components/McpDialog.svelte";
   import AboutDialog from "./components/AboutDialog.svelte";
+  import PromptsDialog from "./components/PromptsDialog.svelte";
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
@@ -139,6 +140,8 @@
     <McpDialog />
   {:else if ui.dialog === "about"}
     <AboutDialog />
+  {:else if ui.dialog === "prompts"}
+    <PromptsDialog />
   {/if}
   <AlertDialog />
   <Toasts />

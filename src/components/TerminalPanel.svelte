@@ -5,8 +5,8 @@
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, agentById } from "../lib/agents";
   import { t } from "../lib/i18n/index.svelte";
-  import { openMenu } from "../lib/ui.svelte";
-  import { tick } from "svelte";
+  import { openMenu, openMenuBelow, ui, type MenuItem } from "../lib/ui.svelte";
+  import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
 
@@ -82,6 +82,38 @@
     refs[active]?.type(agent.command);
   }
 
+  const isAgent = (s: Shell) => s.auto !== null && AGENTS.some((a) => a.label === s.auto);
+
+  /** Pastes into the terminal that runs an agent (the active one first), else the active terminal. */
+  function askAgent(text: string) {
+    const target = shells.find((s) => s.id === active && isAgent(s)) ?? shells.find(isAgent) ?? shells.find((s) => s.id === active);
+    if (!target) return;
+    active = target.id;
+    if (!settings.showTerminal) {
+      settings.showTerminal = true;
+      persist();
+    }
+    // The panel may have just been shown.
+    tick().then(() => refs[target.id]?.paste(text));
+  }
+  project.askAgent = askAgent;
+  onDestroy(() => {
+    if (project.askAgent === askAgent) project.askAgent = null;
+  });
+
+  const BUILT_IN = ["prompts.fixTests", "prompts.review", "prompts.explain", "prompts.commitMessage", "prompts.simpler"] as const;
+
+  function promptsMenu(e: MouseEvent) {
+    const items: MenuItem[] = [
+      ...BUILT_IN.map((k) => ({ label: t(k), run: () => askAgent(t(k)) })),
+      ...(settings.prompts.length ? ["sep" as const] : []),
+      ...settings.prompts.map((p) => ({ label: p, run: () => askAgent(p) })),
+      "sep",
+      { label: t("prompts.edit"), run: () => (ui.dialog = "prompts") },
+    ];
+    openMenuBelow(e.currentTarget as Element, items);
+  }
+
   function setAgent(e: Event) {
     settings.agent = (e.currentTarget as HTMLSelectElement).value;
     persist();
@@ -149,6 +181,9 @@
     </div>
     <div class="spacer"></div>
     <div class="agent">
+      <button class="btn small" onclick={promptsMenu} title={t("prompts.hint")}>
+        <Icon name="message-square-text" size={13} />{t("prompts.title")}
+      </button>
       <select class="field" value={settings.agent} onchange={setAgent} aria-label={t("terminal.agent")}>
         {#each AGENTS as a (a.id)}<option value={a.id}>{a.label}</option>{/each}
       </select>

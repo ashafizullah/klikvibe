@@ -17,9 +17,25 @@
   const git = $derived(project.git);
   const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
 
-  function setTab(tab: "changes" | "history") {
+  function setTab(tab: "changes" | "history" | "checkpoints") {
     project.gitTab = tab;
     if (tab === "history") project.refreshGit(true);
+    if (tab === "checkpoints") project.loadCheckpoints();
+  }
+
+  const REASON_ICON: Record<string, string> = { opened: "open", changes: "diff", "before-restore": "save", restored: "rotate-ccw", manual: "save" };
+
+  /** "14:05", or "3 Nov 14:05" when it isn't today. */
+  function moment(iso: string) {
+    const d = new Date(iso);
+    const time = d.toLocaleTimeString(i18n.locale, { hour: "2-digit", minute: "2-digit" });
+    return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(i18n.locale, { day: "numeric", month: "short" })} ${time}`;
+  }
+
+  function setCheckpoints(on: boolean) {
+    settings.checkpoints = on;
+    persist();
+    if (on) project.takeCheckpoint("manual");
   }
 
   function onKey(e: KeyboardEvent) {
@@ -35,6 +51,8 @@
     const untracked = c.kind === "untracked";
     const dir = split(c.path).dir;
     openMenu(e, [
+      { label: t("ask.changes"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`${t("ask.uncommitted", { path: `@${c.path}` })} `) },
+      "sep",
       { label: t("git.menu.openDiff"), run: () => project.openDiff(c) },
       { label: t("git.menu.openFile"), disabled: gone, run: () => project.openFile(abs) },
       "sep",
@@ -72,6 +90,8 @@
 
   function commitMenu(e: MouseEvent, c: Commit) {
     openMenu(e, [
+      { label: t("ask.changes"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`${t("ask.commit", { hash: c.short })} `) },
+      "sep",
       { label: t("git.menu.openCommit"), run: () => project.openCommit(c) },
       "sep",
       { label: t("menu.copyHash"), run: () => copyText(c.hash) },
@@ -84,6 +104,32 @@
     return i < 0 ? { name: path, dir: "" } : { name: path.slice(i + 1), dir: path.slice(0, i) };
   };
 </script>
+
+{#snippet fileList(c: { hash: string; short: string }, full = true)}
+  {@const files = project.commitFiles.get(c.hash)}
+  {#if files === "loading" || files === undefined}
+    <p class="files-note">{t("common.loading")}</p>
+  {:else if files === "error"}
+    <p class="files-note">{t("git.filesError")}</p>
+  {:else}
+    {#each files as f (f.path)}
+      {@const p = split(f.path)}
+      <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
+        <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
+        <span class="name ellipsis">{p.name}</span>
+        <span class="dir ellipsis">{p.dir}</span>
+        {#if f.added !== null}
+          <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
+        {:else}
+          <span class="lines">{t("git.binary")}</span>
+        {/if}
+      </button>
+    {:else}
+      <p class="files-note">{t("git.noFileChanges")}</p>
+    {/each}
+  {/if}
+  {#if full}<button class="full" onclick={() => project.openCommit(c)}><Icon name="commit" size={12} />{t("git.showFullCommit")}</button>{/if}
+{/snippet}
 
 <section class="git">
   <div class="panel-head">
@@ -126,6 +172,9 @@
         {t("git.changes")}{#if git.changes.length}&nbsp;<span class="count">{git.changes.length}</span>{/if}
       </button>
       <button class:on={project.gitTab === "history"} onclick={() => setTab("history")} role="tab" aria-selected={project.gitTab === "history"}>{t("git.history")}</button>
+      <button class:on={project.gitTab === "checkpoints"} onclick={() => setTab("checkpoints")} role="tab" aria-selected={project.gitTab === "checkpoints"} title={t("checkpoints.intro")}>
+        {t("git.checkpoints")}
+      </button>
     </div>
 
     {#if project.gitTab === "changes"}
@@ -153,6 +202,46 @@
         {:else}
           <p class="empty-note clean"><Icon name="check" size={14} />{t("git.clean")}</p>
         {/each}
+      </div>
+    {:else if project.gitTab === "checkpoints"}
+      <div class="cp-head">
+        <label class="cp-auto" title={t("checkpoints.intro")}>
+          <input type="checkbox" checked={settings.checkpoints} onchange={(e) => setCheckpoints(e.currentTarget.checked)} />
+          {t("checkpoints.auto")}
+        </label>
+        <button class="icon-btn" onclick={() => project.takeCheckpoint("manual")} disabled={!!project.checkpointsOff} title={t("checkpoints.now")} aria-label={t("checkpoints.now")}>
+          <Icon name="save" size={13} />
+        </button>
+        <button class="icon-btn" onclick={() => project.clearCheckpoints()} disabled={!project.checkpoints?.length} title={t("checkpoints.clear")} aria-label={t("checkpoints.clear")}>
+          <Icon name="close" size={13} />
+        </button>
+      </div>
+      <div class="list">
+        {#if project.checkpointsOff}
+          <p class="empty-note">{project.checkpointsOff}</p>
+        {:else if project.checkpoints === null}
+          <p class="empty-note">{t("common.loading")}</p>
+        {:else}
+          {#each project.checkpoints as cp (cp.hash)}
+            {@const open = project.expandedCommit === cp.hash}
+            {@const when = moment(cp.date)}
+            <div class="cp" class:open>
+              <button class="cp-main" onclick={() => project.toggleCommitFiles(cp.hash)} aria-expanded={open} title={cp.hash}>
+                <Icon name={REASON_ICON[cp.reason] ?? "save"} size={14} />
+                <span class="cp-text">
+                  <span class="cp-title ellipsis">{t(`checkpoints.reason.${cp.reason}` as Key) ?? cp.reason}</span>
+                  <span class="meta">{when} · {ago(cp.date, i18n.locale)} · {t("checkpoints.files", { count: cp.files })}</span>
+                </span>
+              </button>
+              <button class="btn small" onclick={() => project.restoreCheckpoint(cp, when)} disabled={project.checkpointBusy} title={t("checkpoints.restoreHint")}>
+                <Icon name="rotate-ccw" size={12} />{t("checkpoints.restore")}
+              </button>
+            </div>
+            {#if open}<div class="cp-files files">{@render fileList(cp, false)}</div>{/if}
+          {:else}
+            <p class="empty-note">{t("checkpoints.none")}</p>
+          {/each}
+        {/if}
       </div>
     {:else}
       <div class="scope">
@@ -187,36 +276,12 @@
             </span>
           </button>
           {#if open}
-            {@const files = project.commitFiles.get(c.hash)}
             <div class="commit-files">
               <!-- The graph's lines carry on beside the list. -->
               <div class="lanes" style:width="{graphW}px" aria-hidden="true">
                 {#each lanesAfter(i) as l (l.lane)}<span style:left="{laneX(l.lane) - 1}px" style:background={laneColor(l.color)}></span>{/each}
               </div>
-              <div class="files">
-                {#if files === "loading" || files === undefined}
-                  <p class="files-note">{t("common.loading")}</p>
-                {:else if files === "error"}
-                  <p class="files-note">{t("git.filesError")}</p>
-                {:else}
-                  {#each files as f (f.path)}
-                    {@const p = split(f.path)}
-                    <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
-                      <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
-                      <span class="name ellipsis">{p.name}</span>
-                      <span class="dir ellipsis">{p.dir}</span>
-                      {#if f.added !== null}
-                        <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
-                      {:else}
-                        <span class="lines">{t("git.binary")}</span>
-                      {/if}
-                    </button>
-                  {:else}
-                    <p class="files-note">{t("git.noFileChanges")}</p>
-                  {/each}
-                {/if}
-                <button class="full" onclick={() => project.openCommit(c)}><Icon name="commit" size={12} />{t("git.showFullCommit")}</button>
-              </div>
+              <div class="files">{@render fileList(c)}</div>
             </div>
           {/if}
         {:else}
@@ -484,6 +549,67 @@
   .full:hover {
     color: var(--accent);
     background: var(--panel-2);
+  }
+  .cp-head {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 8px 4px 12px;
+  }
+  .cp-auto {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .cp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+  }
+  .cp.open,
+  .cp:hover {
+    background: var(--panel-2);
+  }
+  .cp-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 4px 7px 12px;
+    border: none;
+    background: none;
+    text-align: left;
+  }
+  .cp-main :global(svg) {
+    flex: none;
+    color: var(--accent);
+  }
+  .cp-text {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .cp-title {
+    font-size: 12.5px;
+  }
+  .cp .btn {
+    flex: none;
+    opacity: 0;
+  }
+  .cp:hover .btn,
+  .cp.open .btn,
+  .cp .btn:focus-visible {
+    opacity: 1;
+  }
+  .cp-files {
+    margin: 0 0 6px 30px;
   }
   .scope {
     flex: none;

@@ -2,7 +2,7 @@
 //! projects (see projects.rs); slow work runs off the main thread.
 use crate::error::{AppError, AppResult};
 use crate::files::{self, Entry, FileList, FileText, TextSearch};
-use crate::git::{self, Commit, CommitFile, Status};
+use crate::git::{self, Checkpoint, Commit, CommitFile, Status};
 use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
 use crate::terminal::{TerminalEvent, Terminals};
@@ -204,6 +204,32 @@ pub async fn git_ignore(projects: State<'_, Projects>, root: String, path: Strin
     // Through `writable`, so a .gitignore symlinked out of the project is refused.
     let file = projects.writable(&root.join(".gitignore").display().to_string())?;
     blocking(move || git::ignore(&file, &path, dir)).await
+}
+
+/// Takes a checkpoint of the working tree (see git.rs); None when nothing changed.
+#[tauri::command]
+pub async fn checkpoint_create(projects: State<'_, Projects>, root: String, reason: String) -> AppResult<Option<Checkpoint>> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::checkpoint(&root, &reason)).await
+}
+
+#[tauri::command]
+pub async fn checkpoint_list(projects: State<'_, Projects>, root: String) -> AppResult<Vec<Checkpoint>> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::checkpoints(&root, 100)).await
+}
+
+/// Puts the files back as they were at a checkpoint (after saving the current state as one).
+#[tauri::command]
+pub async fn checkpoint_restore(projects: State<'_, Projects>, root: String, hash: String) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::restore_checkpoint(&root, &hash)).await
+}
+
+#[tauri::command]
+pub async fn checkpoint_clear(projects: State<'_, Projects>, root: String) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::clear_checkpoints(&root)).await
 }
 
 #[tauri::command]

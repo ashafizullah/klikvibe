@@ -27,7 +27,13 @@
       { label: revealLabel(), run: () => reveal(entry.path) },
     ];
     if (entry.dir) {
-      openMenu(e, [{ label: open ? t("menu.collapse") : t("menu.expand"), run: () => project.toggleDir(entry.path) }, "sep", ...where]);
+      openMenu(e, [
+        { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`@${rel}/ `) },
+        "sep",
+        { label: open ? t("menu.collapse") : t("menu.expand"), run: () => project.toggleDir(entry.path) },
+        "sep",
+        ...where,
+      ]);
       return;
     }
     const c = change;
@@ -39,6 +45,8 @@
         ]
       : [];
     openMenu(e, [
+      { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`@${rel} `) },
+      "sep",
       { label: t("menu.open"), run: () => project.openFile(entry.path) },
       ...(c ? [{ label: t("git.menu.openDiff"), run: () => project.openDiff(c) }] : []),
       ...(mediaKind(entry.name)

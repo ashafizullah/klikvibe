@@ -28,6 +28,10 @@ interface Stored {
   fontSize: number;
   wrap: boolean;
   updateMode: UpdateMode;
+  /** Take checkpoints of the files as they change (see checkpoints in git.rs). */
+  checkpoints: boolean;
+  /** The user's own prompts for the terminal's Prompts menu. */
+  prompts: string[];
   /** Tell the user when an agent in a terminal waits for them (see attention.svelte.ts). */
   notifyAgents: boolean;
   /** Diffs side by side (old left, new right) or in one column. */
@@ -63,6 +67,8 @@ function load(): Stored {
     historyAll: false,
     diffView: "split",
     notifyAgents: true,
+    prompts: [],
+    checkpoints: true,
     lastVersion: "",
   };
   try {

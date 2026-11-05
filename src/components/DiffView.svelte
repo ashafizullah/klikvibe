@@ -27,7 +27,16 @@
   /** The diff's right-click menu: the selected text, the layout, then the file. */
   function menu(e: MouseEvent) {
     const selected = window.getSelection()?.toString() ?? "";
+    const rel = `@${relative(project.root, tab.path) ?? tab.path}`;
+    const about =
+      tab.kind === "commit"
+        ? t("ask.commit", { hash: tab.title })
+        : tab.kind === "commitFile"
+          ? t("ask.inCommit", { path: rel, hash: tab.id.split(":")[1].slice(0, 7) })
+          : t("ask.uncommitted", { path: rel });
     const items: MenuItem[] = [
+      { label: t("ask.changes"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`${about} `) },
+      "sep",
       { label: t("edit.copy"), hint: `${mod}C`, disabled: !selected, run: () => copyText(selected, true) },
       {
         label: t("edit.selectAll"),

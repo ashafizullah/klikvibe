@@ -38,7 +38,7 @@ export const ui = $state({
   toasts: [] as Toast[],
   menu: null as { x: number; y: number; items: MenuItem[] } | null,
   /** The modal on screen, if any. */
-  dialog: null as "mcp" | "about" | null,
+  dialog: null as "mcp" | "about" | "prompts" | null,
   alert: null as (AlertOptions & { resolve: (value: string | null) => void }) | null,
 });
 

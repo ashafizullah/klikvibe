@@ -202,6 +202,14 @@
     term?.focus();
   }
 
+  /** Pastes `text` (as a paste, so a TUI agent takes it whole and nothing is sent); false when the shell has ended. */
+  export function paste(text: string): boolean {
+    if (!session || exited || !term) return false;
+    term.paste(text);
+    term.focus();
+    return true;
+  }
+
   export function refit() {
     fit?.fit();
   }
