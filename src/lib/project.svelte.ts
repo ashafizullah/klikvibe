@@ -202,6 +202,21 @@ export class ProjectState {
     if (this.active === id) this.active = this.tabs[Math.min(i, this.tabs.length - 1)]?.id ?? null;
   }
 
+  /** Closes several tabs, asking once about unsaved edits among them; `keep` stays in front if it was not closed. */
+  async closeTabs(ids: string[], keep?: string) {
+    const closing = new Set(ids);
+    const dirty = this.tabs.filter((tb) => closing.has(tb.id) && isDirty(tb));
+    if (dirty.length) {
+      const question = dirty.length === 1 ? t("tabs.discard", { name: dirty[0].title }) : t("tabs.discardMany", { count: dirty.length });
+      if (!(await ask(question, { title: "KlikVibe", kind: "warning" }))) return;
+    }
+    const at = this.tabs.findIndex((tb) => tb.id === this.active);
+    this.tabs = this.tabs.filter((tb) => !closing.has(tb.id));
+    if (this.active && closing.has(this.active)) {
+      this.active = keep && this.tabs.some((tb) => tb.id === keep) ? keep : (this.tabs[Math.min(at, this.tabs.length - 1)]?.id ?? null);
+    }
+  }
+
   async saveTab(tab: Tab | undefined = this.activeTab()) {
     if (!tab || tab.kind !== "file" || tab.media || tab.binary || tab.tooLarge) return;
     try {

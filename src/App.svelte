@@ -12,6 +12,7 @@
   import TitleBar from "./components/TitleBar.svelte";
   import ProjectView from "./components/ProjectView.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import ContextMenu from "./components/ContextMenu.svelte";
   import Icon from "./components/Icon.svelte";
 
   const project = $derived(currentProject());
@@ -107,6 +108,7 @@
     <div class="busy"><Icon name="loader" size={13} class="spin" />{ui.busy}</div>
   {/if}
   <Toasts />
+  <ContextMenu />
 </div>
 
 <style>

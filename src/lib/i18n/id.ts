@@ -2,6 +2,7 @@ import type { Key } from "./en";
 
 const id: Record<Key, string> = {
   "common.loading": "Memuat…",
+  "common.copied": "Disalin",
 
   "home.start": "Mulai",
   "home.open": "Buka folder",
@@ -54,6 +55,21 @@ const id: Record<Key, string> = {
   "media.video": "Video",
   "media.audio": "Audio",
   "media.pdf": "PDF",
+
+  "menu.close": "Tutup",
+  "menu.closeOthers": "Tutup yang lain",
+  "menu.closeRight": "Tutup yang di kanan",
+  "menu.closeSaved": "Tutup yang sudah disimpan",
+  "menu.closeAll": "Tutup semua",
+  "menu.copyPath": "Salin path",
+  "menu.copyRelative": "Salin path relatif",
+  "menu.copyHash": "Salin hash commit",
+  "menu.reveal": "Tampilkan di folder",
+  "menu.revealMac": "Tampilkan di Finder",
+  "menu.revealWindows": "Tampilkan di Explorer",
+  "menu.closeProject": "Tutup proyek",
+  "menu.closeOtherProjects": "Tutup proyek lain",
+  "menu.closeAllProjects": "Tutup semua proyek",
 
   "diff.changes": "Perubahan di {name}",
   "diff.commit": "Commit {hash}",

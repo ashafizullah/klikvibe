@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { isDirty, useProject } from "../lib/project.svelte";
+  import { isDirty, useProject, type Tab } from "../lib/project.svelte";
   import { languageName } from "../lib/languages";
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
-  import { mod, toast } from "../lib/ui.svelte";
-  import type { Tab } from "../lib/project.svelte";
+  import { copyText, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
+  import { revealItemInDir } from "@tauri-apps/plugin-opener";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import CodeView from "./CodeView.svelte";
@@ -28,6 +28,29 @@
 
   const tabIcon = (tb: Tab) => (tb.kind === "file" && tb.media ? tb.media : ICON[tb.kind]);
 
+  function tabMenu(e: MouseEvent, tb: Tab) {
+    const i = project.tabs.indexOf(tb);
+    const ids = (list: Tab[]) => list.map((x) => x.id);
+    const others = project.tabs.filter((x) => x.id !== tb.id);
+    const right = project.tabs.slice(i + 1);
+    const saved = project.tabs.filter((x) => !isDirty(x));
+    const where = tb.kind === "commit" ? [{ label: t("menu.copyHash"), run: () => copyText(tb.id.slice("commit:".length)) }] : [
+      { label: t("menu.copyPath"), run: () => copyText(tb.path) },
+      { label: t("menu.copyRelative"), run: () => copyText(relative(project.root, tb.path) ?? tb.path) },
+      "sep" as const,
+      { label: revealLabel(), run: () => revealItemInDir(tb.path).catch((err) => toast(errorText(err), "error")) },
+    ];
+    openMenu(e, [
+      { label: t("menu.close"), hint: `${mod}W`, run: () => project.closeTab(tb.id) },
+      { label: t("menu.closeOthers"), disabled: !others.length, run: () => project.closeTabs(ids(others), tb.id) },
+      { label: t("menu.closeRight"), disabled: !right.length, run: () => project.closeTabs(ids(right), tb.id) },
+      { label: t("menu.closeSaved"), disabled: !saved.length, run: () => project.closeTabs(ids(saved)) },
+      { label: t("menu.closeAll"), run: () => project.closeTabs(ids(project.tabs)) },
+      "sep",
+      ...where,
+    ]);
+  }
+
   function openExternally(path: string) {
     ipc.openExternally(path).catch((e) => toast(errorText(e), "error"));
   }
@@ -43,7 +66,7 @@
     <div class="tabs" role="tablist">
       {#each project.tabs as tb (tb.id)}
         <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1">
-          <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} title={tb.path}>
+          <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
             <Icon name={tabIcon(tb)} size={13} />
             <span class="tab-name">{tb.title}</span>
           </button>

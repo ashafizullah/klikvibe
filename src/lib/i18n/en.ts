@@ -1,5 +1,6 @@
 const en = {
   "common.loading": "Loading…",
+  "common.copied": "Copied",
 
   "home.start": "Start",
   "home.open": "Open folder",
@@ -52,6 +53,21 @@ const en = {
   "media.video": "Video",
   "media.audio": "Audio",
   "media.pdf": "PDF",
+
+  "menu.close": "Close",
+  "menu.closeOthers": "Close others",
+  "menu.closeRight": "Close to the right",
+  "menu.closeSaved": "Close saved",
+  "menu.closeAll": "Close all",
+  "menu.copyPath": "Copy path",
+  "menu.copyRelative": "Copy relative path",
+  "menu.copyHash": "Copy commit hash",
+  "menu.reveal": "Show in folder",
+  "menu.revealMac": "Reveal in Finder",
+  "menu.revealWindows": "Show in Explorer",
+  "menu.closeProject": "Close project",
+  "menu.closeOtherProjects": "Close other projects",
+  "menu.closeAllProjects": "Close all projects",
 
   "diff.changes": "Changes in {name}",
   "diff.commit": "Commit {hash}",

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { closeProject, currentProject, showProject, workspace, type ProjectState } from "../lib/project.svelte";
+  import { revealItemInDir } from "@tauri-apps/plugin-opener";
+  import { errorText } from "../lib/ipc";
   import { persist, settings } from "../lib/settings.svelte";
-  import { isMac, mod } from "../lib/ui.svelte";
+  import { copyText, isMac, mod, openMenu, revealLabel, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
 
@@ -11,6 +13,23 @@
   function toggle(key: "showTree" | "showGit" | "showTerminal") {
     settings[key] = !settings[key];
     persist();
+  }
+
+  /** Closes projects one by one; stops when the user keeps unsaved edits in one. */
+  async function closeMany(list: ProjectState[]) {
+    for (const p of list) if (!(await closeProject(p))) return;
+  }
+
+  function projectMenu(e: MouseEvent, p: ProjectState) {
+    const others = workspace.projects.filter((x) => x !== p);
+    openMenu(e, [
+      { label: t("menu.closeProject"), run: () => closeProject(p) },
+      { label: t("menu.closeOtherProjects"), disabled: !others.length, run: () => closeMany(others) },
+      { label: t("menu.closeAllProjects"), run: () => closeMany([...workspace.projects]) },
+      "sep",
+      { label: t("menu.copyPath"), run: () => copyText(p.root) },
+      { label: revealLabel(), run: () => revealItemInDir(p.root).catch((err) => toast(errorText(err), "error")) },
+    ]);
   }
 
   function onAux(e: MouseEvent, p: ProjectState) {
@@ -28,7 +47,7 @@
     {#each workspace.projects as p, i (p.root)}
       {@const on = p.root === workspace.active}
       <div class="ptab" class:on role="tab" aria-selected={on} tabindex="-1">
-        <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
+        <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
           <Icon name="project" size={13} />
           <span class="name">{p.current.name}</span>
           {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
