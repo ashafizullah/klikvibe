@@ -197,9 +197,9 @@
                       <span class="name">{p.name}</span>
                       <span class="dir">{p.dir}</span>
                       {#if f.added !== null}
-                        <span class="count add">+{f.added}</span><span class="count del">−{f.removed}</span>
+                        <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
                       {:else}
-                        <span class="count">{t("git.binary")}</span>
+                        <span class="lines">{t("git.binary")}</span>
                       {/if}
                     </button>
                   {:else}
@@ -272,11 +272,20 @@
   .small {
     height: 26px;
   }
+  /* Commits to pull or push, as a badge beside the label. */
   .count {
-    font: 500 10px var(--mono);
+    min-width: 17px;
+    height: 17px;
+    margin-left: 2px;
     padding: 0 5px;
+    display: inline-grid;
+    place-items: center;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--text) 12%, transparent);
+    background: color-mix(in srgb, var(--text) 14%, transparent);
+    font: 600 10px/1 var(--mono);
+  }
+  .btn.primary .count {
+    background: rgb(0 0 0 / 0.2);
   }
   .tabs {
     margin: 10px 12px 0;
@@ -453,15 +462,15 @@
     font-size: 10.5px;
     color: var(--muted);
   }
-  .count {
+  .lines {
     flex: none;
     font: 10.5px var(--mono);
     color: var(--muted);
   }
-  .count.add {
+  .lines.add {
     color: var(--ok);
   }
-  .count.del {
+  .lines.del {
     color: var(--danger);
   }
   .files-note {
