@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
+
+The title bar in full screen on macOS.
 
 - In full screen on macOS the title bar starts at the left edge, since the window buttons are hidden there.
 

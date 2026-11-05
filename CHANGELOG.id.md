@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.3.2
+
+Title bar dalam mode layar penuh di macOS.
 
 - Dalam mode layar penuh di macOS, title bar mulai dari tepi kiri, karena tombol jendela tersembunyi di sana.
 
