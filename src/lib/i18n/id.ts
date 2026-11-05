@@ -49,6 +49,9 @@ const id: Record<Key, string> = {
   "search.clear": "Hapus pencarian",
   "search.matches": "{count} hasil di {files} file",
 
+  "crumbs.label": "Path file",
+  "crumbs.revealFolder": "Tampilkan folder ini di Files",
+  "crumbs.revealFile": "Tampilkan di Files",
   "tabs.close": "Tutup",
   "tabs.save": "Simpan",
   "tabs.wrap": "Bungkus baris panjang",

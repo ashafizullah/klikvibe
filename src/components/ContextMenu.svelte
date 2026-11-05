@@ -4,6 +4,7 @@
   // works from the keyboard.
   import { tick } from "svelte";
   import { closeMenu, ui, type MenuItem } from "../lib/ui.svelte";
+  import Icon from "./Icon.svelte";
 
   let el = $state<HTMLDivElement>();
   let pos = $state({ x: 0, y: 0 });
@@ -55,7 +56,8 @@
         <div class="sep" role="separator"></div>
       {:else}
         <button role="menuitem" disabled={item.disabled} onclick={() => run(item)}>
-          <span>{item.label}</span>
+          {#if item.icon}<Icon name={item.icon} color={item.color} size={13} />{/if}
+          <span class="label">{item.label}</span>
           {#if item.hint}<span class="hint">{item.hint}</span>{/if}
         </button>
       {/if}
@@ -68,6 +70,10 @@
     position: fixed;
     z-index: 150;
     min-width: 200px;
+    max-width: 360px;
+    /* A long folder listing scrolls instead of leaving the window. */
+    max-height: min(480px, calc(100vh - 16px));
+    overflow-y: auto;
     padding: 4px;
     background: var(--panel-2);
     border: 1px solid var(--line);
@@ -97,6 +103,16 @@
   button:disabled {
     color: var(--muted);
     opacity: 0.6;
+  }
+  button :global(svg) {
+    flex: none;
+    margin-right: -8px;
+  }
+  .label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .hint {
     margin-left: auto;

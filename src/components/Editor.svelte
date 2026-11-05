@@ -3,7 +3,8 @@
   import { languageName } from "../lib/languages";
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
-  import { copyText, mod, openMenu, reveal, revealLabel, toast } from "../lib/ui.svelte";
+  import { copyText, mod, openMenu, openMenuBelow, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
+  import { join } from "../lib/paths";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import CodeView from "./CodeView.svelte";
@@ -24,6 +25,38 @@
       e.preventDefault();
       project.closeTab(id);
     }
+  }
+
+  /** The breadcrumb: the project, then each folder down to the file (absolute paths). */
+  const crumbs = $derived.by(() => {
+    if (!tab || tab.kind === "commit" || !rel) return [];
+    const parts = rel.split("/");
+    return parts.map((name, i) => ({ name, path: join(project.root, parts.slice(0, i + 1).join("/")), last: i === parts.length - 1 }));
+  });
+
+  /** A folder's files and folders, to open one (or show a folder in the tree). */
+  async function folderMenu(el: Element, dir: string) {
+    if (!project.tree.has(dir)) await project.loadDir(dir);
+    const entries = project.tree.get(dir) ?? [];
+    const items: MenuItem[] = entries.map((e) => {
+      const fi = fileIcon(e.name);
+      return e.dir
+        ? { label: e.name, icon: "folder", color: "var(--accent)", run: () => project.revealInTree(e.path, true) }
+        : { label: e.name, icon: fi.icon, color: fi.color, run: () => project.openFile(e.path) };
+    });
+    if (!items.length) items.push({ label: t("tree.empty"), disabled: true, run: () => {} });
+    items.push("sep", { label: t("crumbs.revealFolder"), run: () => project.revealInTree(dir, true) });
+    openMenuBelow(el, items);
+  }
+
+  function fileMenu(el: Element, path: string) {
+    openMenuBelow(el, [
+      { label: t("crumbs.revealFile"), run: () => project.revealInTree(path) },
+      "sep",
+      { label: t("menu.copyPath"), run: () => copyText(path) },
+      { label: t("menu.copyRelative"), run: () => copyText(rel ?? path) },
+      { label: revealLabel(), run: () => reveal(path) },
+    ]);
   }
 
   const tabIcon = (tb: Tab) => (tb.kind === "file" ? fileIcon(tb.title) : { icon: ICON[tb.kind], color: undefined });
@@ -79,6 +112,21 @@
   {/if}
 
   {#if tab}
+    {#if crumbs.length}
+      <nav class="crumbs" aria-label={t("crumbs.label")}>
+        <button class="crumb" onclick={(e) => folderMenu(e.currentTarget, project.root)} title={project.root}>{project.current.name}</button>
+        {#each crumbs as c (c.path)}
+          <Icon name="right" size={11} class="sep" />
+          {#if c.last}
+            <button class="crumb file" onclick={(e) => fileMenu(e.currentTarget, c.path)} title={c.path}>
+              <Icon name={fileIcon(c.name).icon} color={fileIcon(c.name).color} size={12} />{c.name}
+            </button>
+          {:else}
+            <button class="crumb" onclick={(e) => folderMenu(e.currentTarget, c.path)} title={c.path}>{c.name}</button>
+          {/if}
+        {/each}
+      </nav>
+    {/if}
     {#if tab.kind === "file" && tab.changedOnDisk}
       <div class="banner">
         <Icon name="alert" size={14} />
@@ -105,7 +153,6 @@
         {/key}
       {/if}
       <footer class="status">
-        <span class="mono path">{rel ?? tab.path}</span>
         <span class="spacer"></span>
         {#if isDirty(tab)}
           <button class="btn ghost tiny" onclick={() => project.saveTab(tab)}><Icon name="save" size={12} />{t("tabs.save")} <span class="kbd">{mod}S</span></button>
@@ -256,6 +303,47 @@
     color: var(--muted);
     font-size: 12px;
   }
+  .crumbs {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    height: 26px;
+    padding: 0 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--line);
+    background: var(--canvas);
+  }
+  .crumbs::-webkit-scrollbar {
+    display: none;
+  }
+  .crumbs :global(.sep) {
+    flex: none;
+    color: var(--muted);
+    opacity: 0.6;
+  }
+  .crumb {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 20px;
+    padding: 0 5px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .crumb:hover {
+    background: var(--panel-2);
+    color: var(--text);
+  }
+  .crumb.file {
+    color: var(--text);
+  }
   .status {
     height: 26px;
     flex: none;
@@ -267,12 +355,6 @@
     background: var(--panel);
     font-size: 11px;
     color: var(--muted);
-  }
-  .path {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .spacer {
     flex: 1;

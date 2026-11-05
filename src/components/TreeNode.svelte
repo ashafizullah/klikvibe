@@ -55,6 +55,7 @@
 
 <button
   class="node"
+  data-path={entry.path}
   class:active
   class:fresh
   style:padding-left="{8 + depth * 14}px"

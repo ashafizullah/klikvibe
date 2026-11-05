@@ -47,6 +47,9 @@ const en = {
   "search.clear": "Clear search",
   "search.matches": "{count} matches in {files} files",
 
+  "crumbs.label": "File path",
+  "crumbs.revealFolder": "Show this folder in Files",
+  "crumbs.revealFile": "Show in Files",
   "tabs.close": "Close",
   "tabs.save": "Save",
   "tabs.wrap": "Wrap long lines",

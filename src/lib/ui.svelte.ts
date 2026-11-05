@@ -32,7 +32,7 @@ export interface ConfirmOptions {
 }
 
 /** A right-click menu entry, or "sep" for a divider. */
-export type MenuItem = { label: string; run: () => void; disabled?: boolean; hint?: string } | "sep";
+export type MenuItem = { label: string; run: () => void; disabled?: boolean; hint?: string; icon?: string; color?: string } | "sep";
 
 export const ui = $state({
   toasts: [] as Toast[],
@@ -80,6 +80,12 @@ export function openMenu(e: MouseEvent, items: MenuItem[]) {
   e.preventDefault();
   e.stopPropagation();
   ui.menu = { x: e.clientX, y: e.clientY, items };
+}
+
+/** Shows a menu under an element (a breadcrumb, a button). */
+export function openMenuBelow(el: Element, items: MenuItem[]) {
+  const r = el.getBoundingClientRect();
+  ui.menu = { x: r.left, y: r.bottom + 4, items };
 }
 
 export function closeMenu() {

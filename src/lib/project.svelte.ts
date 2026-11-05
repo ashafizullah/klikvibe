@@ -1,7 +1,7 @@
 // The open projects, one per tab in the title bar. Each keeps its own file
 // tree, open files, Git state and terminals, kept in step with the disk
 // while an agent (or anything else) changes files.
-import { getContext, setContext } from "svelte";
+import { getContext, setContext, tick } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import type { EditorView } from "@codemirror/view";
@@ -10,7 +10,8 @@ import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { t } from "./i18n/index.svelte";
 import { confirm, toast } from "./ui.svelte";
-import { settings } from "./settings.svelte";
+import { persist, settings } from "./settings.svelte";
+import { treeKey } from "./grid";
 
 /** commitFile: one file's changes in a commit. */
 export type TabKind = "file" | "diff" | "commit" | "commitFile";
@@ -171,6 +172,24 @@ export class ProjectState {
     }
     return this.fileSet?.has(rel) ?? false;
   }
+  /** Opens the folders down to `path` in the file tree, shows the tree, and scrolls to it. */
+  async revealInTree(path: string, isDir = false) {
+    const rel = relative(this.root, path);
+    if (rel === null) return;
+    const parts = rel.split("/").filter(Boolean);
+    let dir = this.root;
+    for (const part of isDir ? parts : parts.slice(0, -1)) {
+      dir = join(dir, part);
+      this.expanded.add(dir);
+      if (!this.tree.has(dir)) await this.loadDir(dir);
+    }
+    settings.showCode = true;
+    settings[treeKey(settings)] = true;
+    persist();
+    await tick();
+    document.querySelector(`[data-path="${CSS.escape(path)}"]`)?.scrollIntoView({ block: "center" });
+  }
+
   toggleDir(path: string) {
     if (this.expanded.has(path)) {
       this.expanded.delete(path);

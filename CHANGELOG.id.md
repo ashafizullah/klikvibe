@@ -26,6 +26,7 @@
 - KlikVibe memberi tahu saat agen butuh kamu: setelah bekerja lalu diam (menunggu jawaban, atau selesai), atau membunyikan bel terminal atau mengirim notifikasi. Kalau kamu sedang tidak melihat terminal itu, tab proyeknya diberi ikon lonceng, ikon di Dock memantul dan macOS menampilkan notifikasi. Tombol lonceng di header terminal untuk mematikannya.
 - Path di output terminal (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) bisa diklik untuk membuka file di baris itu, kalau filenya ada di proyek; alamat web seperti `http://localhost:5173` terbuka di browser.
 - Tab terminal diberi nama sesuai program yang berjalan di dalamnya ("Claude Code", "npm run dev", "vite"), dan kembali ke "Terminal 1" saat di prompt shell. Klik dua kali atau klik kanan tab untuk mengganti nama; nama buatanmu tetap dipakai sampai kamu memilih nama otomatis lagi.
+- Breadcrumb di atas editor (proyek › folder › file): folder menampilkan isinya untuk membuka file, file menawarkan Tampilkan di Files, path-nya dan Tampilkan di Finder. Tampilkan di Files membuka folder-foldernya di pohon file.
 
 ## 0.1.0
 
