@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+Gitignored folders show in the file tree, file icons in the Git panel, and new installer artwork.
+
+- The file tree lists what .gitignore leaves out (dist, node_modules, build output, store assets), dimmed, instead of hiding it. Searching by name or content still skips those files.
+- Changes, commit files and checkpoint files in the Git panel show the same file-type icons as the file tree.
+- The macOS disk image and the Windows installers (.exe and .msi) have KlikVibe artwork instead of the plain default look.
+
 ## 0.3.0
 
 Stage, unstage and revert each file in the Git panel, and create, rename and delete files in the file tree.

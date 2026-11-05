@@ -1,5 +1,13 @@
 # Catatan perubahan
 
+## 0.3.1
+
+Folder yang di-gitignore tampil di pohon file, ikon file di panel Git, dan tampilan installer baru.
+
+- Pohon file kini menampilkan yang dikecualikan .gitignore (dist, node_modules, hasil build, aset store) dengan warna redup, bukan menyembunyikannya. Pencarian nama dan isi file tetap melewati file-file itu.
+- Changes, file di commit, dan file di checkpoint pada panel Git memakai ikon tipe file yang sama dengan pohon file.
+- Disk image macOS dan installer Windows (.exe dan .msi) memakai artwork KlikVibe, bukan tampilan bawaan yang polos.
+
 ## 0.3.0
 
 Stage, unstage, dan batalkan tiap file di panel Git, serta buat, ganti nama, dan hapus file di pohon file.
