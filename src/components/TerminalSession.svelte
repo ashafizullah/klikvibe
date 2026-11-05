@@ -9,12 +9,17 @@
   import { useProject } from "../lib/project.svelte";
   import { findLinks, projectPath } from "../lib/termLinks";
   import { needsYou } from "../lib/attention.svelte";
-  import { agentIn } from "../lib/agents";
+  import { agentIn, terminalName } from "../lib/agents";
   import { join } from "../lib/paths";
   import { toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
 
-  let { cwd, visible, onexit }: { cwd: string; visible: boolean; onexit: (code: number | null) => void } = $props();
+  let {
+    cwd,
+    visible,
+    onexit,
+    onname,
+  }: { cwd: string; visible: boolean; onexit: (code: number | null) => void; onname: (name: string | null) => void } = $props();
   const project = useProject();
 
   // ---- an agent waiting for the user ----
@@ -28,6 +33,13 @@
   let lastOutput = 0;
   let burstStart = 0;
   let burstNotified = true;
+  let burstNamed = true;
+
+  /** Names the terminal after what runs in front of it (Unix; the shell itself gives no name). */
+  async function refreshName() {
+    if (!session) return;
+    onname(terminalName(await ipc.terminalForeground(session).catch(() => null)));
+  }
 
   function noteOutput() {
     const now = Date.now();
@@ -36,6 +48,7 @@
     if (now - lastOutput > QUIET) {
       burstStart = now;
       burstNotified = false;
+      burstNamed = false;
     }
     lastOutput = now;
   }
@@ -63,7 +76,13 @@
     });
     const timer = setInterval(async () => {
       const now = Date.now();
-      if (burstNotified || !session || now - lastOutput < QUIET || lastOutput - burstStart < BUSY) return;
+      if (!session || now - lastOutput < QUIET) return;
+      // Whatever ran may have ended (or started) since: the name follows.
+      if (!burstNamed) {
+        burstNamed = true;
+        refreshName();
+      }
+      if (burstNotified || lastOutput - burstStart < BUSY) return;
       burstNotified = true;
       const agent = agentIn(await ipc.terminalForeground(session).catch(() => null));
       if (agent) tell(agent, t("notify.waiting"));
@@ -145,6 +164,8 @@
     const waiting = watchForAgent(xterm);
     const input = xterm.onData((d) => {
       lastInput = Date.now();
+      // Enter starts a command (or an agent): name the terminal after it once it is running.
+      if (d.includes("\r")) setTimeout(refreshName, 700);
       if (session) ipc.terminalWrite(session, d).catch(() => {});
     });
     const resize = xterm.onResize(({ cols, rows }) => session && ipc.terminalResize(session, cols, rows).catch(() => {}));

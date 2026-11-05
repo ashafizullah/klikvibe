@@ -230,6 +230,9 @@ const en = {
 
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
+  "terminal.rename": "Rename",
+  "terminal.resetName": "Use the automatic name",
+  "terminal.renameHint": "double-click or right-click to rename",
   "terminal.new": "New terminal",
   "terminal.close": "Close terminal",
   "terminal.show": "Show terminal",

@@ -5,6 +5,8 @@
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, agentById } from "../lib/agents";
   import { t } from "../lib/i18n/index.svelte";
+  import { openMenu } from "../lib/ui.svelte";
+  import { tick } from "svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
 
@@ -15,19 +17,56 @@
   interface Shell {
     id: number;
     exited: boolean;
+    /** The user's name for it; it wins over the automatic one. */
+    name: string | null;
+    /** From what runs in it (terminalName in agents.ts); null for the bare shell. */
+    auto: string | null;
   }
 
   let nextId = 1;
-  let shells = $state<Shell[]>([{ id: nextId++, exited: false }]);
+  const shell = (): Shell => ({ id: nextId++, exited: false, name: null, auto: null });
+  let shells = $state<Shell[]>([shell()]);
   let active = $state(1);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
   const agent = $derived(agentById(settings.agent));
 
   function add() {
-    const id = nextId++;
-    shells.push({ id, exited: false });
-    active = id;
+    const s = shell();
+    shells.push(s);
+    active = s.id;
+  }
+
+  const label = (s: Shell, i: number) => s.name ?? s.auto ?? t("terminal.shell", { n: i + 1 });
+
+  // Renaming in place: the tab turns into a text field.
+  let renaming = $state<number | null>(null);
+  let draft = $state("");
+  let field = $state<HTMLInputElement>();
+
+  async function rename(s: Shell, i: number) {
+    renaming = s.id;
+    draft = label(s, i);
+    await tick();
+    field?.focus();
+    field?.select();
+  }
+
+  function finishRename(save: boolean) {
+    const s = shells.find((x) => x.id === renaming);
+    // An empty name goes back to the automatic one.
+    if (s && save) s.name = draft.trim() || null;
+    renaming = null;
+  }
+
+  function shellMenu(e: MouseEvent, s: Shell, i: number) {
+    openMenu(e, [
+      { label: t("terminal.rename"), run: () => rename(s, i) },
+      { label: t("terminal.resetName"), disabled: s.name === null, run: () => (s.name = null) },
+      "sep",
+      { label: t("terminal.new"), run: add },
+      { label: t("terminal.close"), disabled: shells.length < 2, run: () => close(s.id) },
+    ]);
   }
 
   function close(id: number) {
@@ -77,11 +116,30 @@
 <section class="terminal" class:hidden={!settings.showTerminal} class:fill style:height={fill ? null : `${settings.terminalHeight}px`} aria-label={t("terminal.title")}>
   {#if !fill}<div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>{/if}
   <div class="head">
-    <span class="title"><Icon name="terminal" size={14} />{t("terminal.title")}</span>
     <div class="shells">
       {#each shells as s, i (s.id)}
         <div class="shell" class:on={s.id === active} class:exited={s.exited}>
-          <button class="shell-main" onclick={() => (active = s.id)} title={t("terminal.shell", { n: i + 1 })}>{i + 1}</button>
+          {#if renaming === s.id}
+            <input
+              class="shell-name"
+              bind:this={field}
+              bind:value={draft}
+              onkeydown={(e) => (e.key === "Enter" ? finishRename(true) : e.key === "Escape" ? finishRename(false) : null)}
+              onblur={() => finishRename(true)}
+              aria-label={t("terminal.rename")}
+              spellcheck="false"
+            />
+          {:else}
+            <button
+              class="shell-main"
+              onclick={() => (active = s.id)}
+              ondblclick={() => rename(s, i)}
+              oncontextmenu={(e) => shellMenu(e, s, i)}
+              title={`${label(s, i)} · ${t("terminal.renameHint")}`}
+            >
+              {label(s, i)}
+            </button>
+          {/if}
           {#if shells.length > 1}
             <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
           {/if}
@@ -115,7 +173,7 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
+        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
       {/each}
     {/if}
   </div>
@@ -190,17 +248,6 @@
     background: var(--panel);
     border-bottom: 1px solid var(--line);
   }
-  .title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: none;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .title :global(svg) {
-    color: var(--muted);
-  }
   .shells {
     display: flex;
     align-items: center;
@@ -221,11 +268,29 @@
     opacity: 0.55;
   }
   .shell-main {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     border: none;
     background: none;
     font: 11px var(--mono);
     padding: 0 7px;
     height: 100%;
+  }
+  .shell-name {
+    width: 130px;
+    height: 20px;
+    margin: 0 2px;
+    padding: 0 6px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    outline: none;
+    background: var(--bg);
+    color: var(--text);
+    font: 11px var(--mono);
+    -webkit-user-select: text;
+    user-select: text;
   }
   .shell-close {
     border: none;

@@ -25,6 +25,7 @@
 - File icons follow the kind of file: code by language colour, JSON, config, lockfiles, `.env`, images, video, audio, archives, `package.json`, `Cargo.toml`, `Dockerfile`, README and LICENSE each have their own, in the tree, search results and tabs.
 - KlikVibe tells you when an agent needs you: after it has been working and goes quiet (waiting for an answer, or done), or rings the terminal bell or sends a notification. Unless you are looking at that terminal, its project tab gets a bell, the Dock icon bounces and macOS shows a notification. The bell button in the terminal header turns it off.
 - Paths in terminal output (`src/app.ts:42:7`, `--> src/main.rs:10:5`, `app.ts(12,5)`) open the file at that line with a click, when the file is in the project; web addresses such as `http://localhost:5173` open in the browser.
+- Terminal tabs are named after what runs in them ("Claude Code", "npm run dev", "vite"), and back to "Terminal 1" at the shell prompt. Double-click or right-click a tab to rename it; your name stays until you pick the automatic one again.
 
 ## 0.1.0
 

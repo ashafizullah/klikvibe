@@ -232,6 +232,9 @@ const id: Record<Key, string> = {
 
   "terminal.title": "Terminal",
   "terminal.shell": "Terminal {n}",
+  "terminal.rename": "Ganti nama",
+  "terminal.resetName": "Pakai nama otomatis",
+  "terminal.renameHint": "klik dua kali atau klik kanan untuk ganti nama",
   "terminal.new": "Terminal baru",
   "terminal.close": "Tutup terminal",
   "terminal.show": "Tampilkan terminal",

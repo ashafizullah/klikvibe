@@ -143,3 +143,25 @@ export function agentIn(commandLine: string | null): string | null {
   }
   return null;
 }
+
+const SHELLS = new Set(["zsh", "bash", "fish", "sh", "dash", "ksh", "tcsh", "nu", "pwsh", "powershell", "cmd.exe"]);
+const RUNTIMES = new Set(["node", "bun", "deno", "python", "python3", "ruby", "php", "java"]);
+
+/**
+ * A short name for a terminal from what runs in front of it: the agent's
+ * name, else the command ("npm run dev", "vite", "cargo watch"), or null
+ * for the bare shell.
+ */
+export function terminalName(commandLine: string | null): string | null {
+  if (!commandLine) return null;
+  const agent = agentIn(commandLine);
+  if (agent) return agent;
+  const words = commandLine.trim().split(/\s+/);
+  const base = (w: string) => w.split(/[\\/]/).pop() ?? w;
+  const first = base(words[0]).replace(/^-/, "");
+  if (SHELLS.has(first) && words.length === 1) return null;
+  // "node /…/bin/vite --port 3000" reads better as "vite --port 3000".
+  const rest = RUNTIMES.has(first) && words[1] && !words[1].startsWith("-") ? [base(words[1]), ...words.slice(2)] : [first, ...words.slice(1)];
+  const name = rest.slice(0, 3).join(" ");
+  return name.length > 24 ? `${name.slice(0, 23)}…` : name;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AGENTS, agentById, agentIn, clientName } from "./agents";
+import { AGENTS, agentById, agentIn, clientName, terminalName } from "./agents";
 
 const info = { url: "http://127.0.0.1:47825/mcp", token: "secret123" };
 
@@ -36,4 +36,17 @@ test("finds the agent in a foreground command line", () => {
   expect(agentIn("-zsh")).toBeNull();
   expect(agentIn("vim claude.md")).toBeNull();
   expect(agentIn(null)).toBeNull();
+});
+
+test("names a terminal after what runs in it", () => {
+  expect(terminalName("node /usr/local/bin/claude")).toBe("Claude Code");
+  expect(terminalName("npm run dev")).toBe("npm run dev");
+  expect(terminalName("node /proj/node_modules/.bin/vite --port 3000")).toBe("vite --port 3000");
+  expect(terminalName("/opt/homebrew/bin/cargo watch -x test")).toBe("cargo watch -x");
+  expect(terminalName("python3 manage.py runserver")).toBe("manage.py runserver");
+  expect(terminalName("-zsh")).toBeNull();
+  expect(terminalName("/bin/bash")).toBeNull();
+  expect(terminalName("bash deploy.sh")).toBe("bash deploy.sh");
+  expect(terminalName(null)).toBeNull();
+  expect(terminalName("some-really-long-command-name --with flags")!.length).toBeLessThanOrEqual(24);
 });
