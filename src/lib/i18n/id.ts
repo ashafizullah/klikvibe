@@ -83,6 +83,12 @@ const id: Record<Key, string> = {
   "menu.closeOtherProjects": "Tutup proyek lain",
   "menu.closeAllProjects": "Tutup semua proyek",
 
+  "edit.cut": "Potong",
+  "edit.copy": "Salin",
+  "edit.paste": "Tempel",
+  "edit.selectAll": "Pilih semua",
+  "edit.find": "Cari",
+  "edit.gotoLine": "Ke baris",
   "diff.changes": "Perubahan di {name}",
   "diff.commit": "Commit {hash}",
   "diff.view": "Tampilan diff",

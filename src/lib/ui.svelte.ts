@@ -91,10 +91,11 @@ export function reveal(path: string) {
   revealItemInDir(path).catch((e) => toast(errorText(e), "error"));
 }
 
-export async function copyText(text: string) {
+/** Copies text; `quiet` skips the "Copied" notice (for Copy and Cut in the editor). */
+export async function copyText(text: string, quiet = false) {
   try {
     await navigator.clipboard.writeText(text);
-    toast(t("common.copied"), "ok", undefined, 1800);
+    if (!quiet) toast(t("common.copied"), "ok", undefined, 1800);
   } catch (e) {
     toast(errorText(e), "error");
   }
@@ -116,6 +117,8 @@ export function dismissToast(id: number) {
 
 export const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.platform || navigator.userAgent);
 export const mod = isMac ? "⌘" : "Ctrl+";
+/** A shortcut with Alt / Option: modAlt("G") is "⌘⌥G" or "Ctrl+Alt+G". */
+export const modAlt = (key: string) => (isMac ? `⌘⌥${key}` : `Ctrl+Alt+${key}`);
 const isWindows = typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent);
 /** "Reveal in Finder" and its counterparts. */
 export const revealLabel = () => t(isMac ? "menu.revealMac" : isWindows ? "menu.revealWindows" : "menu.reveal");

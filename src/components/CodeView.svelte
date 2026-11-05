@@ -6,8 +6,14 @@
   import { indentWithTab } from "@codemirror/commands";
   import { darkroomHighlight, darkroomTheme } from "../lib/editor";
   import { loadLanguage } from "../lib/languages";
-  import { useProject, type Tab } from "../lib/project.svelte";
+  import { isDirty, useProject, type Tab } from "../lib/project.svelte";
   import { settings } from "../lib/settings.svelte";
+  import { selectAll } from "@codemirror/commands";
+  import { gotoLine, openSearchPanel } from "@codemirror/search";
+  import { errorText, ipc } from "../lib/ipc";
+  import { relative } from "../lib/paths";
+  import { copyText, mod, modAlt, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
+  import { t } from "../lib/i18n/index.svelte";
 
   let { tab }: { tab: Tab } = $props();
   const project = useProject();
@@ -75,12 +81,56 @@
     view?.dispatch({ effects: size.reconfigure(fontTheme(settings.fontSize)) });
   });
 
+  /** The editor's right-click menu: editing, then the file. */
+  function menu(e: MouseEvent) {
+    const v = view;
+    if (!v) return;
+    const sel = v.state.selection.main;
+    const selected = v.state.sliceDoc(sel.from, sel.to);
+    const editable = !v.state.readOnly;
+    const change = project.changeFor(tab.path);
+    const done = () => v.focus();
+    const items: MenuItem[] = [
+      {
+        label: t("edit.cut"),
+        hint: `${mod}X`,
+        disabled: !editable || sel.empty,
+        run: () => copyText(selected, true).then(() => (v.dispatch(v.state.replaceSelection("")), done())),
+      },
+      { label: t("edit.copy"), hint: `${mod}C`, disabled: sel.empty, run: () => copyText(selected, true).then(done) },
+      {
+        label: t("edit.paste"),
+        hint: `${mod}V`,
+        disabled: !editable,
+        run: () =>
+          ipc
+            .clipboardText()
+            .then((text) => text && v.dispatch(v.state.replaceSelection(text)))
+            .catch((err) => toast(errorText(err), "error"))
+            .finally(done),
+      },
+      "sep",
+      { label: t("edit.selectAll"), hint: `${mod}A`, run: () => (selectAll(v), done()) },
+      { label: t("edit.find"), hint: `${mod}F`, run: () => openSearchPanel(v) },
+      { label: t("edit.gotoLine"), hint: modAlt("G"), run: () => gotoLine(v) },
+      "sep",
+    ];
+    if (isDirty(tab)) items.push({ label: t("tabs.save"), hint: `${mod}S`, run: () => project.saveTab(tab) });
+    if (change) items.push({ label: t("git.menu.openDiff"), run: () => project.openDiff(change) });
+    items.push(
+      { label: t("menu.copyPath"), run: () => copyText(tab.path) },
+      { label: t("menu.copyRelative"), run: () => copyText(relative(project.root, tab.path) ?? tab.path) },
+      { label: revealLabel(), run: () => reveal(tab.path) },
+    );
+    openMenu(e, items);
+  }
+
   export function focus() {
     view?.focus();
   }
 </script>
 
-<div class="code" bind:this={host}></div>
+<div class="code" bind:this={host} oncontextmenu={menu} role="presentation"></div>
 
 <style>
   .code {

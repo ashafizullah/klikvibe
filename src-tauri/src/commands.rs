@@ -229,6 +229,20 @@ pub fn terminal_close(terminals: State<'_, Terminals>, id: String) {
     terminals.close(&id)
 }
 
+// ---- clipboard ----
+
+/// The clipboard's text, for Paste in the editor's right-click menu (the web
+/// view can't read it without its own prompt). Empty when it holds no text.
+#[tauri::command]
+pub async fn clipboard_text() -> AppResult<String> {
+    blocking(|| match arboard::Clipboard::new().and_then(|mut c| c.get_text()) {
+        Ok(text) => Ok(text),
+        Err(arboard::Error::ContentNotAvailable) => Ok(String::new()),
+        Err(e) => Err(AppError::msg(e.to_string())),
+    })
+    .await
+}
+
 // ---- MCP ----
 
 #[tauri::command]

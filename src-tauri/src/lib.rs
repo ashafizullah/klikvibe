@@ -79,6 +79,7 @@ pub fn run() {
             commands::read_file,
             commands::write_file,
             commands::open_externally,
+            commands::clipboard_text,
             commands::mcp_start,
             commands::mcp_stop,
             commands::mcp_link,

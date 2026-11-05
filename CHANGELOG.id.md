@@ -19,6 +19,7 @@
 - Diff berdampingan: versi lama di kiri, versi baru di kanan, dua versi baris yang diedit sejajar dengan bagian yang berubah disorot. Tombol di header diff mengembalikan ke satu kolom.
 - Pertanyaan seperti "Buang perubahan?" memakai dialog KlikVibe sendiri, bukan dialog sistem; untuk tindakan yang tidak bisa dibatalkan tombolnya merah dan fokus ada di Batal.
 - Tekstur butiran film tipis di atas jendela dihapus: hampir tidak terlihat dan memakan sekitar 40 MB memori grafis saat KlikVibe di depan.
+- Klik kanan di editor kode untuk Potong, Salin, Tempel, Pilih semua, Cari dan Ke baris, plus Simpan, perubahan file, path dan Tampilkan di Finder; di diff untuk Salin, Pilih semua, ganti tampilan dan file-nya.
 
 ## 0.1.0
 

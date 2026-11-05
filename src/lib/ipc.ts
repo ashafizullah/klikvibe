@@ -95,6 +95,7 @@ export const ipc = {
   readFile: (path: string) => invoke<FileText>("read_file", { path }),
   writeFile: (path: string, text: string) => invoke<void>("write_file", { path, text }),
   openExternally: (path: string) => invoke<void>("open_externally", { path }),
+  clipboardText: () => invoke<string>("clipboard_text"),
 
   gitStatus: (root: string) => invoke<GitStatus>("git_status", { root }),
   gitLog: (root: string, all: boolean, limit = 200) => invoke<Commit[]>("git_log", { root, limit, all }),

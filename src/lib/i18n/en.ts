@@ -81,6 +81,12 @@ const en = {
   "menu.closeOtherProjects": "Close other projects",
   "menu.closeAllProjects": "Close all projects",
 
+  "edit.cut": "Cut",
+  "edit.copy": "Copy",
+  "edit.paste": "Paste",
+  "edit.selectAll": "Select all",
+  "edit.find": "Find",
+  "edit.gotoLine": "Go to line",
   "diff.changes": "Changes in {name}",
   "diff.commit": "Commit {hash}",
   "diff.view": "Diff layout",

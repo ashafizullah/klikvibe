@@ -1,6 +1,8 @@
 <script lang="ts">
   import { parseDiff, splitDiff, stats, type Half } from "../lib/diff";
   import { persist, settings } from "../lib/settings.svelte";
+  import { copyText, mod, openMenu, reveal, revealLabel, type MenuItem } from "../lib/ui.svelte";
+  import { relative } from "../lib/paths";
   import { useProject, type Tab } from "../lib/project.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -19,6 +21,40 @@
   }
 
   const SIGN = { add: "+", del: "−", ctx: " " } as const;
+  let rowsEl = $state<HTMLDivElement>();
+
+  /** The diff's right-click menu: the selected text, the layout, then the file. */
+  function menu(e: MouseEvent) {
+    const selected = window.getSelection()?.toString() ?? "";
+    const items: MenuItem[] = [
+      { label: t("edit.copy"), hint: `${mod}C`, disabled: !selected, run: () => copyText(selected, true) },
+      {
+        label: t("edit.selectAll"),
+        hint: `${mod}A`,
+        run: () => {
+          if (!rowsEl) return;
+          const range = document.createRange();
+          range.selectNodeContents(rowsEl);
+          window.getSelection()?.removeAllRanges();
+          window.getSelection()?.addRange(range);
+        },
+      },
+      "sep",
+      { label: split ? t("diff.unified") : t("diff.split"), run: () => setView(split ? "unified" : "split") },
+    ];
+    if (tab.kind === "commit") {
+      items.push("sep", { label: t("menu.copyHash"), run: () => copyText(tab.id.slice("commit:".length)) });
+    } else {
+      items.push(
+        "sep",
+        { label: t("diff.openFile"), run: () => project.openFile(tab.path) },
+        { label: t("menu.copyPath"), run: () => copyText(tab.path) },
+        { label: t("menu.copyRelative"), run: () => copyText(relative(project.root, tab.path) ?? tab.path) },
+        { label: revealLabel(), run: () => reveal(tab.path) },
+      );
+    }
+    openMenu(e, items);
+  }
 </script>
 
 {#snippet half(h: Half | undefined)}
@@ -52,7 +88,7 @@
       <button class="btn ghost small" onclick={() => project.openFile(tab.path)}><Icon name="code" size={13} />{t("diff.openFile")}</button>
     {/if}
   </div>
-  <div class="rows">
+  <div class="rows" bind:this={rowsEl} oncontextmenu={menu} role="presentation">
     {#if tab.loading}
       <p class="empty-note">{t("common.loading")}</p>
     {:else if !rows.length}
