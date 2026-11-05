@@ -80,7 +80,7 @@
   }
 </script>
 
-<div class="code grain-free" bind:this={host}></div>
+<div class="code" bind:this={host}></div>
 
 <style>
   .code {

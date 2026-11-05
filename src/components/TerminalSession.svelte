@@ -90,7 +90,7 @@
 </script>
 
 <div class="session" class:hidden={!visible}>
-  <div class="host grain-free" bind:this={host}></div>
+  <div class="host" bind:this={host}></div>
   {#if exited}
     <div class="exited">{t("terminal.exited")}</div>
   {/if}

@@ -25,7 +25,7 @@
   }
 </script>
 
-<div class="media grain-free">
+<div class="media">
   {#if failed}
     <div class="notice">
       <Icon name={tab.media ?? "file"} size={28} stroke={1.5} />

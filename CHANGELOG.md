@@ -18,6 +18,7 @@
 - A commit graph in the Git history: branch and merge lines, branch and tag labels, the checked-out commit marked, and a switch between this branch and all branches. Click a commit to list the files it changed (with lines added and removed) and open each one's diff; the whole commit is one click further.
 - Diffs side by side: the old version on the left, the new on the right, an edited line's two versions on one row with the changed part highlighted. A switch in the diff header goes back to one column.
 - Questions such as "Discard changes?" use KlikVibe's own dialog instead of the system one; for anything that can't be undone the button is red and Cancel has the focus.
+- The faint film-grain texture over the window is gone: it was barely visible and cost about 40 MB of graphics memory while KlikVibe is in front.
 
 ## 0.1.0
 

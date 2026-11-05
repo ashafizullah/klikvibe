@@ -37,7 +37,7 @@
   {/if}
 {/snippet}
 
-<div class="diff grain-free">
+<div class="diff">
   <div class="head">
     <Icon name={tab.kind === "commit" ? "commit" : "diff"} size={14} />
     <span class="title">{tab.kind === "commit" ? t("diff.commit", { hash: tab.title }) : t("diff.changes", { name: tab.title })}</span>

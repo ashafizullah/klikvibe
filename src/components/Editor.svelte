@@ -126,7 +126,7 @@
       {/key}
     {/if}
   {:else}
-    <div class="welcome grain-free">
+    <div class="welcome">
       <div class="welcome-card rise">
         <div class="hero-icon"><Icon name="sparkles" size={22} /></div>
         <h2>{t("editor.welcomeTitle")}</h2>
