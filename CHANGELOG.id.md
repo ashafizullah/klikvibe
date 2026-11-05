@@ -34,6 +34,7 @@
 - KlikVibe terbuka lagi seperti saat ditinggalkan: proyek, tab file, dan proyek yang di depan, termasuk setelah update.
 - Buka di GitHub, GitLab, atau Bitbucket: repositori, branch, commit, atau file di baris yang dipilih (dari panel Git, History, editor, dan breadcrumb); setelah push branch fitur, satu klik membuat pull (merge) request. Bisa untuk remote SSH dan HTTPS serta GitLab self-hosted.
 - Script dan preview: tombol Script di terminal menjalankan script package.json (dengan bun, pnpm, yarn, atau npm sesuai lockfile) atau cargo run/test/build di terminal baru. Saat terminal menampilkan alamat dev server lokal, KlikVibe menawarkan untuk membukanya di tab preview (muat ulang, kolom alamat, buka di browser), dan tab terminalnya diberi ikon bola dunia untuk membukanya lagi.
+- Yang belum kamu lihat: perubahan dari agen sejak terakhir kamu buka diff atau file-nya diberi titik di panel Git (dengan jumlah dan "Tandai semua sudah dilihat"), tombol Git di bilah judul diberi titik, dan checkpoint yang dibuat sejak terakhir kamu buka tab Checkpoint ditandai Baru. Simpanan dari kamu sendiri tidak dihitung.
 
 ## 0.1.0
 

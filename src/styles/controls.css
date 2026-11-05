@@ -64,6 +64,14 @@
   color: var(--accent);
 }
 
+/* A small button for status bars and list headers. */
+.btn.tiny {
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  gap: 4px;
+}
+
 .icon-btn {
   width: 28px;
   height: 28px;

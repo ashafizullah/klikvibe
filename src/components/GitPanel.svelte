@@ -19,7 +19,15 @@
   const git = $derived(project.git);
   const MARK: Record<string, string> = { added: "A", modified: "M", deleted: "D", renamed: "R", untracked: "U", conflict: "!" };
 
+  /** Checkpoints newer than this were taken since the user last opened the tab. */
+  let newSince = $state(project.checkpointsSeen);
+  const unseen = $derived(git ? git.changes.filter((c) => project.isUnseen(c.path)).length : 0);
+
   function setTab(tab: "changes" | "history" | "checkpoints") {
+    if (tab === "checkpoints" && project.gitTab !== "checkpoints") {
+      newSince = project.checkpointsSeen;
+      project.checkpointsSeen = Date.now();
+    }
     project.gitTab = tab;
     if (tab === "history") project.refreshGit(true);
     if (tab === "checkpoints") project.loadCheckpoints();
@@ -194,7 +202,7 @@
 
     <div class="segmented tabs" role="tablist">
       <button class:on={project.gitTab === "changes"} onclick={() => setTab("changes")} role="tab" aria-selected={project.gitTab === "changes"}>
-        {t("git.changes")}{#if git.changes.length}&nbsp;<span class="count">{git.changes.length}</span>{/if}
+        {t("git.changes")}{#if git.changes.length}&nbsp;<span class="count">{git.changes.length}</span>{/if}{#if unseen}<span class="unseen on tab-dot"></span>{/if}
       </button>
       <button class:on={project.gitTab === "history"} onclick={() => setTab("history")} role="tab" aria-selected={project.gitTab === "history"}>{t("git.history")}</button>
       <button class:on={project.gitTab === "checkpoints"} onclick={() => setTab("checkpoints")} role="tab" aria-selected={project.gitTab === "checkpoints"} title={t("checkpoints.intro")}>
@@ -217,9 +225,17 @@
         </button>
       </div>
       <div class="list">
+        {#if unseen}
+          <div class="news">
+            <span class="unseen on"></span>
+            <span class="news-text">{t("unseen.count", { count: unseen })}</span>
+            <button class="btn ghost tiny" onclick={() => project.markAllSeen()}>{t("unseen.markAll")}</button>
+          </div>
+        {/if}
         {#each git.changes as c (c.path)}
           {@const p = split(c.path)}
           <button class="change" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
+            <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
             <span class="name ellipsis">{p.name}</span>
             <span class="dir ellipsis">{p.dir}</span>
             <span class="git-mark {c.kind}" title={t(`git.kind.${c.kind}` as Key)}>{MARK[c.kind]}</span>
@@ -254,6 +270,7 @@
               <button class="cp-main" onclick={() => project.toggleCommitFiles(cp.hash)} aria-expanded={open} title={cp.hash}>
                 <Icon name={REASON_ICON[cp.reason] ?? "save"} size={14} />
                 <span class="cp-text">
+                  {#if Date.parse(cp.date) > newSince}<span class="new">{t("unseen.new")}</span>{/if}
                   <span class="cp-title ellipsis">{t(`checkpoints.reason.${cp.reason}` as Key) ?? cp.reason}{cp.note ? ` · ${cp.note}` : ""}</span>
                   <span class="meta">{when} · {ago(cp.date, i18n.locale)} · {t("checkpoints.files", { count: cp.files })}</span>
                 </span>
@@ -574,6 +591,41 @@
   .full:hover {
     color: var(--accent);
     background: var(--panel-2);
+  }
+  /* "Changed since you last looked". */
+  .unseen {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .unseen.on {
+    background: var(--accent);
+  }
+  .tab-dot {
+    display: inline-block;
+    margin-left: 5px;
+    vertical-align: middle;
+  }
+  .news {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 14px;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .news-text {
+    flex: 1;
+  }
+  .new {
+    margin-right: 6px;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
+    font: 600 9.5px/15px var(--mono);
+    text-transform: uppercase;
   }
   .cp-head {
     flex: none;

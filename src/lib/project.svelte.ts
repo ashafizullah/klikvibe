@@ -103,6 +103,31 @@ export class ProjectState {
   terminals: (() => { index: number; name: string; active: boolean; agent: boolean; tail: (lines: number) => string }[]) | null = null;
   /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
   askAgent: ((text: string) => void) | null = null;
+  // ---- what changed since the user last looked ----
+  /** When each file last changed on disk (absolute path), not counting the user's own saves. */
+  readonly lastChanged = new SvelteMap<string, number>();
+  /** When the user last looked at each file (its diff or the file itself). */
+  readonly seenAt = new SvelteMap<string, number>();
+  /** The user's own saves, so their own edits don't count as news. */
+  private ownWrites = new Map<string, number>();
+  /** When the Checkpoints tab was last opened: newer checkpoints are new. */
+  checkpointsSeen = $state(Date.now());
+
+  /** A change (repository-relative path) the user hasn't looked at since it happened. */
+  isUnseen(rel: string): boolean {
+    const abs = join(this.root, rel);
+    return (this.lastChanged.get(abs) ?? 0) > (this.seenAt.get(abs) ?? 0);
+  }
+
+  markSeen(path: string) {
+    this.seenAt.set(path, Date.now());
+  }
+
+  markAllSeen() {
+    const now = Date.now();
+    for (const path of this.lastChanged.keys()) this.seenAt.set(path, now);
+  }
+
   /** Where the repository lives on the web (from its remote), for "Open on GitHub" and the like. */
   remote = $state<Remote | null>(null);
   /** The history commit showing its files, if any. */
@@ -328,6 +353,7 @@ export class ProjectState {
   }
 
   async openFile(path: string, quiet = false) {
+    this.markSeen(path);
     const { tab, fresh } = this.show(newTab("file", `file:${path}`, baseName(path), path));
     if (!fresh) return;
     tab.media = mediaKind(path);
@@ -365,6 +391,7 @@ export class ProjectState {
 
   async openDiff(change: Change) {
     const path = join(this.root, change.path);
+    this.markSeen(path);
     const { tab } = this.show(newTab("diff", `diff:${change.path}`, baseName(change.path), path));
     await this.loadDiff(tab, change.path);
   }
@@ -453,6 +480,7 @@ export class ProjectState {
   async saveTab(tab: Tab | undefined = this.activeTab()) {
     if (!tab || tab.kind !== "file" || tab.media || tab.binary || tab.tooLarge) return;
     try {
+      this.ownWrites.set(tab.path, Date.now());
       await ipc.writeFile(tab.path, tab.text);
       tab.saved = tab.text;
       tab.changedOnDisk = false;
@@ -486,7 +514,11 @@ export class ProjectState {
     const now = Date.now();
     const changed = e.many ? null : new Set(e.paths);
     if (changed) {
-      for (const p of changed) this.fresh.set(p, now);
+      for (const p of changed) {
+        this.fresh.set(p, now);
+        // The echo of the user's own save isn't news.
+        if (now - (this.ownWrites.get(p) ?? 0) > 2000) this.lastChanged.set(p, now);
+      }
       this.reloadDirsSoon([...changed].map(dirName));
     } else {
       this.reloadDirsSoon(this.tree.keys());

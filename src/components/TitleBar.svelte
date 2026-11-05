@@ -14,6 +14,8 @@
   const git = $derived(project?.git);
 
   const columns = $derived(settings.layout === "columns");
+  /** The agent changed files the user hasn't looked at. */
+  const hasUnseen = $derived(!!project?.git?.changes.some((c) => project.isUnseen(c.path)));
   const TERMINAL = { key: "showTerminal", icon: "terminal", label: "bar.terminal", keys: "Ctrl+`" } as const;
   const CODE_AND_GIT = [
     { key: "showTree", icon: "panel-left", label: "bar.files", keys: `${mod}B` },
@@ -89,7 +91,7 @@
       {#each PANELS as p (p.key)}
         {@const on = p.key === "showTree" ? settings.showCode && treeShown(settings) : settings[p.key]}
         <button
-          class="icon-btn"
+          class="icon-btn toggle"
           class:on
           onclick={() => togglePanel(p.key)}
           disabled={isLastPanel(p.key)}
@@ -98,6 +100,7 @@
           aria-pressed={on}
         >
           <Icon name={p.icon} size={15} />
+          {#if p.key === "showGit" && hasUnseen}<span class="new" title={t("unseen.git")}></span>{/if}
         </button>
       {/each}
       <span class="sep"></span>
@@ -278,7 +281,8 @@
     align-self: stretch;
     min-width: 24px;
   }
-  .about {
+  .about,
+  .toggle {
     position: relative;
     flex: none;
   }

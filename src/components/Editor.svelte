@@ -364,12 +364,6 @@
   .spacer {
     flex: 1;
   }
-  .tiny {
-    height: 20px;
-    padding: 0 6px;
-    font-size: 11px;
-    gap: 4px;
-  }
   .welcome {
     flex: 1;
     min-height: 0;
