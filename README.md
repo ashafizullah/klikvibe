@@ -42,7 +42,8 @@
   - `git init` for a new folder.
 
   It runs your own `git`, so your credentials, SSH keys and hooks work as in a terminal.
-- **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no cloud: the optional MCP server only listens on your own computer.
+- **From your phone (KlikVibe Remote, optional).** Turn on Remote (the phone icon at the top right) and scan its QR code with the KlikVibe phone app: watch every open project's agents and terminals, answer them, and read the changes, on the same Wi-Fi (free) or from anywhere (Pro). Everything between the phone and the computer is end-to-end encrypted ([protocol](src-tauri/src/remote/PROTOCOL.md)); the server only links devices to an account and, from outside your Wi-Fi, forwards encrypted bytes. Each phone is allowed on the computer before it can connect.
+- **Small and offline.** Tauri 2 + Svelte 5 + Rust. No account, no telemetry, no cloud: the optional MCP server only listens on your own computer, and Remote is off until you turn it on.
 - English and Bahasa Indonesia.
 
 ## Install
@@ -92,7 +93,7 @@ A running KlikVibe also opens a folder passed to a second launch (`klikvibe <fol
 
 ## Security
 
-The window can only reach folders you opened yourself, through the folder dialog, the launch arguments, or the recent list kept by the Rust side. Every file and Git command checks its path against them, with symlinks resolved, and KlikVibe never writes inside `.git`. See [SECURITY.md](SECURITY.md).
+The window can only reach folders you opened yourself, through the folder dialog, the launch arguments, or the recent list kept by the Rust side. Every file and Git command checks its path against them, with symlinks resolved, and KlikVibe never writes inside `.git`. Remote listens on your network only while it is on, refuses requests from web pages, and accepts only phones you allowed (each with its own key from the QR code). See [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

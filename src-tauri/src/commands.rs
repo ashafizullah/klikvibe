@@ -5,6 +5,7 @@ use crate::files::{self, Entry, FileList, FileText, TextSearch};
 use crate::git::{self, Checkpoint, Commit, CommitFile, Status, Worktree};
 use crate::mcp::{Mcp, McpCall, McpInfo, McpLink};
 use crate::projects::{Project, Projects, RecentProject};
+use crate::remote::{self, Remote};
 use crate::terminal::{TerminalEvent, Terminals};
 use crate::updater;
 use crate::watch::Watchers;
@@ -478,6 +479,58 @@ pub fn terminal_foreground(terminals: State<'_, Terminals>, id: String) -> Optio
 #[tauri::command]
 pub fn terminal_close(terminals: State<'_, Terminals>, id: String) {
     terminals.close(&id)
+}
+
+// ---- KlikVibe Remote ----
+
+#[tauri::command]
+pub fn remote_status(remote: State<'_, Remote>) -> remote::Status {
+    remote.status()
+}
+
+#[tauri::command]
+pub async fn remote_set_enabled(remote: State<'_, Remote>, on: bool) -> AppResult<remote::Status> {
+    remote.set_enabled(on).await.map_err(AppError::msg)
+}
+
+#[tauri::command]
+pub async fn remote_pair_start(remote: State<'_, Remote>) -> AppResult<remote::Status> {
+    remote.pair_start().await.map_err(AppError::msg)
+}
+
+/// The user's answer to a phone that scanned the pairing code.
+#[tauri::command]
+pub async fn remote_pair_confirm(remote: State<'_, Remote>, allow: bool) -> AppResult<remote::Status> {
+    Ok(remote.pair_confirm(allow).await)
+}
+
+#[tauri::command]
+pub fn remote_pair_cancel(remote: State<'_, Remote>) -> remote::Status {
+    remote.pair_cancel();
+    remote.status()
+}
+
+#[tauri::command]
+pub fn remote_forget_phone(remote: State<'_, Remote>, id: String) -> remote::Status {
+    remote.forget_phone(&id);
+    remote.status()
+}
+
+#[tauri::command]
+pub async fn remote_unlink(remote: State<'_, Remote>) -> AppResult<remote::Status> {
+    remote.unlink().await;
+    Ok(remote.status())
+}
+
+/// The window's open projects and their terminals, as the phone should see them.
+#[tauri::command]
+pub fn remote_projects(remote: State<'_, Remote>, projects: Vec<remote::hub::ProjectMeta>) {
+    remote.hub.set_projects(projects);
+}
+
+#[tauri::command]
+pub fn remote_attention(remote: State<'_, Remote>, root: String, term: String, title: String, body: String) {
+    remote.attention(&root, &term, &title, &body);
 }
 
 // ---- clipboard ----

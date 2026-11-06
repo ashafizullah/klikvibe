@@ -7,8 +7,10 @@ use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_s
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::ipc::Channel;
+
+use crate::remote::hub::Hub;
 
 #[derive(Serialize, Clone)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -24,12 +26,17 @@ pub enum TerminalEvent {
 
 struct Session {
     master: Box<dyn MasterPty + Send>,
-    writer: Box<dyn Write + Send>,
+    /// Its own lock: a write that blocks (a program not reading its input) holds up only this terminal.
+    writer: Arc<Mutex<Box<dyn Write + Send>>>,
     killer: Box<dyn ChildKiller + Send + Sync>,
 }
 
-#[derive(Default)]
-pub struct Terminals(Mutex<HashMap<String, Session>>);
+/// The sessions, and the Remote hub that the phone sees them through (it keeps
+/// each one's recent output; nothing leaves the computer unless Remote is on).
+pub struct Terminals {
+    sessions: Mutex<HashMap<String, Session>>,
+    hub: Arc<Hub>,
+}
 
 fn size(cols: u16, rows: u16) -> PtySize {
     PtySize { rows: rows.max(2), cols: cols.max(10), pixel_width: 0, pixel_height: 0 }
@@ -47,6 +54,10 @@ fn shell() -> CommandBuilder {
 }
 
 impl Terminals {
+    pub fn new(hub: Arc<Hub>) -> Self {
+        Self { sessions: Mutex::default(), hub }
+    }
+
     pub fn open(&self, cwd: &str, cols: u16, rows: u16, on_event: Channel<TerminalEvent>) -> AppResult<String> {
         let pair = native_pty_system().openpty(size(cols, rows)).map_err(|e| AppError::msg(e.to_string()))?;
         let mut cmd = shell();
@@ -65,6 +76,10 @@ impl Terminals {
         let mut reader = pair.master.try_clone_reader().map_err(|e| AppError::msg(e.to_string()))?;
         let writer = pair.master.take_writer().map_err(|e| AppError::msg(e.to_string()))?;
         let killer = child.clone_killer();
+        let id = uuid::Uuid::new_v4().to_string();
+        self.hub.started(&id, cols, rows);
+        let hub = self.hub.clone();
+        let sid = id.clone();
 
         std::thread::spawn(move || {
             let mut buf = [0u8; 16 * 1024];
@@ -72,6 +87,7 @@ impl Terminals {
                 match reader.read(&mut buf) {
                     Ok(0) | Err(_) => break,
                     Ok(n) => {
+                        hub.output(&sid, &buf[..n]);
                         let data = base64::engine::general_purpose::STANDARD.encode(&buf[..n]);
                         if on_event.send(TerminalEvent::Data { data }).is_err() {
                             break;
@@ -80,25 +96,29 @@ impl Terminals {
                 }
             }
             let code = child.wait().ok().map(|s| s.exit_code());
+            hub.exited(&sid, code);
             let _ = on_event.send(TerminalEvent::Exit { code });
         });
 
-        let id = uuid::Uuid::new_v4().to_string();
-        self.0.lock().unwrap().insert(id.clone(), Session { master: pair.master, writer, killer });
+        self.sessions.lock().unwrap().insert(id.clone(), Session { master: pair.master, writer: Arc::new(Mutex::new(writer)), killer });
         Ok(id)
     }
 
     pub fn write(&self, id: &str, data: &str) -> AppResult<()> {
-        let mut map = self.0.lock().unwrap();
-        let s = map.get_mut(id).ok_or_else(|| AppError::msg("Terminal session has ended"))?;
-        s.writer.write_all(data.as_bytes())?;
-        s.writer.flush()?;
+        let writer =
+            self.sessions.lock().unwrap().get(id).map(|s| s.writer.clone()).ok_or_else(|| AppError::msg("Terminal session has ended"))?;
+        let mut w = writer.lock().unwrap();
+        w.write_all(data.as_bytes())?;
+        w.flush()?;
+        drop(w);
+        self.hub.input(id);
         Ok(())
     }
 
     pub fn resize(&self, id: &str, cols: u16, rows: u16) -> AppResult<()> {
-        if let Some(s) = self.0.lock().unwrap().get(id) {
+        if let Some(s) = self.sessions.lock().unwrap().get(id) {
             s.master.resize(size(cols, rows)).map_err(|e| AppError::msg(e.to_string()))?;
+            self.hub.resized(id, cols.max(10), rows.max(2));
         }
         Ok(())
     }
@@ -109,7 +129,7 @@ impl Terminals {
     pub fn foreground(&self, id: &str) -> Option<String> {
         #[cfg(unix)]
         {
-            let pid = self.0.lock().unwrap().get(id)?.master.process_group_leader()?;
+            let pid = self.sessions.lock().unwrap().get(id)?.master.process_group_leader()?;
             let out = std::process::Command::new("ps").args(["-o", "args=", "-p", &pid.to_string()]).output().ok()?;
             let args = String::from_utf8_lossy(&out.stdout).trim().to_string();
             (!args.is_empty()).then_some(args)
@@ -122,15 +142,16 @@ impl Terminals {
     }
 
     pub fn close(&self, id: &str) {
-        if let Some(mut s) = self.0.lock().unwrap().remove(id) {
+        if let Some(mut s) = self.sessions.lock().unwrap().remove(id) {
             let _ = s.killer.kill();
         }
+        self.hub.closed(id);
     }
 }
 
 impl Drop for Terminals {
     fn drop(&mut self) {
-        for (_, mut s) in self.0.lock().unwrap().drain() {
+        for (_, mut s) in self.sessions.lock().unwrap().drain() {
             let _ = s.killer.kill();
         }
     }

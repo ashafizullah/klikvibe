@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KlikVibe Dev",
+  "identifier": "com.ashafizullah.klikvibe.dev",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "KlikVibe Dev",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 520,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "dragDropEnabled": false,
+        "theme": "Dark",
+        "backgroundColor": "#15130f"
+      }
+    ]
+  }
+}

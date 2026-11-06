@@ -87,7 +87,7 @@
 
   async function tell(agent: string | null, message: string) {
     const name = agent ?? agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null) ?? t("terminal.title");
-    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus());
+    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session);
   }
 
   /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
@@ -348,6 +348,11 @@
   });
 
   /** Types `text` at the prompt without pressing Enter. */
+  /** The shell's session id in Rust (terminal.rs), once it has started; KlikVibe Remote names terminals by it. */
+  export function sessionId(): string | null {
+    return session;
+  }
+
   export function type(text: string) {
     if (!session || exited) return;
     ipc.terminalWrite(session, text).catch((e) => toast(errorText(e), "error"));

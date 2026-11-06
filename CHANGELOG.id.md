@@ -1,5 +1,14 @@
 # Catatan perubahan
 
+## 0.7.0
+
+KlikVibe Remote: agen AI-mu, dari HP.
+
+- Remote (ikon HP di kanan atas): pasangkan aplikasi KlikVibe di HP dengan scan kode QR, lalu pantau terminal dan agen semua project yang terbuka dari HP, balas, dan lihat perubahan serta diff-nya. Setiap HP diizinkan dulu di komputer, dan bisa dicabut di komputer maupun di aplikasi.
+- Terenkripsi end-to-end (Noise NNpsk0, dengan kunci dari kode QR) di Wi-Fi yang sama, dan lewat relay KlikVibe dari mana saja dengan Pro; protokol terbukanya ada di `src-tauri/src/remote/PROTOCOL.md`.
+- Agen yang menunggumu juga muncul di HP, walau notifikasi desktop dimatikan (dan sebagai notifikasi push dengan Pro).
+- Untuk pengembangan: `npm run tauri:dev` menjalankan "KlikVibe Dev" terpisah di samping KlikVibe yang terpasang.
+
 ## 0.6.0
 
 Ke definisi, versi ringan: ⌘-klik atau F12.

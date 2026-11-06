@@ -7,6 +7,7 @@ import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { SvelteSet } from "svelte/reactivity";
 import { settings } from "./settings.svelte";
+import { ipc } from "./ipc";
 
 /** Project roots with a terminal waiting for the user. */
 export const attention = new SvelteSet<string>();
@@ -26,12 +27,16 @@ function allowed(): Promise<boolean> {
 /**
  * A terminal (`key`, unique per shell) in project `root` needs the user.
  * `seen`: the user is looking at it right now, so nothing is shown.
+ * `session`: its session id, so a phone on KlikVibe Remote can open it.
  */
-export async function needsYou(key: string, root: string, title: string, body: string, seen: boolean) {
-  if (!settings.notifyAgents || seen) return;
+export async function needsYou(key: string, root: string, title: string, body: string, seen: boolean, session: string | null = null) {
+  if (seen) return;
   const now = Date.now();
   if (now - (last.get(key) ?? 0) < QUIET_BETWEEN) return;
   last.set(key, now);
+  // The phone too (and a push with Pro), even with desktop notifications off; nothing happens while Remote is off.
+  if (session) ipc.remoteAttention(root, session, title, body).catch(() => {});
+  if (!settings.notifyAgents) return;
   attention.add(root);
   getCurrentWindow()
     .requestUserAttention(UserAttentionType.Informational)

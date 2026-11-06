@@ -67,6 +67,7 @@
     Package,
     Trash2,
     Scale,
+    Smartphone,
     type LucideIcon,
   } from "@lucide/svelte";
 
@@ -109,6 +110,7 @@
     "panel-left": PanelLeft,
     "panel-right": PanelRight,
     play: Play,
+    phone: Smartphone,
     plug: Plug,
     plus: Plus,
     refresh: RefreshCw,

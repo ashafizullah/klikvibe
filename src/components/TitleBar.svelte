@@ -8,6 +8,7 @@
   import { isLastPanel, setLayout, togglePanel } from "../lib/layout";
   import { treeShown } from "../lib/grid";
   import McpBadge from "./McpBadge.svelte";
+  import { remote } from "../lib/remote.svelte";
   import { attention } from "../lib/attention.svelte";
   import { moveItem, reorder } from "../lib/reorder";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -95,6 +96,10 @@
   {/if}
   <div class="spacer" data-tauri-drag-region></div>
   <McpBadge />
+  <button class="icon-btn remote" class:on={remote.status?.enabled} onclick={() => (ui.dialog = "remote")} title={t("remote.button")} aria-label={t("remote.button")}>
+    <Icon name="phone" size={15} />
+    {#if remote.status?.phones.some((p) => p.connected)}<span class="live" title={t("remote.phoneConnected")}></span>{/if}
+  </button>
   <button class="icon-btn about" onclick={() => (ui.dialog = "about")} title={t("about.title")} aria-label={t("about.title")}>
     <Icon name="info" size={15} />
     {#if updates.ready || updates.available}<span class="new" title={t("update.availableTitle")}></span>{/if}
@@ -300,9 +305,21 @@
     min-width: 24px;
   }
   .about,
+  .remote,
   .toggle {
     position: relative;
     flex: none;
+  }
+  /* A phone is connected through KlikVibe Remote. */
+  .live {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 0 2px var(--panel);
   }
   .new {
     position: absolute;

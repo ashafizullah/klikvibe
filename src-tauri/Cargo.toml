@@ -36,7 +36,7 @@ notify-debouncer-mini = "0.7"
 # Decoding file paths in media:// URLs.
 percent-encoding = "2"
 # The local MCP server for the user's agent (see mcp.rs).
-axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio", "ws"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
 futures = "0.3"
 tauri-plugin-updater = "2"
@@ -46,6 +46,16 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "rus
 arboard = { version = "3", default-features = false }
 # System notifications when an agent in a terminal waits for the user.
 tauri-plugin-notification = "2"
+# KlikVibe Remote (see src/remote/PROTOCOL.md): the end-to-end encrypted channel
+# to the phone, the pairing QR code, the computer's LAN addresses and name, its
+# mDNS announcement, and the outbound connection to the relay.
+snow = { version = "0.10", default-features = false, features = ["std", "default-resolver", "use-curve25519", "use-chacha20poly1305", "use-sha2", "use-getrandom"] }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+if-addrs = "0.15"
+hostname = "0.4"
+getrandom = "0.3"
+mdns-sd = "0.21"
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 
 # Debug builds keep line numbers for backtraces but not full debug info.
 [profile.dev]

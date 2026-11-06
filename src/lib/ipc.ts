@@ -101,6 +101,36 @@ export interface Release {
   notes: string;
 }
 export type UpdateCheck = ({ status: "available" } & Release) | { status: "upToDate"; current: string } | { status: "busy" };
+export interface RemotePhone {
+  id: string;
+  name: string;
+  platform: string | null;
+  connected: boolean;
+}
+export interface RemoteStatus {
+  enabled: boolean;
+  port: number | null;
+  addresses: string[];
+  /** Added to an account by a phone (it has a token for the KlikVibe server). */
+  linked: boolean;
+  account: string | null;
+  pro: boolean;
+  /** Connected to the relay (Pro): phones reach this computer from anywhere. */
+  relay: boolean;
+  phones: RemotePhone[];
+  pairing: { url: string; svg: string; expiresAt: string } | null;
+  /** A phone scanned the code: it is added only if the user allows it. */
+  confirm: { phone: string; platform: string | null; account: string | null } | null;
+  error: string | null;
+}
+/** A project as the phone sees it (src-tauri/src/remote/hub.rs). */
+export interface RemoteProject {
+  root: string;
+  name: string;
+  attention: boolean;
+  terminals: { id: string; name: string; agent: string | null }[];
+}
+
 export interface McpCall {
   id: number;
   name: string;
@@ -195,6 +225,15 @@ export const ipc = {
     return invoke<McpInfo>("mcp_start", { tools, instructions, onCall: channel });
   },
   mcpStop: () => invoke<void>("mcp_stop"),
+  remoteStatus: () => invoke<RemoteStatus>("remote_status"),
+  remoteSetEnabled: (on: boolean) => invoke<RemoteStatus>("remote_set_enabled", { on }),
+  remotePairStart: () => invoke<RemoteStatus>("remote_pair_start"),
+  remotePairCancel: () => invoke<RemoteStatus>("remote_pair_cancel"),
+  remotePairConfirm: (allow: boolean) => invoke<RemoteStatus>("remote_pair_confirm", { allow }),
+  remoteForgetPhone: (id: string) => invoke<RemoteStatus>("remote_forget_phone", { id }),
+  remoteUnlink: () => invoke<RemoteStatus>("remote_unlink"),
+  remoteProjects: (projects: RemoteProject[]) => invoke<void>("remote_projects", { projects }),
+  remoteAttention: (root: string, term: string, title: string, body: string) => invoke<void>("remote_attention", { root, term, title, body }),
   mcpLink: () => invoke<McpLink>("mcp_link"),
   mcpReply: (id: number, result: unknown) => invoke<void>("mcp_reply", { id, result }),
 

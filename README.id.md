@@ -42,7 +42,8 @@
   - `git init` untuk folder baru.
 
   KlikVibe menjalankan `git` milik Anda sendiri, jadi kredensial, kunci SSH, dan hook bekerja sama seperti di terminal.
-- **Kecil dan offline.** Tauri 2 + Svelte 5 + Rust. Tanpa akun, tanpa telemetri, tanpa cloud: server MCP (opsional) hanya mendengarkan di komputer Anda sendiri.
+- **Dari HP (KlikVibe Remote, opsional).** Aktifkan Remote (ikon HP di kanan atas) lalu scan kode QR-nya dengan aplikasi KlikVibe di HP: pantau agen dan terminal semua project yang terbuka, balas, dan lihat perubahannya, di Wi-Fi yang sama (gratis) atau dari mana saja (Pro). Semua data antara HP dan komputer terenkripsi end-to-end ([protokol](src-tauri/src/remote/PROTOCOL.md)); server hanya menautkan perangkat ke akun dan, dari luar Wi-Fi, meneruskan data terenkripsi. Setiap HP harus diizinkan di komputer sebelum bisa terhubung.
+- **Kecil dan offline.** Tauri 2 + Svelte 5 + Rust. Tanpa akun, tanpa telemetri, tanpa cloud: server MCP (opsional) hanya mendengarkan di komputer Anda sendiri, dan Remote mati sampai Anda menyalakannya.
 - Bahasa Inggris dan Bahasa Indonesia.
 
 ## Instal
@@ -92,7 +93,7 @@ Kalau KlikVibe sudah berjalan, peluncuran kedua dengan folder (`klikvibe <folder
 
 ## Keamanan
 
-Jendela aplikasi hanya bisa mengakses folder yang Anda buka sendiri, lewat dialog folder, argumen peluncuran, atau daftar proyek terakhir yang disimpan di sisi Rust. Setiap perintah file dan Git memeriksa path-nya terhadap folder tersebut, termasuk symlink, dan KlikVibe tidak pernah menulis ke dalam `.git`. Lihat [SECURITY.md](SECURITY.md).
+Jendela aplikasi hanya bisa mengakses folder yang Anda buka sendiri, lewat dialog folder, argumen peluncuran, atau daftar proyek terakhir yang disimpan di sisi Rust. Setiap perintah file dan Git memeriksa path-nya terhadap folder tersebut, termasuk symlink, dan KlikVibe tidak pernah menulis ke dalam `.git`. Remote hanya mendengarkan di jaringan Anda saat dinyalakan, menolak permintaan dari halaman web, dan hanya menerima HP yang Anda izinkan (masing-masing dengan kuncinya sendiri dari kode QR). Lihat [SECURITY.md](SECURITY.md).
 
 ## Berkontribusi
 

@@ -5,11 +5,13 @@ mod git;
 mod mcp;
 mod media;
 mod projects;
+mod remote;
 mod terminal;
 mod updater;
 mod watch;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{Emitter, Manager};
 
 /// The first folder among launch arguments (`klikvibe .`), resolved against `cwd`.
@@ -32,6 +34,9 @@ fn focus(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // What the terminals print, kept for KlikVibe Remote (see remote/hub.rs).
+    let hub = Arc::new(remote::hub::Hub::default());
+    let terminals = terminal::Terminals::new(hub.clone());
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
             focus(app);
@@ -51,7 +56,7 @@ pub fn run() {
             let app = ctx.app_handle().clone();
             tauri::async_runtime::spawn_blocking(move || responder.respond(media::serve(&app.state::<projects::Projects>(), &request)));
         })
-        .manage(terminal::Terminals::default())
+        .manage(terminals)
         .manage(watch::Watchers::default())
         .setup(|app| {
             let projects = projects::Projects::new(app.path().app_data_dir()?);
@@ -62,6 +67,8 @@ pub fn run() {
             }
             app.manage(projects);
             app.manage(mcp::Mcp::new(app.path().app_data_dir()?));
+            app.manage(remote::Remote::new(app.path().app_data_dir()?, hub));
+            remote::Remote::init(app.handle());
             // Debug builds are not released, so they have nothing to update to.
             if !cfg!(debug_assertions) {
                 updater::start_background_checks(app.handle());
@@ -125,6 +132,15 @@ pub fn run() {
             commands::terminal_resize,
             commands::terminal_close,
             commands::terminal_foreground,
+            commands::remote_status,
+            commands::remote_set_enabled,
+            commands::remote_pair_start,
+            commands::remote_pair_cancel,
+            commands::remote_pair_confirm,
+            commands::remote_forget_phone,
+            commands::remote_unlink,
+            commands::remote_projects,
+            commands::remote_attention,
             commands::check_updates,
             commands::install_update,
             commands::set_update_mode,

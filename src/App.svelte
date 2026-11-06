@@ -15,6 +15,8 @@
   import ContextMenu from "./components/ContextMenu.svelte";
   import Tooltip from "./components/Tooltip.svelte";
   import McpDialog from "./components/McpDialog.svelte";
+  import RemoteDialog from "./components/RemoteDialog.svelte";
+  import { initRemote } from "./lib/remote.svelte";
   import AboutDialog from "./components/AboutDialog.svelte";
   import PromptsDialog from "./components/PromptsDialog.svelte";
   import AlertDialog from "./components/AlertDialog.svelte";
@@ -34,6 +36,7 @@
       .then(() => ipc.takeLaunchProject())
       .then((p) => p && openProject(p));
     initUpdates();
+    initRemote();
     if (settings.mcpEnabled) startMcp();
     return () => off.then((f) => f());
   });
@@ -149,6 +152,8 @@
     <AboutDialog />
   {:else if ui.dialog === "prompts"}
     <PromptsDialog />
+  {:else if ui.dialog === "remote"}
+    <RemoteDialog />
   {/if}
   <AlertDialog />
   <Toasts />

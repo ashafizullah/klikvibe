@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+KlikVibe Remote: your agents, from your phone.
+
+- Remote (the phone icon at the top right): pair the KlikVibe phone app by scanning a QR code, then watch every open project's terminals and agents from the phone, answer them, and see the changes and diffs. Each phone is allowed on the computer first, and can be removed there or in the app.
+- End-to-end encrypted (Noise NNpsk0, with a key from the QR code) on the same Wi-Fi, and through the KlikVibe relay from anywhere with Pro; the open protocol is in `src-tauri/src/remote/PROTOCOL.md`.
+- Agents waiting for you show on the phone too, even with desktop notifications off (and as a push notification with Pro).
+- For development: `npm run tauri:dev` runs a separate "KlikVibe Dev" next to an installed KlikVibe.
+
 ## 0.6.0
 
 Go to definition, the light way: ⌘-click or F12.

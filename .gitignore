@@ -8,3 +8,6 @@ docs/
 
 # Promo posts for social media (sources and renders).
 social-media/
+
+# KlikVibe Cloud: server, landing, and the mobile app (a private repo of its own).
+cloud/

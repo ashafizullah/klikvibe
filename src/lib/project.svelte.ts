@@ -105,6 +105,8 @@ export class ProjectState {
   terminals: (() => { index: number; name: string; active: boolean; agent: boolean; tail: (lines: number) => string }[]) | null = null;
   /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
   askAgent: ((text: string) => void) | null = null;
+  /** The terminals as KlikVibe Remote shows them on the phone; set by TerminalPanel. */
+  remoteTerminals: (() => { id: string; name: string; agent: string | null }[]) | null = null;
   // ---- what changed since the user last looked ----
   /** When each file last changed on disk (absolute path), not counting the user's own saves. */
   readonly lastChanged = new SvelteMap<string, number>();

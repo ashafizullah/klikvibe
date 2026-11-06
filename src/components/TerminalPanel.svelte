@@ -146,6 +146,13 @@
   const terminals = () =>
     shells.map((s, i) => ({ index: i + 1, name: label(s, i), active: s.id === active, agent: isAgent(s), tail: (n: number) => refs[s.id]?.tail(n) ?? "" }));
   project.terminals = terminals;
+  project.remoteTerminals = () =>
+    shells.flatMap((s, i) => {
+      const id = refs[s.id]?.sessionId();
+      if (!id || s.exited) return [];
+      const agent = isAgent(s) ? (AGENTS.find((a) => a.label === s.auto)?.id ?? null) : null;
+      return [{ id, name: label(s, i), agent }];
+    });
 
   // Kept up to date while it runs: KlikVibe can be quit (or the computer shut down) at any moment.
   let lastSaved = "";

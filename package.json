@@ -11,7 +11,8 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "bun test src",
     "notices": "bun scripts/notices.mjs",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7",
