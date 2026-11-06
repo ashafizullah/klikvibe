@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.5.1
+
+Terminal memakai seluruh tinggi selama tidak ada file terbuka.
+
+- Tanpa file terbuka, terminal naik sampai atas, tidak lagi di bawah kartu sambutan; membuka file memunculkan kode lagi di atasnya, dengan tinggi terminal yang kamu atur, dan menutup tab terakhir memberi ruang itu kembali ke terminal.
+
 ## 0.5.0
 
 Batas untuk checkpoint, dan berapa ruang yang dipakainya.

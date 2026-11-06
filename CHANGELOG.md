@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+The terminal takes the whole height while no file is open.
+
+- With no file open, the terminal goes up to the top instead of sitting under the welcome card; opening a file brings the code back above it, at the terminal height you set, and closing the last tab gives the terminal the room again.
+
 ## 0.5.0
 
 A limit for checkpoints, and how much space they take.
