@@ -85,6 +85,8 @@ export class ProjectState {
   /** Why checkpoints can't be taken here (not a repository, a subfolder of one), if so. */
   checkpointsOff = $state<string | null>(null);
   checkpointBusy = $state(false);
+  /** What the checkpoints take on disk, in bytes; null until measured (or when Git can't say). */
+  checkpointBytes = $state<number | null>(null);
   private checkpointTimer: ReturnType<typeof setTimeout> | null = null;
   private changedSince = 0;
   commitMessage = $state("");
@@ -220,10 +222,15 @@ export class ProjectState {
   /** The new checkpoint, or null when nothing changed (or checkpoints can't be taken here: see checkpointsOff). */
   async takeCheckpoint(reason: string, note?: string): Promise<Checkpoint | null> {
     try {
-      const made = await ipc.checkpointCreate(this.root, reason, note);
+      const { checkpoint: made, pruned } = await ipc.checkpointCreate(this.root, reason, note, settings.checkpointLimit);
       if (this.closed) return null;
       this.checkpointsOff = null;
-      if (made && this.checkpoints) this.checkpoints = [made, ...this.checkpoints];
+      // After a prune the kept ones have new hashes: the list is read again.
+      if (pruned) this.loadCheckpoints();
+      else if (made && this.checkpoints) {
+        this.checkpoints = [made, ...this.checkpoints];
+        if (this.gitTab === "checkpoints") this.measureCheckpoints();
+      }
       return made;
     } catch (e) {
       // Not a repository (yet), or a subfolder of one: say so in the Checkpoints tab, quietly.
@@ -235,8 +242,24 @@ export class ProjectState {
   async loadCheckpoints() {
     try {
       this.checkpoints = await ipc.checkpointList(this.root);
+      this.measureCheckpoints();
     } catch (e) {
       this.checkpointsOff = errorText(e);
+    }
+  }
+
+  async measureCheckpoints() {
+    this.checkpointBytes = await ipc.checkpointSize(this.root).catch(() => null);
+  }
+
+  /** A new limit: the checkpoints beyond it go right away. */
+  async setCheckpointLimit(keep: number) {
+    settings.checkpointLimit = keep;
+    persist();
+    try {
+      if (keep && (await ipc.checkpointPrune(this.root, keep))) await this.loadCheckpoints();
+    } catch (e) {
+      toast(errorText(e), "error");
     }
   }
 
@@ -271,6 +294,7 @@ export class ProjectState {
     try {
       await ipc.checkpointClear(this.root);
       this.checkpoints = [];
+      this.checkpointBytes = 0;
     } catch (e) {
       toast(errorText(e), "error");
     }

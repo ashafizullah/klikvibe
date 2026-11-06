@@ -160,8 +160,13 @@ export const ipc = {
   worktreeOpen: (root: string, path: string) => invoke<Project>("worktree_open", { root, path }),
   worktreeMerge: (root: string, branch: string) => invoke<string>("worktree_merge", { root, branch }),
   worktreeRemove: (root: string, path: string, force: boolean) => invoke<void>("worktree_remove", { root, path, force }),
-  checkpointCreate: (root: string, reason: string, note?: string) => invoke<Checkpoint | null>("checkpoint_create", { root, reason, note: note ?? null }),
-  checkpointList: (root: string) => invoke<Checkpoint[]>("checkpoint_list", { root }),
+  /** `keep`: at most about this many are kept (0: all); `pruned`: older ones went, so the list has new hashes. */
+  checkpointCreate: (root: string, reason: string, note: string | undefined, keep: number) =>
+    invoke<{ checkpoint: Checkpoint | null; pruned: boolean }>("checkpoint_create", { root, reason, note: note ?? null, keep }),
+  checkpointList: (root: string, limit = 1000) => invoke<Checkpoint[]>("checkpoint_list", { root, limit }),
+  checkpointPrune: (root: string, keep: number) => invoke<boolean>("checkpoint_prune", { root, keep }),
+  /** Bytes on disk; null when Git is too old to say. */
+  checkpointSize: (root: string) => invoke<number | null>("checkpoint_size", { root }),
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),
   checkpointClear: (root: string) => invoke<void>("checkpoint_clear", { root }),
   gitDiscard: (root: string, path: string, from: string | null, untracked: boolean) => invoke<void>("git_discard", { root, path, from, untracked }),

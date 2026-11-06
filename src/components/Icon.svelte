@@ -65,6 +65,7 @@
     FileTerminal,
     FileType,
     Package,
+    Trash2,
     Scale,
     type LucideIcon,
   } from "@lucide/svelte";
@@ -115,6 +116,7 @@
     search: Search,
     rows: Rows2,
     save: Save,
+    trash: Trash2,
     sparkles: Sparkles,
     terminal: SquareTerminal,
     wrap: TextWrap,

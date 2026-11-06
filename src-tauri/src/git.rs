@@ -498,7 +498,65 @@ fn checkpoint_index(root: &Path) -> AppResult<String> {
 }
 
 /// Takes a checkpoint of the working tree; None when nothing changed since the last one.
-pub fn checkpoint(root: &Path, reason: &str, note: &str) -> AppResult<Option<Checkpoint>> {
+/// With `keep` (0: no limit), the oldest go once there are a few more than that (see
+/// prune_checkpoints); `pruned` says so, as the ones kept then have new hashes.
+pub fn checkpoint_keeping(root: &Path, reason: &str, note: &str, keep: u32) -> AppResult<(Option<Checkpoint>, bool)> {
+    let made = checkpoint(root, reason, note)?;
+    // Pruned in batches, not at every checkpoint: each prune writes the kept ones again.
+    let slack = (keep / 10).max(5);
+    let pruned = made.is_some() && keep > 0 && checkpoint_count(root)? > keep + slack && prune_checkpoints(root, keep)?;
+    Ok((made.and_then(|_| checkpoints(root, 1).ok()?.into_iter().next()), pruned))
+}
+
+fn checkpoint_count(root: &Path) -> AppResult<u32> {
+    match run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]) {
+        Ok(head) => Ok(run(root, &["rev-list", "--count", head.trim()])?.trim().parse().unwrap_or(0)),
+        Err(_) => Ok(0),
+    }
+}
+
+/// Keeps only the newest `keep` checkpoints: they are written again with the oldest
+/// kept as the first (same files, dates and messages), and the rest become
+/// unreachable, for Git's own cleanup to reclaim. True when some went.
+pub fn prune_checkpoints(root: &Path, keep: u32) -> AppResult<bool> {
+    let Ok(head) = run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]) else { return Ok(false) };
+    let head = head.trim().to_string();
+    if keep == 0 || checkpoint_count(root)? <= keep {
+        return Ok(false);
+    }
+    // Oldest kept first ("--reverse" applies after "-n").
+    let log = run(root, &["log", &format!("-n{keep}"), "--reverse", "-z", "--format=%T%x01%aI%x01%cI%x01%B", &head])?;
+    let mut parent: Option<String> = None;
+    for entry in log.split('\0').filter(|e| !e.trim().is_empty()) {
+        let mut parts = entry.splitn(4, '\x01');
+        let (Some(tree), Some(authored), Some(committed), Some(message)) = (parts.next(), parts.next(), parts.next(), parts.next()) else {
+            return Err(AppError::msg("Unexpected checkpoint log"));
+        };
+        let mut env: Vec<(&str, &str)> = CHECKPOINT_AUTHOR.to_vec();
+        env.extend([("GIT_AUTHOR_DATE", authored), ("GIT_COMMITTER_DATE", committed)]);
+        let message = message.trim_end_matches('\n');
+        let mut args = vec!["commit-tree", tree, "-m", message];
+        if let Some(p) = &parent {
+            args.extend(["-p", p.as_str()]);
+        }
+        parent = Some(run_env(root, &args, &env)?.trim().to_string());
+    }
+    let Some(new_head) = parent else { return Ok(false) };
+    // Only from where it was: a checkpoint taken meanwhile wins, and the prune waits for the next one.
+    Ok(run(root, &["update-ref", "-m", "KlikVibe checkpoints pruned", CHECKPOINTS, &new_head, &head]).is_ok())
+}
+
+/// Bytes the checkpoints keep on disk beyond what branches, tags and remotes already
+/// hold (None when Git is too old to say: `rev-list --disk-usage` came in 2.38).
+pub fn checkpoint_size(root: &Path) -> AppResult<Option<u64>> {
+    if run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).is_err() {
+        return Ok(Some(0));
+    }
+    let out = run(root, &["rev-list", "--disk-usage", "--objects", CHECKPOINTS, "--not", "--branches", "--tags", "--remotes"]);
+    Ok(out.ok().and_then(|s| s.trim().parse().ok()))
+}
+
+fn checkpoint(root: &Path, reason: &str, note: &str) -> AppResult<Option<Checkpoint>> {
     let index = checkpoint_index(root)?;
     let env = [("GIT_INDEX_FILE", index.as_str())];
     run_env(root, &["add", "-A", "--", "."], &env)?;
@@ -533,7 +591,7 @@ pub fn checkpoints(root: &Path, limit: u32) -> AppResult<Vec<Checkpoint>> {
     if run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).is_err() {
         return Ok(Vec::new());
     }
-    let n = format!("-n{}", limit.clamp(1, 500));
+    let n = format!("-n{}", limit.clamp(1, 1000));
     let out = run(root, &["log", &n, "--format=%H%x1f%h%x1f%cI%x1f%s%x1f%b%x1e", CHECKPOINTS])?;
     Ok(out
         .split('\x1e')
@@ -851,6 +909,37 @@ mod tests {
         assert!(!dir.join("new.log").exists());
         discard(&dir, "a.txt", None, true).unwrap();
         assert!(dir.join("a.txt").exists());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn checkpoints_are_pruned_to_the_newest_and_measured() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-prune-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        assert_eq!(checkpoint_size(&dir).unwrap(), Some(0));
+        for i in 0..14 {
+            std::fs::write(dir.join("a.txt"), format!("{i}\n")).unwrap();
+            let (made, pruned) = checkpoint_keeping(&dir, "changes", if i == 13 { "last" } else { "" }, 3).unwrap();
+            assert!(made.is_some());
+            // 3 kept, pruned once there are more than 3 + 5.
+            assert_eq!(pruned, i == 8, "at {i}");
+        }
+        assert_eq!(checkpoint_count(&dir).unwrap(), 8);
+        let before = checkpoints(&dir, 10).unwrap();
+        assert!(prune_checkpoints(&dir, 3).unwrap());
+        let after = checkpoints(&dir, 10).unwrap();
+        assert_eq!(after.len(), 3);
+        // The newest three, same dates, notes and files; the oldest kept has no parent.
+        for (a, b) in after.iter().zip(&before) {
+            assert_eq!((&a.date, &a.reason, &a.note, a.files), (&b.date, &b.reason, &b.note, b.files));
+        }
+        assert_eq!(after[0].note, "last");
+        assert!(run(&dir, &["rev-parse", "--verify", "-q", &format!("{}^", after[2].hash)]).is_err());
+        restore_checkpoint(&dir, &after[2].hash).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "11\n");
+        assert!(!prune_checkpoints(&dir, 0).unwrap(), "0 keeps them all");
+        assert!(checkpoint_size(&dir).unwrap().is_some_and(|b| b > 0));
         std::fs::remove_dir_all(dir).unwrap();
     }
 

@@ -280,22 +280,49 @@ pub async fn git_ignore(projects: State<'_, Projects>, root: String, path: Strin
     blocking(move || git::ignore(&file, &path, dir)).await
 }
 
-/// Takes a checkpoint of the working tree (see git.rs); None when nothing changed.
+#[derive(serde::Serialize)]
+pub struct CheckpointMade {
+    checkpoint: Option<Checkpoint>,
+    /// The oldest went to stay within the limit: the list has new hashes.
+    pruned: bool,
+}
+
+/// Takes a checkpoint of the working tree (see git.rs); `checkpoint` is None when
+/// nothing changed. Keeps at most about `keep` of them (0: all).
 #[tauri::command]
 pub async fn checkpoint_create(
     projects: State<'_, Projects>,
     root: String,
     reason: String,
     note: Option<String>,
-) -> AppResult<Option<Checkpoint>> {
-    let root = root_of(&projects, &root)?;
-    blocking(move || git::checkpoint(&root, &reason, note.as_deref().unwrap_or(""))).await
+    keep: u32,
+) -> AppResult<CheckpointMade> {
+    let root = projects.root(&root)?;
+    blocking(move || {
+        let (checkpoint, pruned) = git::checkpoint_keeping(&root, &reason, note.as_deref().unwrap_or(""), keep)?;
+        Ok(CheckpointMade { checkpoint, pruned })
+    })
+    .await
 }
 
 #[tauri::command]
-pub async fn checkpoint_list(projects: State<'_, Projects>, root: String) -> AppResult<Vec<Checkpoint>> {
-    let root = root_of(&projects, &root)?;
-    blocking(move || git::checkpoints(&root, 100)).await
+pub async fn checkpoint_list(projects: State<'_, Projects>, root: String, limit: u32) -> AppResult<Vec<Checkpoint>> {
+    let root = projects.root(&root)?;
+    blocking(move || git::checkpoints(&root, limit)).await
+}
+
+/// Keeps only the newest `keep` checkpoints; true when some went.
+#[tauri::command]
+pub async fn checkpoint_prune(projects: State<'_, Projects>, root: String, keep: u32) -> AppResult<bool> {
+    let root = projects.root(&root)?;
+    blocking(move || git::prune_checkpoints(&root, keep)).await
+}
+
+/// What the checkpoints take on disk, in bytes (null when Git can't say).
+#[tauri::command]
+pub async fn checkpoint_size(projects: State<'_, Projects>, root: String) -> AppResult<Option<u64>> {
+    let root = projects.root(&root)?;
+    blocking(move || git::checkpoint_size(&root)).await
 }
 
 /// Puts the files back as they were at a checkpoint (after saving the current state as one).

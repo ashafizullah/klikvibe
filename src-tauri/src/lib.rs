@@ -113,6 +113,8 @@ pub fn run() {
             commands::checkpoint_list,
             commands::checkpoint_restore,
             commands::checkpoint_clear,
+            commands::checkpoint_prune,
+            commands::checkpoint_size,
             commands::git_discard,
             commands::git_ignore,
             commands::terminal_open,

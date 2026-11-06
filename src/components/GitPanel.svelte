@@ -48,6 +48,25 @@
     return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString(i18n.locale, { day: "numeric", month: "short" })} ${time}`;
   }
 
+  const KEEP = [50, 100, 200, 500, 0];
+  const megabytes = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
+  const usage = $derived.by(() => {
+    const count = project.checkpoints?.length ?? 0;
+    const head = settings.checkpointLimit ? t("checkpoints.usage", { count, limit: settings.checkpointLimit }) : String(count);
+    return project.checkpointBytes === null ? head : `${head} · ${megabytes(project.checkpointBytes)}`;
+  });
+
+  function limitMenu(e: MouseEvent) {
+    openMenuBelow(e.currentTarget as Element, [
+      { label: t("checkpoints.keepTitle"), disabled: true, run: () => {} },
+      ...KEEP.map((n) => ({
+        label: n ? t("checkpoints.keep", { n }) : t("checkpoints.keepAll"),
+        icon: settings.checkpointLimit === n ? "check" : undefined,
+        run: () => project.setCheckpointLimit(n),
+      })),
+    ]);
+  }
+
   function setCheckpoints(on: boolean) {
     settings.checkpoints = on;
     persist();
@@ -336,9 +355,14 @@
           <Icon name="save" size={13} />
         </button>
         <button class="icon-btn" onclick={() => project.clearCheckpoints()} disabled={!project.checkpoints?.length} title={t("checkpoints.clear")} aria-label={t("checkpoints.clear")}>
-          <Icon name="close" size={13} />
+          <Icon name="trash" size={13} />
         </button>
       </div>
+      {#if !project.checkpointsOff}
+        <button class="cp-usage" onclick={limitMenu} title={t("checkpoints.usageHint")}>
+          <Icon name="database" size={12} />{usage}<Icon name="down" size={11} />
+        </button>
+      {/if}
       <div class="list">
         {#if project.checkpointsOff}
           <p class="empty-note">{project.checkpointsOff}</p>
@@ -761,6 +785,24 @@
     align-items: center;
     gap: 2px;
     padding: 8px 8px 4px 12px;
+  }
+  .cp-usage {
+    flex: none;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 0 4px 8px;
+    padding: 2px 6px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    font: 11px var(--mono);
+    color: var(--muted);
+  }
+  .cp-usage:hover {
+    background: var(--panel-2);
+    color: var(--text);
   }
   .cp-auto {
     flex: 1;

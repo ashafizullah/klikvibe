@@ -30,6 +30,8 @@ interface Stored {
   updateMode: UpdateMode;
   /** Take checkpoints of the files as they change (see checkpoints in git.rs). */
   checkpoints: boolean;
+  /** Checkpoints kept per project, the oldest going first; 0 keeps them all. */
+  checkpointLimit: number;
   /** The user's own prompts for the terminal's Prompts menu. */
   prompts: string[];
   /** Tell the user when an agent in a terminal waits for them (see attention.svelte.ts). */
@@ -69,6 +71,7 @@ function load(): Stored {
     notifyAgents: true,
     prompts: [],
     checkpoints: true,
+    checkpointLimit: 100,
     lastVersion: "",
   };
   try {
