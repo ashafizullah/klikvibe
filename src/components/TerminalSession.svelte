@@ -134,6 +134,9 @@
    * project, an image, video or PDF in its default app, anything else in Finder.
    * A line that wraps is read as one, so a long path still links.
    */
+  /** Rows above a plain file name searched for the folder it is in. */
+  const NEARBY_ROWS = 30;
+
   function links(xterm: Terminal) {
     const hint = t("term.openHint", { keys: isMac ? "⌘-click" : "Ctrl+click" });
     type Kind = "url" | "file" | "dir" | "outside";
@@ -147,17 +150,21 @@
     return xterm.registerLinkProvider({
       provideLinks(y, callback) {
         const b = xterm.buffer.active;
-        // The whole logical line around row y: a row that wraps continues the one above.
-        let first = y - 1;
-        while (first > 0 && b.getLine(first)?.isWrapped) first--;
-        let last = y - 1;
-        while (b.getLine(last + 1)?.isWrapped) last++;
-        const starts: number[] = [];
-        let text = "";
-        for (let r = first; r <= last; r++) {
-          starts.push(text.length);
-          text += b.getLine(r)?.translateToString(r === last) ?? "";
-        }
+        /** The whole logical line around row `row` (0-based): a row that wraps continues the one above. */
+        const lineAt = (row: number) => {
+          let first = row;
+          while (first > 0 && b.getLine(first)?.isWrapped) first--;
+          let last = row;
+          while (b.getLine(last + 1)?.isWrapped) last++;
+          const starts: number[] = [];
+          let text = "";
+          for (let r = first; r <= last; r++) {
+            starts.push(text.length);
+            text += b.getLine(r)?.translateToString(r === last) ?? "";
+          }
+          return { first, last, starts, text };
+        };
+        const { first, last, starts, text } = lineAt(y - 1);
         /** Buffer position (1-based) of the character at index `i` of `text`. */
         const at = (i: number) => {
           let row = starts.length - 1;
@@ -201,14 +208,49 @@
         }
         const done = () => callback(ready.length ? ready.sort((a, b) => a.range.start.y - b.range.start.y || a.range.start.x - b.range.start.x) : undefined);
         if (!unsure.length && !outside.length) return done();
+        /** Absolute folders printed on this line or the rows above, newest first. */
+        const nearbyFolders = () => {
+          const found: string[] = [];
+          for (let r = last; r >= Math.max(0, first - NEARBY_ROWS) && found.length < 5; ) {
+            const line = r === last ? { first, text } : lineAt(r);
+            r = line.first - 1;
+            for (const l of findLinks(line.text).reverse()) {
+              if (l.kind !== "path" || l.loose || !absolute(l.target)) continue;
+              // A file's folder counts too: "/x/card/ios-card.png" then "sheet.png".
+              const folder = /\.[A-Za-z0-9]+$/.test(l.target) ? l.target.replace(/\/[^/]*$/, "") : l.target;
+              if (folder && !found.includes(folder)) found.push(folder);
+            }
+          }
+          return found;
+        };
         Promise.all([
           unsure.length
-            ? ipc.pathKinds(unsure.map((u) => u.abs)).then((kinds) => unsure.forEach((u, i) => kinds[i] && ready.push(link(u.l, kinds[i]!, u.abs))))
-            : null,
+            ? ipc.pathKinds(unsure.map((u) => u.abs)).then((kinds) =>
+                unsure.filter((u, i) => {
+                  if (kinds[i]) ready.push(link(u.l, kinds[i]!, u.abs));
+                  return !kinds[i];
+                }),
+              )
+            : [],
           outside.length
             ? ipc.outsideKinds(outside.map((l) => l.target)).then((kinds) => outside.forEach((l, i) => kinds[i] && ready.push(link(l, "outside", l.target))))
             : null,
         ])
+          // A plain file name not in the project ("sheet-ios-feed.png"): in a folder printed just above?
+          .then(async ([missing]) => {
+            const names = missing.filter((u) => !u.l.loose && !u.l.target.includes("/"));
+            const folders = names.length ? nearbyFolders() : [];
+            if (!folders.length) return;
+            const tries = names.flatMap((u) => folders.map((f) => ({ l: u.l, path: `${f}/${u.l.target}` })));
+            const kinds = await ipc.outsideKinds(tries.map((x) => x.path));
+            const linked = new Set<TermLink>();
+            tries.forEach((x, i) => {
+              if (kinds[i] && kinds[i] !== "dir" && !linked.has(x.l)) {
+                linked.add(x.l);
+                ready.push(link(x.l, "outside", x.path));
+              }
+            });
+          })
           .catch(() => {})
           .finally(done);
       },

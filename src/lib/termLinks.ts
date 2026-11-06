@@ -23,6 +23,8 @@ export interface TermLink {
 const URL_RE = /\bhttps?:\/\/[^\s"'<>`)\]]+/g;
 // A path has a folder part or an extension; then ":line[:col]" or "(line,col)".
 const PATH_RE = /(?:~|\.{1,2})?\/?(?:[\w@.+-]+\/)*[\w@+-][\w@.+-]*\.[A-Za-z0-9]+(?::(\d+)(?::(\d+))?|\((\d+),(\d+)\))?/g;
+// An absolute folder (or a file without an extension): /tmp/x/card/, ~/Projects/app.
+const ABS_RE = /(?:~\/|\/)(?:[\w@.+-]+\/)*[\w@.+-]+\/?/g;
 const WORD_RE = /[\w@+-][\w@.+-]*(?:\/[\w@.+-]+)*\/?/g;
 
 export function findLinks(text: string): TermLink[] {
@@ -46,6 +48,13 @@ export function findLinks(text: string): TermLink[] {
     const line = Number(m[1] ?? m[3]) || undefined;
     const column = Number(m[2] ?? m[4]) || undefined;
     links.push({ kind: "path", start, end: start + full.length, target: path, line, column });
+  }
+  for (const m of text.matchAll(ABS_RE)) {
+    const start = m.index;
+    if (taken(start) || (start > 0 && /[\w@.\/:-]/.test(text[start - 1]))) continue;
+    const path = m[0].replace(/[./]+$/, "");
+    if (path.split("/").filter(Boolean).length < 2) continue;
+    links.push({ kind: "path", start, end: start + path.length, target: path });
   }
   for (const m of text.matchAll(WORD_RE)) {
     const start = m.index;

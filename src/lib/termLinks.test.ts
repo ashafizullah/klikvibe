@@ -15,6 +15,10 @@ test("paths as compilers, tests and agents print them", () => {
   expect(paths("/Users/me/proj/src/a.svelte:3")).toEqual([["/Users/me/proj/src/a.svelte", 3, undefined]]);
   const tmp = "/private/tmp/claude-501/-Users-me-Projects-x/27f7bf76-7d15/scratchpad/card/ios-card.png";
   expect(paths(`- iOS: ${tmp}`)).toEqual([[tmp, undefined, undefined]]);
+  // Absolute folders, without the sentence around them.
+  expect(paths("(semua di /private/tmp/x-1/scratchpad/card/):")).toEqual([["/private/tmp/x-1/scratchpad/card", undefined, undefined]]);
+  expect(paths("cd ~/Projects/app and run")).toEqual([["~/Projects/app", undefined, undefined]]);
+  expect(paths("a / b and /usr")).toEqual([]);
 });
 
 test("versions, numbers and words are not paths", () => {
