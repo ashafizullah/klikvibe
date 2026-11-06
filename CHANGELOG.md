@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3
+
+More ⌘-click in the terminal: folders, and file names under a folder printed above.
+
+- More ⌘-click in the terminal: absolute folders (/tmp/x/card/, ~/Projects/app) open in Finder or Explorer, and a plain file name such as `sheet-ios-feed.png` opens when the folder it is in was printed a few lines above.
+
 ## 0.5.2
 
 ⌘-click on paths outside the project in the terminal.

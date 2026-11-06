@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.5.3
+
+⌘-klik di terminal makin luas: folder, dan nama file di bawah folder yang disebut di atasnya.
+
+- ⌘-klik di terminal makin luas: folder absolut (/tmp/x/card/, ~/Projects/app) terbuka di Finder atau Explorer, dan nama file saja seperti `sheet-ios-feed.png` bisa dibuka kalau foldernya disebut beberapa baris di atasnya.
+
 ## 0.5.2
 
 ⌘-klik path di luar proyek di terminal.
