@@ -3,6 +3,9 @@ const en = {
   "common.cancel": "Cancel",
   "common.copied": "Copied",
   "term.openHint": "{keys} to open",
+  "def.go": "Go to definition",
+  "def.none": "No definition of {name} found in the project",
+  "def.noModule": "{name} isn't a file in this project",
 
   "home.start": "Start",
   "home.open": "Open folder",

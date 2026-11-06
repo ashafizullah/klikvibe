@@ -10,11 +10,12 @@
   import { settings } from "../lib/settings.svelte";
   import { selectAll } from "@codemirror/commands";
   import { gotoLine, openSearchPanel } from "@codemirror/search";
-  import { errorText, ipc } from "../lib/ipc";
+  import { errorText, ipc, type TextMatch } from "../lib/ipc";
+  import { componentFiles, importedFrom, moduleAt, rankDefinitions, resolveImport, rustModule } from "../lib/definition";
   import { fileUrl, forgeName } from "../lib/forge";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import { relative } from "../lib/paths";
-  import { copyText, mod, modAlt, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
+  import { join, relative } from "../lib/paths";
+  import { copyText, isMac, mod, modAlt, openMenu, reveal, revealLabel, toast, ui, type MenuItem } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
 
   let { tab }: { tab: Tab } = $props();
@@ -39,7 +40,23 @@
         doc: tab.text,
         extensions: [
           basicSetup,
-          keymap.of([indentWithTab, { key: "Mod-s", preventDefault: true, run: () => (project.saveTab(tab), true) }]),
+          keymap.of([
+            indentWithTab,
+            { key: "Mod-s", preventDefault: true, run: () => (project.saveTab(tab), true) },
+            { key: "F12", preventDefault: true, run: (v) => (goToDefinition(v, v.state.selection.main.head), true) },
+          ]),
+          // ⌘-click (Ctrl+click) goes to a definition, as in other editors; Alt+click adds a cursor.
+          EditorView.clickAddsSelectionRange.of((e) => e.altKey),
+          EditorView.domEventHandlers({
+            mousedown(e, v) {
+              if (e.button !== 0 || !(isMac ? e.metaKey : e.ctrlKey)) return false;
+              const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+              if (pos === null) return false;
+              e.preventDefault();
+              goToDefinition(v, pos, { x: e.clientX, y: e.clientY });
+              return true;
+            },
+          }),
           darkroomTheme,
           darkroomHighlight,
           language.of([]),
@@ -58,7 +75,70 @@
     });
   });
 
+  // Holding ⌘ (Ctrl) shows a hand over the code: a click goes to a definition.
+  let linking = $state(false);
+  const modKey = (e: KeyboardEvent) => (linking = isMac ? e.metaKey : e.ctrlKey);
+  const noMod = () => (linking = false);
+  window.addEventListener("keydown", modKey);
+  window.addEventListener("keyup", modKey);
+  window.addEventListener("blur", noMod);
+
+  /**
+   * Go to definition, without a language server: in an import's quotes, the file it
+   * names; on a word, where it is defined (the file it was imported from first, then
+   * this file, then the project). Several places: a menu to pick from.
+   */
+  async function goToDefinition(v: EditorView, pos: number, at?: { x: number; y: number }) {
+    const rel = relative(project.root, tab.path);
+    if (rel === null) return;
+    if (!project.allFiles) await project.loadAllFiles();
+    const files = new Set(project.allFiles ?? []);
+    const open = (path: string, line?: number) => {
+      const abs = join(project.root, path);
+      project.openFile(abs).then(() => line && project.revealLines(`file:${abs}`, line, line));
+    };
+    const line = v.state.doc.lineAt(pos);
+    const spec = moduleAt(line.text, pos - line.from);
+    if (spec) {
+      const target = resolveImport(spec, rel, files);
+      if (target) open(target);
+      else toast(t("def.noModule", { name: spec }));
+      return;
+    }
+    const word = v.state.wordAt(pos);
+    if (!word) return;
+    const name = v.state.sliceDoc(word.from, word.to);
+    const rustMod = rel.endsWith(".rs") ? rustModule(line.text, name, rel, files) : null;
+    if (rustMod) return open(rustMod);
+    const from = importedFrom(v.state.doc.toString(), name);
+    const imported = from ? resolveImport(from, rel, files) : null;
+    // A component imported from its own file (import Button from "./Button.svelte"): that file.
+    if (imported && /\.(svelte|vue)$/.test(imported)) return open(imported);
+    let found: TextMatch[];
+    try {
+      found = await ipc.findDefinitions(project.root, name);
+    } catch (e) {
+      toast(errorText(e), "error");
+      return;
+    }
+    if (!found.length) found = componentFiles(name, files).map((path) => ({ path, line: 1, text: path, start: 0, end: 0 }));
+    if (!found.length) return toast(t("def.none", { name }));
+    const { list, sure } = rankDefinitions(found, rel, imported);
+    if (sure) return open(list[0].path, list[0].line);
+    const where = at ?? v.coordsAtPos(pos) ?? { left: 0, bottom: 0 };
+    const x = "x" in where ? where.x : where.left;
+    const y = "y" in where ? where.y : where.bottom;
+    ui.menu = {
+      x,
+      y,
+      items: list.slice(0, 20).map((m) => ({ label: `${m.path}:${m.line}`, hint: m.text.trim().slice(0, 48), run: () => open(m.path, m.line) })),
+    };
+  }
+
   onDestroy(() => {
+    window.removeEventListener("keydown", modKey);
+    window.removeEventListener("keyup", modKey);
+    window.removeEventListener("blur", noMod);
     if (view) project.detachView(tab.id, view);
     view?.destroy();
   });
@@ -103,6 +183,7 @@
         : `${t("ask.lines", { path: `@${rel}`, from: first, to: last })} `;
     const items: MenuItem[] = [
       { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(about) },
+      { label: t("def.go"), hint: "F12", run: () => goToDefinition(v, sel.head, { x: e.clientX, y: e.clientY }) },
       "sep",
       {
         label: t("edit.cut"),
@@ -148,7 +229,7 @@
   }
 </script>
 
-<div class="code" bind:this={host} oncontextmenu={menu} role="presentation"></div>
+<div class="code" class:linking bind:this={host} oncontextmenu={menu} role="presentation"></div>
 
 <style>
   .code {
@@ -160,6 +241,9 @@
   }
   .code :global(.cm-editor) {
     height: 100%;
+  }
+  .code.linking :global(.cm-content) {
+    cursor: pointer;
   }
   .code :global(.cm-editor.cm-focused) {
     outline: none;

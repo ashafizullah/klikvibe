@@ -136,6 +136,8 @@ export const ipc = {
   openOutside: (path: string) => invoke<void>("open_outside", { path }),
   readFile: (path: string) => invoke<FileText>("read_file", { path }),
   listFiles: (root: string) => invoke<FileList>("list_files", { root }),
+  /** Lines that look like they define `name` (go to definition, without a language server). */
+  findDefinitions: (root: string, name: string) => invoke<TextMatch[]>("find_definitions", { root, name }),
   searchText: (root: string, query: string, include: string | null) => invoke<TextSearch>("search_text", { root, query, include }),
   writeFile: (path: string, text: string) => invoke<void>("write_file", { path, text }),
   /** Returns the new file's or folder's path. */

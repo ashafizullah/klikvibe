@@ -98,6 +98,13 @@ pub async fn search_text(projects: State<'_, Projects>, root: String, query: Str
     blocking(move || files::search_text(&root, &query, include.as_deref())).await
 }
 
+/// Lines that look like they define `name` in an open project (go to definition).
+#[tauri::command]
+pub async fn find_definitions(projects: State<'_, Projects>, root: String, name: String) -> AppResult<Vec<files::TextMatch>> {
+    let root = projects.root(&root)?;
+    blocking(move || files::find_definitions(&root, &name)).await
+}
+
 /// A new empty file, or a folder, named `name` (folders on the way allowed) in folder `dir`.
 #[tauri::command]
 pub async fn create_entry(projects: State<'_, Projects>, dir: String, name: String, folder: bool) -> AppResult<String> {

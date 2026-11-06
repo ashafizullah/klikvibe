@@ -2275,6 +2275,7 @@ dependencies = [
  "notify-debouncer-mini",
  "percent-encoding",
  "portable-pty",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

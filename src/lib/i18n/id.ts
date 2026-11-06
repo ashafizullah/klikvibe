@@ -4,6 +4,9 @@ const id: Record<Key, string> = {
   "common.loading": "Memuat…",
   "common.cancel": "Batal",
   "term.openHint": "{keys} untuk membuka",
+  "def.go": "Ke definisi",
+  "def.none": "Definisi {name} tidak ditemukan di proyek",
+  "def.noModule": "{name} bukan file di proyek ini",
   "common.copied": "Disalin",
 
   "home.start": "Mulai",

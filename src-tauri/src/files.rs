@@ -188,6 +188,79 @@ pub fn search_text(root: &Path, query: &str, include: Option<&str>) -> AppResult
     Ok(TextSearch { matches, truncated: false })
 }
 
+// ---- go to definition, the light way ----
+//
+// No language server: lines that look like they define `name` in the common
+// languages (function, class, struct, def, fn, const, a method, ...). Good for
+// most jumps; a name defined in several places gives several results to pick from.
+
+/// At most this many definitions are returned.
+const MAX_DEFINITIONS: usize = 50;
+
+fn definition_patterns(name: &str) -> AppResult<regex::Regex> {
+    let n = regex::escape(name);
+    let modifiers = r#"(?:(?:export|default|pub(?:\([^)]*\))?|async|unsafe|extern(?:\s+"[^"]*")?|static|abstract|declare|public|private|protected|internal|open|final|sealed|data|override|inline|readonly|local)\s+)*"#;
+    let keyword = r"(?:function\*?|class|interface|type|enum|struct|union|trait|fn|def|func|const|let|var|static|mod|module|namespace|record|object|val|typealias|macro_rules!|protocol|extension)";
+    let patterns = [
+        // function x / class X / fn x / def x / const x / func (r *T) x / def self.x
+        format!(r"^\s*{modifiers}{keyword}\s+(?:\([^)]*\)\s*)?(?:self\.)?{n}\b"),
+        // A method: x(a, b) {  /  async x(): T {  /  public void x(int a) {
+        format!(
+            r"^\s*(?:(?:async|static|public|private|protected|get|set|override|readonly|final|virtual)\s+)*(?:[\w<>\[\]?,.]+\s+)?{n}\s*(?:<[^>]*>)?\s*\([^)]*\)\s*(?::\s*[^{{=;]+)?\s*\{{"
+        ),
+        // An object's member: x: function / x: (a) => / x: async (a) =>
+        format!(r"^\s*{n}\s*:\s*(?:async\s+)?(?:function\b|\([^)]*\)\s*=>|\w+\s*=>)"),
+        // A top-level assignment (Python, shell): X = ...
+        format!(r"^{n}\s*(?::\s*[^=]+)?=(?:[^=]|$)"),
+    ];
+    regex::Regex::new(&patterns.join("|")).map_err(|e| AppError::msg(e.to_string()))
+}
+
+/// Lines in the project's text files that look like they define `name`.
+pub fn find_definitions(root: &Path, name: &str) -> AppResult<Vec<TextMatch>> {
+    let name = name.trim();
+    if name.is_empty() || !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '$') {
+        return Ok(Vec::new());
+    }
+    let re = definition_patterns(name)?;
+    // Not a word that merely contains the name: "update" for "date".
+    let keywords = ["if", "for", "while", "switch", "catch", "return", "new", "await", "else", "function"];
+    let mut found = Vec::new();
+    for entry in walk(root, None)?.filter_map(Result::ok) {
+        if !entry.file_type().is_some_and(|t| t.is_file()) || entry.metadata().map_or(true, |m| m.len() > MAX_SEARCH_FILE) {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(entry.path()) else { continue };
+        if bytes.iter().take(8000).any(|&b| b == 0) {
+            continue;
+        }
+        let Some(path) = rel(root, entry.path()) else { continue };
+        let text = String::from_utf8_lossy(&bytes);
+        for (i, line) in text.lines().enumerate() {
+            if !line.contains(name) || keywords.contains(&name) {
+                continue;
+            }
+            if !re.is_match(line) {
+                continue;
+            }
+            let at = word_at(line, name).unwrap_or(0);
+            found.push(snippet(&path, i + 1, line, at, at + name.len()));
+            if found.len() >= MAX_DEFINITIONS {
+                return Ok(found);
+            }
+        }
+    }
+    Ok(found)
+}
+
+/// Where `name` stands as a whole word in `line`.
+fn word_at(line: &str, name: &str) -> Option<usize> {
+    let is_word = |c: char| c.is_alphanumeric() || c == '_' || c == '$';
+    line.match_indices(name)
+        .map(|(i, _)| i)
+        .find(|&i| !line[..i].chars().next_back().is_some_and(is_word) && !line[i + name.len()..].chars().next().is_some_and(is_word))
+}
+
 /// The line around a match, trimmed and cut to LINE_CONTEXT characters, with the match's new range.
 fn snippet(path: &str, line_no: usize, line: &str, start: usize, end: usize) -> TextMatch {
     let lead = line.len() - line.trim_start().len();
@@ -245,6 +318,33 @@ pub fn write(path: &Path, text: &str) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn definitions_across_languages() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-defs-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = |name: &str, text: &str| std::fs::write(dir.join(name), text).unwrap();
+        file(
+            "a.ts",
+            "import { save } from './b';\nexport async function save(x: number): Promise<void> {}\nconst result = save(1);\nclass Store {\n  save(item: Item): void {\n  }\n}\nexport const saveAll = () => {};\n",
+        );
+        file("b.rs", "pub(crate) fn save(root: &Path) -> AppResult<()> {\n    save(root)\n}\npub struct Saver;\n");
+        file("c.py", "def save(self):\n    return save()\nSAVE_LIMIT = 10\n");
+        file("d.go", "func (s *Store) save() error {\n\treturn nil\n}\n");
+        let lines = |name: &str| {
+            let mut v: Vec<(String, u32)> = find_definitions(&dir, name).unwrap().into_iter().map(|m| (m.path, m.line)).collect();
+            v.sort();
+            v
+        };
+        let at = |p: &str, l: u32| (p.to_string(), l);
+        assert_eq!(lines("save"), [at("a.ts", 2), at("a.ts", 5), at("b.rs", 1), at("c.py", 1), at("d.go", 1)]);
+        assert_eq!(lines("Saver"), [at("b.rs", 4)]);
+        assert_eq!(lines("SAVE_LIMIT"), [at("c.py", 3)]);
+        assert_eq!(lines("saveAll"), [at("a.ts", 8)]);
+        assert!(lines("result").len() == 1, "a const counts");
+        assert!(lines("x.y").is_empty() && lines("").is_empty());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn lists_like_git_and_reads_text_only() {

@@ -28,6 +28,8 @@ portable-pty = "0.9.0"
 base64 = "0.23.1"
 # Listing folders the way Git sees them (.gitignore, .git/info/exclude).
 ignore = "0.4"
+# Finding where a name is defined (go to definition), without a language server.
+regex = "1"
 # Telling the window when files change on disk (an agent at work).
 notify = "8"
 notify-debouncer-mini = "0.7"
