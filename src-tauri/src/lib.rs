@@ -78,6 +78,8 @@ pub fn run() {
             commands::unwatch_project,
             commands::list_dir,
             commands::path_kinds,
+            commands::outside_kinds,
+            commands::open_outside,
             commands::list_files,
             commands::search_text,
             commands::read_file,

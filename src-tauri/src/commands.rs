@@ -165,6 +165,52 @@ pub fn open_externally(app: AppHandle, projects: State<'_, Projects>, path: Stri
     app.opener().open_path(file.display().to_string(), None::<&str>).map_err(|e| AppError::msg(e.to_string()))
 }
 
+/// "~/x" with the home folder; other paths as they are.
+fn expand_home(path: &str) -> PathBuf {
+    match (path.strip_prefix("~/"), std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))) {
+        (Some(rest), Some(home)) => PathBuf::from(home).join(rest),
+        _ => PathBuf::from(path),
+    }
+}
+
+/// For absolute paths printed in a terminal that lie outside the open projects:
+/// "media" (an image, video, audio or PDF), "file", "dir", or null when not there.
+#[tauri::command]
+pub fn outside_kinds(paths: Vec<String>) -> Vec<Option<&'static str>> {
+    paths
+        .iter()
+        .map(|p| {
+            let path = expand_home(p);
+            if !path.is_absolute() {
+                return None;
+            }
+            let meta = std::fs::metadata(&path).ok()?;
+            Some(if meta.is_dir() {
+                "dir"
+            } else if crate::media::mime(&path).is_some() {
+                "media"
+            } else {
+                "file"
+            })
+        })
+        .collect()
+}
+
+/// Opens a path from outside the open projects: an image, video, audio file or
+/// PDF in its default app; anything else (which could run something if opened)
+/// is shown in Finder/Explorer.
+#[tauri::command]
+pub fn open_outside(app: AppHandle, path: String) -> AppResult<()> {
+    let file = expand_home(&path).canonicalize().map_err(|_| AppError::msg(format!("Not found: {path}")))?;
+    let shown = file.display().to_string();
+    let done = if file.is_file() && crate::media::mime(&file).is_some() {
+        app.opener().open_path(shown, None::<&str>)
+    } else {
+        app.opener().reveal_item_in_dir(&file)
+    };
+    done.map_err(|e| AppError::msg(e.to_string()))
+}
+
 // ---- git ----
 
 fn root_of(projects: &Projects, root: &str) -> AppResult<PathBuf> {

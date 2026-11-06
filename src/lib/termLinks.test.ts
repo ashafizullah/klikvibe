@@ -13,6 +13,8 @@ test("paths as compilers, tests and agents print them", () => {
     ["../README.md", undefined, undefined],
   ]);
   expect(paths("/Users/me/proj/src/a.svelte:3")).toEqual([["/Users/me/proj/src/a.svelte", 3, undefined]]);
+  const tmp = "/private/tmp/claude-501/-Users-me-Projects-x/27f7bf76-7d15/scratchpad/card/ios-card.png";
+  expect(paths(`- iOS: ${tmp}`)).toEqual([[tmp, undefined, undefined]]);
 });
 
 test("versions, numbers and words are not paths", () => {

@@ -130,6 +130,10 @@ export const ipc = {
   listDir: (path: string) => invoke<Entry[]>("list_dir", { path }),
   /** "file", "dir" or null (missing, or outside the open projects), per path. */
   pathKinds: (paths: string[]) => invoke<("file" | "dir" | null)[]>("path_kinds", { paths }),
+  /** Absolute paths outside the open projects: "media", "file", "dir" or null (missing), per path. */
+  outsideKinds: (paths: string[]) => invoke<("media" | "file" | "dir" | null)[]>("outside_kinds", { paths }),
+  /** Media in its default app, anything else shown in Finder/Explorer. */
+  openOutside: (path: string) => invoke<void>("open_outside", { path }),
   readFile: (path: string) => invoke<FileText>("read_file", { path }),
   listFiles: (root: string) => invoke<FileList>("list_files", { root }),
   searchText: (root: string, query: string, include: string | null) => invoke<TextSearch>("search_text", { root, query, include }),

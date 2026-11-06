@@ -128,22 +128,44 @@
   }
 
   /**
-   * Web addresses, and files and folders of the project named in the output
-   * (only the ones that exist), as links that open with ⌘-click (Ctrl+click):
-   * a file in the editor (at its line), a folder in the file tree.
+   * Web addresses, and files and folders named in the output (only the ones
+   * that exist), as links that open with ⌘-click (Ctrl+click): a project file in
+   * the editor (at its line), a project folder in the file tree; from outside the
+   * project, an image, video or PDF in its default app, anything else in Finder.
+   * A line that wraps is read as one, so a long path still links.
    */
   function links(xterm: Terminal) {
     const hint = t("term.openHint", { keys: isMac ? "⌘-click" : "Ctrl+click" });
-    const open = (l: TermLink, kind: "url" | "file" | "dir", abs: string) => {
+    type Kind = "url" | "file" | "dir" | "outside";
+    const open = (l: TermLink, kind: Kind, abs: string) => {
       if (kind === "url") openUrl(l.target).catch((e) => toast(errorText(e), "error"));
+      else if (kind === "outside") ipc.openOutside(abs).catch((e) => toast(errorText(e), "error"));
       else if (kind === "dir") project.revealInTree(abs, true);
       else project.openFile(abs).then(() => l.line && project.revealLines(`file:${abs}`, l.line, l.line));
     };
+    const absolute = (p: string) => p.startsWith("/") || p.startsWith("~/") || /^[A-Za-z]:[\\/]/.test(p);
     return xterm.registerLinkProvider({
       provideLinks(y, callback) {
-        const text = xterm.buffer.active.getLine(y - 1)?.translateToString(true) ?? "";
-        const link = (l: TermLink, kind: "url" | "file" | "dir", abs = ""): ILink => ({
-          range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
+        const b = xterm.buffer.active;
+        // The whole logical line around row y: a row that wraps continues the one above.
+        let first = y - 1;
+        while (first > 0 && b.getLine(first)?.isWrapped) first--;
+        let last = y - 1;
+        while (b.getLine(last + 1)?.isWrapped) last++;
+        const starts: number[] = [];
+        let text = "";
+        for (let r = first; r <= last; r++) {
+          starts.push(text.length);
+          text += b.getLine(r)?.translateToString(r === last) ?? "";
+        }
+        /** Buffer position (1-based) of the character at index `i` of `text`. */
+        const at = (i: number) => {
+          let row = starts.length - 1;
+          while (row > 0 && starts[row] > i) row--;
+          return { x: i - starts[row] + 1, y: first + row + 1 };
+        };
+        const link = (l: TermLink, kind: Kind, abs = ""): ILink => ({
+          range: { start: at(l.start), end: at(l.end - 1) },
           text: text.slice(l.start, l.end),
           decorations: { underline: true, pointerCursor: true },
           hover: () => (host.title = hint),
@@ -152,15 +174,21 @@
             if (isMac ? e.metaKey : e.ctrlKey) open(l, kind, abs);
           },
         });
+        // Only the links on row y (the others come when their rows are asked for).
+        const onRow = (l: TermLink) => at(l.start).y <= y && at(l.end - 1).y >= y;
         const ready: ILink[] = [];
         const unsure: { l: TermLink; abs: string }[] = [];
-        for (const l of findLinks(text)) {
+        const outside: TermLink[] = [];
+        for (const l of findLinks(text).filter(onRow)) {
           if (l.kind === "url") {
             ready.push(link(l, "url"));
             continue;
           }
           const rel = projectPath(l.target, project.root);
-          if (!rel) continue;
+          if (!rel) {
+            if (!l.loose && absolute(l.target)) outside.push(l);
+            continue;
+          }
           if (project.hasFile(rel)) {
             ready.push(link(l, "file", join(project.root, rel)));
             continue;
@@ -171,11 +199,16 @@
           // Folders, and what .gitignore leaves out of the file list: asked of the disk.
           else unsure.push({ l, abs: join(project.root, rel) });
         }
-        const done = () => callback(ready.length ? ready.sort((a, b) => a.range.start.x - b.range.start.x) : undefined);
-        if (!unsure.length) return done();
-        ipc
-          .pathKinds(unsure.map((u) => u.abs))
-          .then((kinds) => unsure.forEach((u, i) => kinds[i] && ready.push(link(u.l, kinds[i]!, u.abs))))
+        const done = () => callback(ready.length ? ready.sort((a, b) => a.range.start.y - b.range.start.y || a.range.start.x - b.range.start.x) : undefined);
+        if (!unsure.length && !outside.length) return done();
+        Promise.all([
+          unsure.length
+            ? ipc.pathKinds(unsure.map((u) => u.abs)).then((kinds) => unsure.forEach((u, i) => kinds[i] && ready.push(link(u.l, kinds[i]!, u.abs))))
+            : null,
+          outside.length
+            ? ipc.outsideKinds(outside.map((l) => l.target)).then((kinds) => outside.forEach((l, i) => kinds[i] && ready.push(link(l, "outside", l.target))))
+            : null,
+        ])
           .catch(() => {})
           .finally(done);
       },
