@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 KlikVibe Remote: your agents, from your phone.
 
