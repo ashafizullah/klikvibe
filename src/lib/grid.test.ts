@@ -20,6 +20,17 @@ describe("grid", () => {
     expect(x.placed.has("tree")).toBe(false);
   });
 
+  test("classic with no file open: the terminal goes up to the top, the tree stays", () => {
+    const x = grid(base, true);
+    expect(x.areas).toBe(`"tree rztree term rzgit git"`);
+    expect(x.terminalFills).toBe(true);
+    expect(x.placed.has("editor")).toBe(false);
+    // A hidden terminal leaves the code area (and its welcome card) as it was.
+    expect(grid({ ...base, showTerminal: false }, true).placed.has("editor")).toBe(true);
+    // The columns layout has the terminal in a column of its own already.
+    expect(grid({ ...base, layout: "columns" }, true).placed.has("editor")).toBe(true);
+  });
+
   test("columns: Terminal | Code | Git, the code fills", () => {
     const x = g({ layout: "columns" });
     expect(x.areas).toBe(`"term rzterm tree rztree editor rzgit git"`);

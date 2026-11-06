@@ -15,7 +15,7 @@
   // svelte-ignore state_referenced_locally
   provideProject(project);
 
-  const g = $derived(grid(settings));
+  const g = $derived(grid(settings, project.tabs.length === 0));
   const columns = $derived(settings.layout === "columns");
 
   /** Drags a column's edge; `dir` is +1 for a column left of the edge, -1 for one right of it. */

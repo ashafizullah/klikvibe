@@ -27,12 +27,18 @@ export interface Grid {
   terminalFills: boolean;
 }
 
-/** The CSS grid for the current layout and panels. */
-export function grid(s: PanelSettings): Grid {
-  const code = s.showCode;
+/**
+ * The CSS grid for the current layout and panels. `noFiles`: no tab is open,
+ * so in the classic layout a shown terminal takes the code's place, full height,
+ * until a file opens (the code's welcome card shows only with the terminal hidden).
+ */
+export function grid(s: PanelSettings, noFiles = false): Grid {
   const term = s.showTerminal;
+  const emptyCode = s.layout === "classic" && s.showCode && noFiles && term;
+  const code = s.showCode && !emptyCode;
   const git = s.showGit;
-  const tree = code && treeShown(s);
+  // The file tree stays with an empty code area: it is where a file gets opened.
+  const tree = (code || emptyCode) && treeShown(s);
   // One column takes the remaining width: the code, else the terminal, else Git.
   const fill = code ? "editor" : term ? "term" : "git";
   const cols: string[] = [];
