@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+
+⌘-click on paths outside the project in the terminal.
+
+- ⌘-click (Ctrl+click) also opens paths outside the project that an agent prints, such as a screenshot in a temporary folder: images, video, audio and PDFs open in their default app, anything else is shown in Finder or Explorer. Long paths that wrap onto the next line link as a whole.
+
 ## 0.5.1
 
 The terminal takes the whole height while no file is open.

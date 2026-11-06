@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.5.2
+
+⌘-klik path di luar proyek di terminal.
+
+- ⌘-klik (Ctrl+klik) kini juga membuka path di luar proyek yang ditulis agen, misalnya screenshot di folder sementara: gambar, video, audio, dan PDF terbuka di aplikasi bawaannya, selain itu ditampilkan di Finder atau Explorer. Path panjang yang terpotong ke baris berikutnya tetap terbaca utuh.
+
 ## 0.5.1
 
 Terminal memakai seluruh tinggi selama tidak ada file terbuka.
