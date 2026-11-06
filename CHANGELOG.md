@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+Go to definition, the light way: ⌘-click or F12.
+
+- Go to definition, without a language server: ⌘-click (Ctrl+click) or F12 on a name jumps to where it is defined (function, class, struct, fn, def, const, a method, ...), first in the file it was imported from; with several candidates a list lets you pick. In an import's quotes it opens the file (./x, ../x, $lib/x, @/x, Python modules, Rust `mod x;`). Alt+click now adds a cursor.
+
 ## 0.5.3
 
 More ⌘-click in the terminal: folders, and file names under a folder printed above.

@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.6.0
+
+Ke definisi, versi ringan: ⌘-klik atau F12.
+
+- Ke definisi, tanpa language server: ⌘-klik (Ctrl+klik) atau F12 pada sebuah nama langsung loncat ke tempat ia didefinisikan (function, class, struct, fn, def, const, method, ...), mendahulukan file asal import-nya; kalau ada beberapa kandidat, muncul daftar untuk dipilih. Di dalam tanda kutip import, file-nya langsung terbuka (./x, ../x, $lib/x, @/x, modul Python, `mod x;` Rust). Alt+klik kini menambah kursor.
+
 ## 0.5.3
 
 ⌘-klik di terminal makin luas: folder, dan nama file di bawah folder yang disebut di atasnya.
