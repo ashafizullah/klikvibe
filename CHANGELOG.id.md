@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.5.0
+
+Batas untuk checkpoint, dan berapa ruang yang dipakainya.
+
+- Checkpoint punya batas: secara bawaan 100 terakhir disimpan, yang paling lama dihapus lebih dulu, dan tab Checkpoint menampilkan jumlah serta ukurannya (mis. "23 dari 100 · 3.8 MB"). Klik untuk menyimpan 50, 100, 200, 500, atau semuanya. Hapus checkpoint kini berikon tempat sampah.
+
 ## 0.4.1
 
 Perbaikan KlikVibe yang tiba-tiba tertutup di macOS.

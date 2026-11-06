@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+A limit for checkpoints, and how much space they take.
+
+- Checkpoints have a limit: the last 100 are kept by default, the oldest going first, and the Checkpoints tab shows how many there are and how much space they take (e.g. "23 of 100 · 3.8 MB"). Click it to keep 50, 100, 200, 500 or all of them. Clear checkpoints has a trash icon.
+
 ## 0.4.1
 
 A fix for KlikVibe quitting suddenly on macOS.
