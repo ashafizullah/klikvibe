@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.4
+
+KlikVibe Remote: pushes say what happened.
+
+- The push (Pro) says what happened, in the phone's language: "Waiting for an answer, or done", "Needs you" (the agent's own notification) or "Wants your attention" (the bell), with the computer's name. Still never what the agent said.
+
 ## 0.7.3
 
 KlikVibe Remote: the whole history on the phone.
