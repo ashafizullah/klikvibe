@@ -330,6 +330,7 @@ const id: Record<Key, string> = {
   "remote.confirmTitle": "Izinkan {phone} mengendalikan komputer ini?",
   "remote.confirmBody": "HP ini masuk sebagai {account}. HP akan melihat project yang terbuka beserta terminalnya, dan bisa mengetik di sana. Izinkan hanya HP yang baru saja kamu tambahkan sendiri.",
   "remote.confirmBodyNoAccount": "HP akan melihat project yang terbuka beserta terminalnya, dan bisa mengetik di sana. Izinkan hanya HP yang baru saja kamu tambahkan sendiri.",
+  "remote.confirmCheck": "Izinkan hanya jika HP-mu menampilkan kode ini. Jika tidak ada kode atau kodenya berbeda, pilih Jangan izinkan:",
   "remote.allow": "Izinkan",
   "remote.deny": "Jangan izinkan",
   "remote.safety": "Hanya HP yang kamu tambahkan yang bisa terhubung. Semua data antara HP dan komputer ini terenkripsi end-to-end; server KlikVibe tidak pernah melihat kode atau terminalmu.",

@@ -122,7 +122,8 @@ export interface RemoteStatus {
   phones: RemotePhone[];
   pairing: { url: string; svg: string; expiresAt: string } | null;
   /** A phone scanned the code: it is added only if the user allows it. */
-  confirm: { phone: string; platform: string | null; account: string | null } | null;
+  /** `check`: the code the phone that scanned shows; the user compares the two. */
+  confirm: { phone: string; platform: string | null; account: string | null; check: string } | null;
   error: string | null;
 }
 /** A project as the phone sees it (src-tauri/src/remote/hub.rs). */

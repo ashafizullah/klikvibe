@@ -94,6 +94,8 @@ pub struct ConfirmView {
     pub platform: Option<String>,
     /// The account the phone is signed in to (its email).
     pub account: Option<String>,
+    /// The check code the phone that scanned shows ("123 456"): the same on both only for that phone.
+    pub check: String,
 }
 
 struct Pairing {
@@ -327,6 +329,7 @@ impl Remote {
                 phone: c.phone.name.clone(),
                 platform: c.phone.platform.clone(),
                 account: c.account.clone(),
+                check: pair_check(&c.psk, &c.phone.id),
             }),
             error: self.error.lock().unwrap().clone(),
         }
@@ -678,6 +681,16 @@ impl Remote {
 }
 
 /// A new phone key from the operating system's random generator.
+/// The pairing check code (PROTOCOL.md, "Pairing"): from the QR code's key and the id of the phone
+/// that claimed it. Someone else who saw the QR code and claimed it first gets another code than
+/// the one the user's phone shows (which shows none: its claim failed).
+pub fn pair_check(psk: &[u8; 32], phone_id: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let h = Sha256::new().chain_update(b"klikvibe/pair-check/1").chain_update(psk).chain_update(phone_id.as_bytes()).finalize();
+    let n = u32::from_be_bytes([h[0], h[1], h[2], h[3]]) % 1_000_000;
+    format!("{:03} {:03}", n / 1000, n % 1000)
+}
+
 fn random_key() -> Result<[u8; 32], String> {
     let mut k = [0u8; 32];
     getrandom::fill(&mut k).map_err(|e| e.to_string())?;
@@ -693,6 +706,14 @@ fn qr_svg(text: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pair_check_codes() {
+        // The same vector is in the phone app's tests.
+        let phone = "6f0b0c2e-8f43-4a0e-9b7c-0d6a1f3a2b11";
+        assert_eq!(pair_check(&[9u8; 32], phone), "337 965");
+        assert_ne!(pair_check(&[9u8; 32], "00000000-0000-4000-8000-000000000000"), "337 965");
+    }
 
     #[test]
     fn keys_round_trip() {

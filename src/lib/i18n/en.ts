@@ -328,6 +328,7 @@ const en = {
   "remote.confirmTitle": "Allow {phone} to control this computer?",
   "remote.confirmBody": "It is signed in as {account}. It will see the open projects and their terminals, and can type into them. Only allow a phone you just added yourself.",
   "remote.confirmBodyNoAccount": "It will see the open projects and their terminals, and can type into them. Only allow a phone you just added yourself.",
+  "remote.confirmCheck": "Allow only if your phone shows this code. If it shows none, or another one, choose Don't allow:",
   "remote.allow": "Allow",
   "remote.deny": "Don't allow",
   "remote.safety": "Only phones you added can connect. Everything between your phone and this computer is end-to-end encrypted; the KlikVibe server never sees your code or terminals.",

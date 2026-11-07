@@ -34,7 +34,11 @@ The payload is base64url (no padding) JSON:
 
 1. The signed-in phone claims the code at the server (`POST /v1/pair/claim`).
 2. The desktop polls `GET /v1/pair/status`. Once claimed, it receives the phone's id and name, the phone's account, and its own `deviceToken` if it had none yet.
-3. The desktop asks the user to allow the phone ("Allow iPhone, signed in as …?").
+3. The desktop asks the user to allow the phone ("Allow iPhone, signed in as …?"), with a **check code**. The phone shows the same code once its claim went through:
+
+   `n = u32_be(SHA-256("klikvibe/pair-check/1" ‖ psk ‖ phoneId)[0..4]) mod 1 000 000`, shown as two groups of three digits (`"337 965"` for psk = 32 × `0x09` and phoneId `6f0b0c2e-8f43-4a0e-9b7c-0d6a1f3a2b11`).
+
+   Someone else who saw the QR code and claimed it first gets the desktop's prompt with their own phone's id, so another code, while the user's phone shows none (its claim failed). The user allows the phone only when the codes match.
    - **Yes:** the desktop stores `{ phoneId, name, psk }`.
    - **No:** a computer that was just added to that account is removed again (`DELETE /v1/desktop`), and the key is never kept.
 

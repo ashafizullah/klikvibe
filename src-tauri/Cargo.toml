@@ -41,6 +41,8 @@ axum = { version = "0.8", default-features = false, features = ["http1", "json",
 hyper = { version = "1", features = ["server", "http1"] }
 hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
 tower-service = "0.3"
+# The pairing check code (PROTOCOL.md, "Pairing").
+sha2 = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
 futures = "0.3"
 tauri-plugin-updater = "2"

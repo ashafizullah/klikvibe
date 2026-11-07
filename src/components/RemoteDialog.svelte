@@ -54,6 +54,8 @@
         <div>
           <strong id="confirm-title">{t("remote.confirmTitle", { phone: s.confirm.phone })}</strong>
           <p>{s.confirm.account ? t("remote.confirmBody", { account: s.confirm.account }) : t("remote.confirmBodyNoAccount")}</p>
+          <p class="check-label">{t("remote.confirmCheck")}</p>
+          <p class="check mono" aria-label={t("remote.confirmCheck")}>{s.confirm.check}</p>
           <div class="actions">
             <button class="btn small" disabled={remote.busy} onclick={() => remoteAction(() => ipc.remotePairConfirm(false))}>{t("remote.deny")}</button>
             <button class="btn small primary" disabled={remote.busy} onclick={() => remoteAction(() => ipc.remotePairConfirm(true))}>{t("remote.allow")}</button>
@@ -279,6 +281,17 @@
     margin: 4px 0 12px;
     font-size: 12.5px;
     color: var(--muted);
+  }
+  .confirm p.check-label {
+    margin: 0 0 4px;
+    color: var(--text);
+  }
+  .confirm p.check {
+    margin: 0 0 12px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text);
   }
   .confirm .actions {
     display: flex;
