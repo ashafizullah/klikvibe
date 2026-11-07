@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.2
+
+KlikVibe Remote: close a terminal from your phone.
+
+- Close a terminal from the phone (after asking): its tab closes on the computer, and what runs in it stops, as when closed there.
+
 ## 0.7.1
 
 KlikVibe Remote: start agents and send images from your phone.
