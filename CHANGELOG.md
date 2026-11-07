@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.5
+
+KlikVibe Remote: from anywhere again.
+
+- Fixed: with Pro, a phone away from the computer's Wi-Fi (on mobile data, say) couldn't reach it ("can't reach"). The computer's link to the relay failed on its first try and never came back; it now connects and stays connected.
+
 ## 0.7.4
 
 KlikVibe Remote: pushes say what happened.
