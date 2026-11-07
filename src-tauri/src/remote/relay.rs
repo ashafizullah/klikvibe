@@ -203,9 +203,17 @@ pub async fn run(
             backoff = (backoff * 2).min(Duration::from_secs(60));
             w
         };
-        tokio::time::sleep(wait).await;
+        // A new token (the computer was added again after being removed, Pro came back) ends the
+        // wait: the refusal was for the old one.
+        let until = tokio::time::Instant::now() + wait;
+        while tokio::time::Instant::now() < until && token().as_deref() == Some(t.as_str()) {
+            tokio::time::sleep(TOKEN_CHECK.min(until - tokio::time::Instant::now())).await;
+        }
     }
 }
+
+/// How often a wait between connections checks whether the token changed.
+const TOKEN_CHECK: Duration = Duration::from_secs(2);
 
 #[cfg(test)]
 #[allow(clippy::result_large_err)] // tungstenite's handshake callback type
@@ -293,6 +301,47 @@ mod tests {
         let up = AtomicBool::new(false);
         assert_eq!(connect(core(), &format!("ws://{addr}/x"), "t", &up, &|_| {}).await, Ended::Refused);
         assert_eq!(connect(core(), "ws://127.0.0.1:1/x", "t", &up, &|_| {}).await, Ended::Unreachable);
+    }
+
+    #[tokio::test]
+    async fn a_new_token_ends_the_wait_after_a_refusal() {
+        // Refuses the old token (the computer was removed), takes the new one.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            loop {
+                let (tcp, _) = listener.accept().await.unwrap();
+                tokio::spawn(async move {
+                    let ws = tokio_tungstenite::accept_hdr_async(tcp, |req: &Request, ok: Response| {
+                        if req.headers().get("authorization").is_some_and(|v| v == "Device old") {
+                            let mut r = tokio_tungstenite::tungstenite::http::Response::new(Some("unlinked".to_string()));
+                            *r.status_mut() = tokio_tungstenite::tungstenite::http::StatusCode::UNAUTHORIZED;
+                            return Err(r);
+                        }
+                        Ok(ok)
+                    })
+                    .await;
+                    if let Ok(mut ws) = ws {
+                        let _ = ws.next().await;
+                    }
+                });
+            }
+        });
+        let token = Arc::new(Mutex::new("old".to_string()));
+        let up = Arc::new(AtomicBool::new(false));
+        let (t, u) = (token.clone(), up.clone());
+        tokio::spawn(async move {
+            run(core(), format!("http://{addr}"), move || Some(t.lock().unwrap().clone()), u, || {}, |_| {}, |_| {}).await;
+        });
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        assert!(!up.load(Ordering::Relaxed));
+        // Added again: a new token. Connected within seconds, not after the 5-minute wait.
+        *token.lock().unwrap() = "new".into();
+        let t0 = std::time::Instant::now();
+        while !up.load(Ordering::Relaxed) {
+            assert!(t0.elapsed() < Duration::from_secs(5), "still waiting");
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
     }
 
     #[tokio::test]
