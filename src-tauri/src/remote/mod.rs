@@ -43,6 +43,8 @@ pub const TERM_NEW: &str = "remote-term-new";
 pub const TERM_KILL: &str = "remote-term-kill";
 /// The window sends a terminal's history (scrollback as shown) for a phone opening it: `remote_term_snapshot`.
 pub const TERM_SNAPSHOT: &str = "remote-term-snapshot";
+/// Where the window's view of a terminal goes: its text and the output bytes it covers.
+type SnapshotWait = tokio::sync::oneshot::Sender<Option<(String, u64)>>;
 /// Scrollback lines a phone gets when it opens a terminal.
 const SNAPSHOT_LINES: u32 = 3000;
 
@@ -125,7 +127,7 @@ pub struct Remote {
     /// `term.new` requests waiting for the window, by nonce.
     term_waits: Mutex<HashMap<String, tokio::sync::oneshot::Sender<Result<String, String>>>>,
     /// Phones waiting for a terminal's history from the window (`remote-term-snapshot`).
-    snapshot_waits: Mutex<HashMap<String, tokio::sync::oneshot::Sender<Option<(String, u64)>>>>,
+    snapshot_waits: Mutex<HashMap<String, SnapshotWait>>,
 }
 
 /// The computer's name as the user knows it ("Adam's MacBook Pro").

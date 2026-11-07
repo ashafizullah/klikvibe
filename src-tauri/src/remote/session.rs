@@ -391,7 +391,11 @@ mod tests {
 
     impl Default for Fake {
         fn default() -> Self {
-            Self { typed: Mutex::default(), view: Mutex::default(), dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())) }
+            Self {
+                typed: Mutex::default(),
+                view: Mutex::default(),
+                dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())),
+            }
         }
     }
 
