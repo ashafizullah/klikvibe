@@ -39,6 +39,8 @@ const PAIR_POLL: Duration = Duration::from_secs(2);
 pub const CHANGED: &str = "remote-changed";
 /// The window opens a terminal tab for a phone's `term.new`, then answers with `remote_term_created`.
 pub const TERM_NEW: &str = "remote-term-new";
+/// The window closes a terminal tab for a phone's `term.kill`, then answers with `remote_term_created`.
+pub const TERM_KILL: &str = "remote-term-kill";
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -181,6 +183,19 @@ impl session::Host for AppHost {
             waits.insert(nonce.clone(), tx);
         }
         self.0.emit(TERM_NEW, json!({ "root": root, "agent": agent, "nonce": nonce })).map_err(|e| e.to_string())?;
+        Ok(rx)
+    }
+
+    fn term_kill(&self, root: &str, id: &str) -> Result<tokio::sync::oneshot::Receiver<Result<String, String>>, String> {
+        let nonce = uuid::Uuid::new_v4().to_string();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        {
+            let remote = self.0.state::<Remote>();
+            let mut waits = remote.term_waits.lock().unwrap();
+            waits.retain(|_, w| !w.is_closed());
+            waits.insert(nonce.clone(), tx);
+        }
+        self.0.emit(TERM_KILL, json!({ "root": root, "id": id, "nonce": nonce })).map_err(|e| e.to_string())?;
         Ok(rx)
     }
 }
@@ -578,7 +593,7 @@ impl Remote {
         self.changed();
     }
 
-    /// The window's answer to a `term.new`: the new terminal's id, or why there is none.
+    /// The window's answer to a `term.new` (the new terminal's id) or a `term.kill` (the closed one's), or why not.
     pub fn term_created(&self, nonce: &str, id: Option<String>, error: Option<String>) {
         let Some(tx) = self.term_waits.lock().unwrap().remove(nonce) else { return };
         let _ = tx.send(match (id, error) {

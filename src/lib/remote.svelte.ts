@@ -80,6 +80,20 @@ async function termNew({ root, agent, nonce }: { root: string; agent: string | n
   ipc.remoteTermCreated(nonce, id, error).catch(() => {});
 }
 
+/** A phone closed a terminal (`term.kill`; Rust checked it belongs to an open project). */
+function termKill({ root, id, nonce }: { root: string; id: string; nonce: string }) {
+  let error: string | null = null;
+  const p = workspace.projects.find((x) => x.root === root);
+  if (!p?.closeTerminal?.(id)) error = "No such terminal";
+  else {
+    // The phone's list drops it right away.
+    const list = projects();
+    last = JSON.stringify(list);
+    ipc.remoteProjects(list).catch(() => (last = ""));
+  }
+  ipc.remoteTermCreated(nonce, error ? null : id, error).catch(() => {});
+}
+
 let started = false;
 export function initRemote() {
   if (started) return;
@@ -89,5 +103,6 @@ export function initRemote() {
   ipc.remoteAgents(AGENTS.map(({ id, label }) => ({ id, label }))).catch(() => {});
   listen("remote-changed", () => refreshRemote());
   listen<{ root: string; agent: string | null; nonce: string }>("remote-term-new", (e) => termNew(e.payload));
+  listen<{ root: string; id: string; nonce: string }>("remote-term-kill", (e) => termKill(e.payload));
   setInterval(report, 1500);
 }

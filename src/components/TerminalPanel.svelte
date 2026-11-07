@@ -177,6 +177,15 @@
   }
   project.newTerminal = newTerminal;
 
+  /** A terminal the phone closed (`term.kill`): like closing its tab here. */
+  function closeTerminal(session: string): boolean {
+    const s = shells.find((x) => refs[x.id]?.sessionId() === session);
+    if (!s) return false;
+    close(s.id);
+    return true;
+  }
+  project.closeTerminal = closeTerminal;
+
   // Kept up to date while it runs: KlikVibe can be quit (or the computer shut down) at any moment.
   let lastSaved = "";
   function save() {
@@ -205,6 +214,7 @@
     if (project.askAgent === askAgent) project.askAgent = null;
     if (project.terminals === terminals) project.terminals = null;
     if (project.newTerminal === newTerminal) project.newTerminal = null;
+    if (project.closeTerminal === closeTerminal) project.closeTerminal = null;
     // The project was closed: its terminals don't come back next time. (An update keeps them.)
     if (sessionHeld()) save();
     else

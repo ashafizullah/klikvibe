@@ -110,6 +110,8 @@ export class ProjectState {
   remoteTerminals: (() => { id: string; name: string; agent: string | null }[]) | null = null;
   /** Opens a terminal tab running `agent` (else a plain shell) for the phone; its session id once started. Set by TerminalPanel. */
   newTerminal: ((agent: AgentDef | null) => Promise<string>) | null = null;
+  /** Closes the terminal with this session id (KlikVibe Remote's `term.kill`); false if it isn't here. */
+  closeTerminal: ((session: string) => boolean) | null = null;
   // ---- what changed since the user last looked ----
   /** When each file last changed on disk (absolute path), not counting the user's own saves. */
   readonly lastChanged = new SvelteMap<string, number>();

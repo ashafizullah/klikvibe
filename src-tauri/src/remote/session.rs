@@ -15,7 +15,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub const VERSION: u32 = 1;
 /// What this desktop can do beyond the first version, in `hello`: a phone offers only these.
-const FEATURES: [&str; 2] = ["term.new", "file.put"];
+const FEATURES: [&str; 3] = ["term.new", "term.kill", "file.put"];
 /// How long the window has to open a terminal for `term.new`.
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
 /// Raw output per `term.data` message (base64 makes it a third larger; it still fits a Noise message).
@@ -40,6 +40,9 @@ pub trait Host: Send + Sync + 'static {
     /// Asks the window for a new terminal tab in an open project, running `agent` (an id the
     /// window reported, see `Hub::agents`) or a plain shell. The new terminal's id comes later.
     fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String>;
+    /// Asks the window to close a terminal tab (its shell and what runs in it end), as if
+    /// closed on the computer. The answer (the id, or why not) comes later.
+    fn term_kill(&self, root: &str, id: &str) -> Result<oneshot::Receiver<Result<String, String>>, String>;
     /// Where `file.put` saves images.
     fn upload_dir(&self) -> PathBuf {
         upload::default_dir()
@@ -209,6 +212,29 @@ impl Session {
                     Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
                 }
             }
+            "term.kill" => {
+                let id = s("id");
+                // Only a terminal of an open project, one the phone was shown.
+                let answer = match self.hub.root_of(&id) {
+                    Some(root) => self.host.term_kill(&root, &id),
+                    None => Err("No such terminal".into()),
+                };
+                match answer {
+                    Ok(answer) => {
+                        let tx = self.tx.clone();
+                        tokio::spawn(async move {
+                            let reply = match tokio::time::timeout(TERM_NEW_WAIT, answer).await {
+                                Ok(Ok(Ok(_))) => json!({ "t": "term.kill", "req": req, "id": id }),
+                                Ok(Ok(Err(e))) => json!({ "t": "error", "req": req, "message": e }),
+                                _ => json!({ "t": "error", "req": req, "message": "The terminal could not be closed" }),
+                            };
+                            let _ = tx.send(reply.to_string().into_bytes()).await;
+                        });
+                        true
+                    }
+                    Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
+                }
+            }
             "file.put" => {
                 let n = |k: &str| m.get(k).and_then(Value::as_u64);
                 let chunk = Chunk {
@@ -366,6 +392,11 @@ mod tests {
             let _ = tx.send(Ok(format!("new {root} {}", agent.unwrap_or("shell"))));
             Ok(rx)
         }
+        fn term_kill(&self, _root: &str, id: &str) -> Result<oneshot::Receiver<Result<String, String>>, String> {
+            let (tx, rx) = oneshot::channel();
+            let _ = tx.send(Ok(id.to_string()));
+            Ok(rx)
+        }
         fn upload_dir(&self) -> PathBuf {
             self.dir.clone()
         }
@@ -425,7 +456,7 @@ mod tests {
         say(json!({ "t": "hello", "v": 1, "name": "iPhone" })).await.unwrap();
         let h = next(&mut from_desktop).await;
         assert_eq!((h["t"].as_str(), h["name"].as_str(), h["v"].as_u64()), (Some("hello"), Some("Mac"), Some(1)));
-        assert_eq!(h["features"], json!(["term.new", "file.put"]));
+        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put"]));
         assert_eq!(h["agents"], json!([]));
         let p = next(&mut from_desktop).await;
         assert_eq!(p["projects"][0]["terminals"][0]["id"], "t1");
@@ -531,6 +562,27 @@ mod tests {
         say(json!({ "t": "term.new", "req": 3, "root": "/app", "agent": "rm -rf ~" })).await.unwrap();
         assert_eq!(next(&mut from).await["t"], "error");
         say(json!({ "t": "term.new", "req": 4, "root": "/etc", "agent": null })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        drop(to);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn closing_terminals() {
+        let hub = Arc::new(Hub::default());
+        hub.started("t1", 80, 24);
+        hub.set_projects(vec![ProjectMeta {
+            root: "/app".into(),
+            name: "app".into(),
+            attention: false,
+            terminals: vec![TerminalMeta { id: "t1".into(), name: "zsh".into(), agent: None }],
+        }]);
+        let (to, mut from, task) = connected(hub, Arc::new(Fake::default())).await;
+        let say = |v: Value| to.send(v.to_string().into_bytes());
+        say(json!({ "t": "term.kill", "req": 1, "id": "t1" })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "term.kill", "req": 1, "id": "t1" }));
+        // Only terminals of the open projects.
+        say(json!({ "t": "term.kill", "req": 2, "id": "nope" })).await.unwrap();
         assert_eq!(next(&mut from).await["t"], "error");
         drop(to);
         task.await.unwrap();
