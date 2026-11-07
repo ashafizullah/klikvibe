@@ -547,8 +547,8 @@ pub fn remote_term_snapshot(remote: State<'_, Remote>, nonce: String, data: Opti
 }
 
 #[tauri::command]
-pub fn remote_attention(remote: State<'_, Remote>, root: String, term: String, title: String, body: String) {
-    remote.attention(&root, &term, &title, &body);
+pub fn remote_attention(remote: State<'_, Remote>, root: String, term: String, title: String, body: String, kind: Option<String>) {
+    remote.attention(&root, &term, &title, &body, kind.as_deref());
 }
 
 // ---- clipboard ----

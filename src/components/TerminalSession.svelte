@@ -9,7 +9,7 @@
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { useProject } from "../lib/project.svelte";
   import { findLinks, projectPath, type TermLink } from "../lib/termLinks";
-  import { needsYou } from "../lib/attention.svelte";
+  import { needsYou, type AttentionKind } from "../lib/attention.svelte";
   import { agentIn, terminalName } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
   import { join } from "../lib/paths";
@@ -86,25 +86,26 @@
     lastOutput = now;
   }
 
-  async function tell(agent: string | null, message: string) {
+  /** `kind` says what happened, for the phone's push (which never carries `message`). */
+  async function tell(agent: string | null, message: string, kind: AttentionKind) {
     const name = agent ?? agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null) ?? t("terminal.title");
-    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session);
+    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind);
   }
 
   /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
   function watchForAgent(xterm: Terminal) {
-    const bell = xterm.onBell(() => tell(null, t("notify.bell")));
+    const bell = xterm.onBell(() => tell(null, t("notify.bell"), "bell"));
     // OSC 9 "message" (iTerm2); "9;4;…" is a progress report, not a message.
     const osc9 = xterm.parser.registerOscHandler(9, (data) => {
       if (/^\d+;/.test(data)) return false;
-      tell(null, data);
+      tell(null, data, "message");
       return true;
     });
     // OSC 777 "notify;title;body".
     const osc777 = xterm.parser.registerOscHandler(777, (data) => {
       const [cmd, title, ...body] = data.split(";");
       if (cmd !== "notify") return false;
-      tell(null, body.join(";") || title || t("notify.bell"));
+      tell(null, body.join(";") || title || t("notify.bell"), "message");
       return true;
     });
     const timer = setInterval(async () => {
@@ -118,7 +119,7 @@
       if (burstNotified || lastOutput - burstStart < BUSY) return;
       burstNotified = true;
       const agent = agentIn(await ipc.terminalForeground(session).catch(() => null));
-      if (agent) tell(agent, t("notify.waiting"));
+      if (agent) tell(agent, t("notify.waiting"), "waiting");
     }, 2000);
     return () => {
       bell.dispose();

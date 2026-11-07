@@ -12,6 +12,9 @@ import { ipc } from "./ipc";
 /** Project roots with a terminal waiting for the user. */
 export const attention = new SvelteSet<string>();
 
+/** What happened, for the phone's push: an agent went quiet, an agent's own notification, or the bell. */
+export type AttentionKind = "waiting" | "message" | "bell";
+
 /** Not more than one notification per terminal in this long. */
 const QUIET_BETWEEN = 30_000;
 const last = new Map<string, number>();
@@ -29,13 +32,21 @@ function allowed(): Promise<boolean> {
  * `seen`: the user is looking at it right now, so nothing is shown.
  * `session`: its session id, so a phone on KlikVibe Remote can open it.
  */
-export async function needsYou(key: string, root: string, title: string, body: string, seen: boolean, session: string | null = null) {
+export async function needsYou(
+  key: string,
+  root: string,
+  title: string,
+  body: string,
+  seen: boolean,
+  session: string | null = null,
+  kind: AttentionKind = "message",
+) {
   if (seen) return;
   const now = Date.now();
   if (now - (last.get(key) ?? 0) < QUIET_BETWEEN) return;
   last.set(key, now);
   // The phone too (and a push with Pro), even with desktop notifications off; nothing happens while Remote is off.
-  if (session) ipc.remoteAttention(root, session, title, body).catch(() => {});
+  if (session) ipc.remoteAttention(root, session, title, body, kind).catch(() => {});
   if (!settings.notifyAgents) return;
   attention.add(root);
   getCurrentWindow()

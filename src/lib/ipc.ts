@@ -233,7 +233,8 @@ export const ipc = {
   remoteForgetPhone: (id: string) => invoke<RemoteStatus>("remote_forget_phone", { id }),
   remoteUnlink: () => invoke<RemoteStatus>("remote_unlink"),
   remoteProjects: (projects: RemoteProject[]) => invoke<void>("remote_projects", { projects }),
-  remoteAttention: (root: string, term: string, title: string, body: string) => invoke<void>("remote_attention", { root, term, title, body }),
+  remoteAttention: (root: string, term: string, title: string, body: string, kind: string) =>
+    invoke<void>("remote_attention", { root, term, title, body, kind }),
   remoteAgents: (agents: { id: string; label: string }[]) => invoke<void>("remote_agents", { agents }),
   remoteTermCreated: (nonce: string, id: string | null, error: string | null) => invoke<void>("remote_term_created", { nonce, id, error }),
   remoteTermSnapshot: (nonce: string, data: string | null, offset: number) => invoke<void>("remote_term_snapshot", { nonce, data, offset }),

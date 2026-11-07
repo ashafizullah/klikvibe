@@ -634,7 +634,8 @@ impl Remote {
     /// account's phones get a push (Pro). The push carries only the title (agent and project) and
     /// which terminal it is (so tapping it opens that one), never what the agent said: it passes
     /// through the KlikVibe server, Apple and Google.
-    pub fn attention(&self, root: &str, term: &str, title: &str, body: &str) {
+    /// `kind` (waiting, message, bell) lets the server say what happened in the phone's language.
+    pub fn attention(&self, root: &str, term: &str, title: &str, body: &str, kind: Option<&str>) {
         self.hub.attention(root, term, title, body);
         let (token, pro, enabled) = {
             let c = self.config.lock().unwrap();
@@ -642,8 +643,9 @@ impl Remote {
         };
         if let (Some(token), true, true) = (token, pro, enabled) {
             let (title, term, agent) = (title.to_string(), term.to_string(), self.hub.agent_of(term));
+            let kind = kind.filter(|k| ["waiting", "message", "bell"].contains(k)).map(str::to_string);
             tauri::async_runtime::spawn(async move {
-                let _ = cloud::notify(&token, &title, &term, agent.as_deref()).await;
+                let _ = cloud::notify(&token, &title, &term, agent.as_deref(), kind.as_deref()).await;
             });
         }
     }

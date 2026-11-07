@@ -154,15 +154,19 @@ pub async fn heartbeat(device_token: &str, info: Value) -> Result<Heartbeat, Clo
 }
 
 /// A push to the account's phones. Its body stays empty: what the agent said never leaves the computer.
-pub async fn notify(device_token: &str, title: &str, term: &str, agent: Option<&str>) -> Result<Value, CloudError> {
-    call(reqwest::Method::POST, "/v1/desktop/notify", Some(format!("Device {device_token}")), Some(notice(title, term, agent))).await
+pub async fn notify(device_token: &str, title: &str, term: &str, agent: Option<&str>, kind: Option<&str>) -> Result<Value, CloudError> {
+    call(reqwest::Method::POST, "/v1/desktop/notify", Some(format!("Device {device_token}")), Some(notice(title, term, agent, kind))).await
 }
 
-/// The push's JSON: `agent` only when the terminal runs one (an older server drops both new keys).
-fn notice(title: &str, term: &str, agent: Option<&str>) -> Value {
+/// The push's JSON: `agent` only when the terminal runs one, `kind` (what happened, never what the
+/// agent said) when known. An older server drops the keys it doesn't know.
+fn notice(title: &str, term: &str, agent: Option<&str>, kind: Option<&str>) -> Value {
     let mut v = json!({ "title": title, "body": "", "term": term });
     if let Some(a) = agent {
         v["agent"] = json!(a);
+    }
+    if let Some(k) = kind {
+        v["kind"] = json!(k);
     }
     v
 }
@@ -178,10 +182,10 @@ mod tests {
     #[test]
     fn a_push_names_the_terminal_only() {
         assert_eq!(
-            notice("Claude · app", "t1", Some("claude")),
-            json!({ "title": "Claude · app", "body": "", "term": "t1", "agent": "claude" })
+            notice("Claude · app", "t1", Some("claude"), Some("waiting")),
+            json!({ "title": "Claude · app", "body": "", "term": "t1", "agent": "claude", "kind": "waiting" })
         );
-        assert_eq!(notice("Terminal · app", "t2", None), json!({ "title": "Terminal · app", "body": "", "term": "t2" }));
+        assert_eq!(notice("Terminal · app", "t2", None, None), json!({ "title": "Terminal · app", "body": "", "term": "t2" }));
     }
 
     #[test]
