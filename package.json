@@ -1,6 +1,6 @@
 {
   "name": "klikvibe",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Free, open-source, lightweight code editor for vibe coding: see the code, Git and a terminal in one window",
   "private": true,
   "type": "module",
