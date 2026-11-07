@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.6
+
+KlikVibe Remote: safer pairing, and a relay that doesn't give up.
+
+- Allowing a phone shows a six-digit code, and the phone shows its own after scanning. Allow only when they match: someone who saw your QR code can no longer pass for your phone.
+- The QR code's key works once: when the phone connects, it gets a new key and the one in the QR code stops working.
+- A phone added again with a new key ends the connections still using the old one.
+- On the Wi-Fi, Remote takes connections only from local addresses, a few at a time from each, and closes idle ones, so another device on the network can't tie it up.
+- If the relay connection fails because of a bug, the Remote panel says so, the error is reported, and it tries again a minute later (before, it stopped until KlikVibe was restarted).
+
 ## 0.7.5
 
 KlikVibe Remote: from anywhere again.
