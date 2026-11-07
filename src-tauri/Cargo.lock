@@ -2458,6 +2458,8 @@ dependencies = [
  "futures",
  "getrandom 0.3.4",
  "hostname",
+ "hyper",
+ "hyper-util",
  "if-addrs",
  "ignore",
  "mdns-sd",
@@ -2482,6 +2484,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-tungstenite 0.30.0",
+ "tower-service",
  "uuid",
 ]
 

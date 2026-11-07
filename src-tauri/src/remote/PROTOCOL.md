@@ -44,7 +44,7 @@ The desktop learns which phones are still allowed from the heartbeat (`POST /v1/
 
 ## Connection
 
-1. The phone opens a WebSocket. On the LAN this is `ws://<address>:<port>/remote` (no `Origin` header: requests that have one, from web pages, are refused; at most 32 connections at once). On the relay it is `wss://…/v1/relay/phone?desktop=<id>` with `Authorization: Bearer <access token>`.
+1. The phone opens a WebSocket. On the LAN this is `ws://<address>:<port>/remote` (no `Origin` header: requests that have one, from web pages, are refused; only from private, Tailscale or loopback addresses; at most 8 TCP connections per address and 32 WebSockets at once; the request must arrive within 10 s). On the relay it is `wss://…/v1/relay/phone?desktop=<id>` with `Authorization: Bearer <access token>`.
 2. The phone's **first binary frame** is its phone id (16 bytes, the UUID's raw bytes) followed by Noise handshake message 1.
 3. Noise pattern: `NNpsk0_25519_ChaChaPoly_SHA256`, with the phone as initiator and an empty prologue.
 4. The desktop finds the PSK by phone id. If there is none, or the handshake fails, it closes the connection without answering. The relay also checks that the id is the phone the access token belongs to.

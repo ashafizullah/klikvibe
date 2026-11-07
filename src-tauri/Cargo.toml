@@ -37,6 +37,10 @@ notify-debouncer-mini = "0.7"
 percent-encoding = "2"
 # The local MCP server for the user's agent (see mcp.rs).
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio", "ws"] }
+# The LAN listener's own accept loop (limits per address, header timeout): axum::serve sets neither.
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
+tower-service = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
 futures = "0.3"
 tauri-plugin-updater = "2"

@@ -47,10 +47,11 @@ impl Core {
         Self { hub, host, keys: Mutex::default(), connected: Mutex::default(), kicks: broadcast::channel(16).0, changed: Box::new(changed) }
     }
 
-    /// Replaces the paired phones; the connections of phones no longer there end.
+    /// Replaces the paired phones. The connections of phones no longer there end, and so do those
+    /// made with a key that changed (the same phone added again: its old key is no good any more).
     pub fn set_keys(&self, keys: HashMap<String, [u8; 32]>) {
         let mut cur = self.keys.lock().unwrap();
-        let gone: Vec<String> = cur.keys().filter(|id| !keys.contains_key(*id)).cloned().collect();
+        let gone: Vec<String> = cur.iter().filter(|(id, k)| keys.get(*id) != Some(*k)).map(|(id, _)| id.clone()).collect();
         *cur = keys;
         drop(cur);
         for id in gone {
@@ -62,8 +63,9 @@ impl Core {
         self.connected.lock().unwrap().contains_key(phone)
     }
 
-    fn has_key(&self, phone: &str) -> bool {
-        self.keys.lock().unwrap().contains_key(phone)
+    /// Whether `psk` is still this phone's key.
+    fn key_is(&self, phone: &str, psk: &[u8; 32]) -> bool {
+        self.keys.lock().unwrap().get(phone) == Some(psk)
     }
 
     /// Serves one phone: `frames` are the binary frames it sends, `out` the ones
@@ -88,7 +90,7 @@ impl Core {
         // Its first sealed message proves it holds the key (a replayed first frame can't make one).
         let Ok(Some(frame)) = tokio::time::timeout(HANDSHAKE, frames.recv()).await else { return };
         let Ok(hello) = channel.open(&frame) else { return };
-        if !self.has_key(&id) {
+        if !self.key_is(&id, &psk) {
             return;
         }
         *self.connected.lock().unwrap().entry(id.clone()).or_default() += 1;
@@ -129,12 +131,12 @@ impl Core {
                 }
             }
         };
-        // Ends when this phone is removed. Any wake-up (even a missed one) re-checks the key.
+        // Ends when this phone is removed or its key changes. Any wake-up (even a missed one) re-checks the key.
         let kicked = async {
             loop {
                 match kicks.recv().await {
                     Err(broadcast::error::RecvError::Closed) => break,
-                    _ if !self.has_key(&id) => break,
+                    _ if !self.key_is(&id, &psk) => break,
                     _ => {}
                 }
             }
@@ -224,6 +226,24 @@ pub mod tests {
         // Removing the phone ends its connection.
         core.set_keys(HashMap::new());
         task.await.unwrap();
+        assert!(!core.is_connected(PHONE));
+    }
+
+    #[tokio::test]
+    async fn a_new_key_for_the_same_phone_ends_its_old_connection() {
+        let core = core();
+        let (to, frames) = mpsc::channel(8);
+        let (out, mut from) = mpsc::channel(8);
+        let c = core.clone();
+        let task = tokio::spawn(async move { c.phone(frames, out).await });
+        let (f, hs) = first_frame(PHONE, &PSK);
+        to.send(f).await.unwrap();
+        let mut ch = noise::finish(hs, &from.recv().await.unwrap()).unwrap();
+        to.send(ch.seal(br#"{"t":"hello","v":1}"#).unwrap()).await.unwrap();
+        from.recv().await.unwrap();
+        // Same id, paired again with a new key: the connection on the old key ends.
+        core.set_keys(HashMap::from([(PHONE.to_string(), [7u8; 32])]));
+        tokio::time::timeout(std::time::Duration::from_secs(2), task).await.unwrap().unwrap();
         assert!(!core.is_connected(PHONE));
     }
 
