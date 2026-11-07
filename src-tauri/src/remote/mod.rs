@@ -10,6 +10,7 @@ pub mod relay;
 pub mod server;
 pub mod session;
 pub mod store;
+pub mod upload;
 
 use crate::git;
 use crate::projects::Projects;
@@ -36,6 +37,8 @@ const PAIR_POLL: Duration = Duration::from_secs(2);
 
 /// The window listens for this to refresh the Remote dialog.
 pub const CHANGED: &str = "remote-changed";
+/// The window opens a terminal tab for a phone's `term.new`, then answers with `remote_term_created`.
+pub const TERM_NEW: &str = "remote-term-new";
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -113,6 +116,8 @@ pub struct Remote {
     /// Bumped by each new pairing and each cancel: a pairing that started before is dropped.
     pair_gen: AtomicU64,
     confirm: Mutex<Option<Confirm>>,
+    /// `term.new` requests waiting for the window, by nonce.
+    term_waits: Mutex<HashMap<String, tokio::sync::oneshot::Sender<Result<String, String>>>>,
 }
 
 /// The computer's name as the user knows it ("Adam's MacBook Pro").
@@ -164,6 +169,20 @@ impl session::Host for AppHost {
         }
         git::diff(&root, path).map_err(|e| e.to_string())
     }
+
+    fn term_new(&self, root: &str, agent: Option<&str>) -> Result<tokio::sync::oneshot::Receiver<Result<String, String>>, String> {
+        let nonce = uuid::Uuid::new_v4().to_string();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        {
+            let remote = self.0.state::<Remote>();
+            let mut waits = remote.term_waits.lock().unwrap();
+            // Requests the window never answered (their session gave up) go.
+            waits.retain(|_, w| !w.is_closed());
+            waits.insert(nonce.clone(), tx);
+        }
+        self.0.emit(TERM_NEW, json!({ "root": root, "agent": agent, "nonce": nonce })).map_err(|e| e.to_string())?;
+        Ok(rx)
+    }
 }
 
 impl Remote {
@@ -183,6 +202,7 @@ impl Remote {
             life: tokio::sync::Mutex::new(()),
             pair_gen: AtomicU64::new(0),
             confirm: Mutex::new(None),
+            term_waits: Mutex::default(),
         }
     }
 
@@ -558,9 +578,19 @@ impl Remote {
         self.changed();
     }
 
+    /// The window's answer to a `term.new`: the new terminal's id, or why there is none.
+    pub fn term_created(&self, nonce: &str, id: Option<String>, error: Option<String>) {
+        let Some(tx) = self.term_waits.lock().unwrap().remove(nonce) else { return };
+        let _ = tx.send(match (id, error) {
+            (Some(id), None) => Ok(id),
+            (_, e) => Err(e.unwrap_or_else(|| "The terminal did not start".into())),
+        });
+    }
+
     /// An agent needs the user: the connected phones are told (end-to-end encrypted), and the
-    /// account's phones get a push (Pro). The push carries only the title (agent and project),
-    /// never what the agent said: it passes through the KlikVibe server, Apple and Google.
+    /// account's phones get a push (Pro). The push carries only the title (agent and project) and
+    /// which terminal it is (so tapping it opens that one), never what the agent said: it passes
+    /// through the KlikVibe server, Apple and Google.
     pub fn attention(&self, root: &str, term: &str, title: &str, body: &str) {
         self.hub.attention(root, term, title, body);
         let (token, pro, enabled) = {
@@ -568,9 +598,9 @@ impl Remote {
             (c.device_token.clone(), c.pro, c.enabled)
         };
         if let (Some(token), true, true) = (token, pro, enabled) {
-            let title = title.to_string();
+            let (title, term, agent) = (title.to_string(), term.to_string(), self.hub.agent_of(term));
             tauri::async_runtime::spawn(async move {
-                let _ = cloud::notify(&token, &title, "").await;
+                let _ = cloud::notify(&token, &title, &term, agent.as_deref()).await;
             });
         }
     }

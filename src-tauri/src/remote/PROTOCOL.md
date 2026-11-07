@@ -70,13 +70,15 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 | `term.input` | `id`, `data` (string) | Typed into the terminal, as if on the keyboard |
 | `git.status` | `req`, `root` | Answer: `git.status` |
 | `git.diff` | `req`, `root`, `path` | Answer: `git.diff` |
+| `term.new` | `req`, `root`, `agent` | Opens a terminal tab in that open project, running `agent` (an `id` from `hello`'s `agents`) or, with `agent: null`, a plain shell. Answer: `term.new`. Only with the `term.new` feature |
+| `file.put` | `req`, `up`, `name`, `size`, `offset`, `data`, `last` | One chunk of an image to save on the computer (see [Uploads](#uploads)). Answer: `file.put`. Only with the `file.put` feature |
 | `ping` | | Answer: `pong` |
 
 ### Desktop → phone
 
 | `t` | Fields | |
 |---|---|---|
-| `hello` | `v`, `name`, `os`, `app` (KlikVibe version) | |
+| `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "file.put"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts |
 | `projects` | `projects: [Project]` | Also sent unasked whenever something changes |
 | `term.reset` | `id`, `cols`, `rows` | Clear the screen; the desktop's size (the phone never resizes the terminal) |
 | `term.data` | `id`, `data` (base64) | Raw output bytes, at most 32 KiB per message |
@@ -84,6 +86,8 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 | `attention` | `root`, `term`, `title`, `body` | An agent needs the user |
 | `git.status` | `req`, `status`, `truncated` | `status`: `{ repo, branch, upstream, ahead, behind, changes: [{ path, from, kind, staged, unstaged }] }`. `kind`: added, modified, deleted, renamed, untracked, conflict. At most 300 changes (`truncated: true` when cut) |
 | `git.diff` | `req`, `diff`, `truncated` | Unified diff, cut to fit one message (`truncated`) |
+| `term.new` | `req`, `id` | The new terminal's id: it is in the project list already (a `projects` message follows), and can be opened with `term.open` |
+| `file.put` | `req`, `ok: true`, `path?` | A chunk was written. After the last one, `path`: where the image is on the computer (absolute) |
 | `pong` | | |
 | `error` | `req?`, `id?`, `message` | The answer to a failed request (`req`), or about one terminal (`id`: it can't be opened or typed into). Also the answer to a request whose reply would not fit one message |
 
@@ -104,6 +108,44 @@ Terminal `status` is one of:
 - `busy`: an agent is working.
 - `waiting`: an agent is waiting for the user, or has finished.
 - `exited`
+
+### New terminals
+
+`{ "t": "term.new", "req": 4, "root": "/Users/me/app", "agent": "claude" }`
+
+- `root` must be one of the open projects, and `agent` `null` or one of the ids in `hello`'s `agents`. The phone never sends a command: the desktop runs the command it has for that agent.
+- The desktop opens the tab (and makes it the project's active terminal), waits for its shell to start, and answers `{ "t": "term.new", "req": 4, "id": "…" }`. The agent's command is typed into the new shell, as the Scripts menu does.
+- It fails with `error` when the project isn't open, the agent is unknown, another `term.new` of this connection is still waiting, or the terminal hasn't started within 10 seconds.
+
+### Uploads
+
+An image from the phone, saved on the computer so the phone can hand its path to an agent (typed into a terminal). It comes in chunks, as one Noise message holds at most 65535 bytes:
+
+`{ "t": "file.put", "req": 7, "up": "k3J9x2Lq", "name": "photo.jpg", "size": 51234, "offset": 0, "data": "<base64>", "last": false }`
+
+| Field | |
+|---|---|
+| `up` | Chosen by the phone, the same for every chunk of one file: 8 to 40 characters of `A-Z a-z 0-9 _ -` |
+| `name` | The file's name. Its extension (any case) must be `png`, `jpg`, `jpeg`, `gif`, `webp` or `heic` |
+| `size` | The whole file, in bytes: at most 20 MiB (20971520), and the same in every chunk |
+| `offset` | Where this chunk starts: the bytes sent so far. Chunks go in order, one at a time |
+| `data` | Base64 (standard, padded): at most 36 KiB (36864 bytes) before encoding |
+| `last` | `true` on the final chunk, which must end exactly at `size` |
+
+- Each chunk is answered `{ "t": "file.put", "req": 7, "ok": true }`; the last one `{ "t": "file.put", "req": 8, "ok": true, "path": "/private/var/folders/…/klikvibe-remote/1f3a9c0e-photo.jpg" }`.
+- Any error (a chunk out of order or past `size`, a bad name, too large) is answered with `error`, and the partial file is deleted: the phone starts over with a new `up`.
+- At most two uploads may be in progress per connection. The partial files of a connection are deleted when it ends.
+- Files go to `klikvibe-remote` in the computer's temporary folder (private to the user), named `<8 random hex>-<name>` with the name cut to 80 characters of `A-Z a-z 0-9 . _ -`. They are deleted after a week.
+
+## Push notifications
+
+When an agent needs the user and the account has Pro, the desktop also asks the server for a push (`POST /v1/desktop/notify`, `Authorization: Device <token>`):
+
+```json
+{ "title": "Claude Code · app", "body": "", "term": "<terminal id>", "agent": "claude" }
+```
+
+`term` is the terminal (as in `attention`), so tapping the push can open it; `agent` (agents.ts id) is left out when the terminal runs none. The body stays empty: what the agent said never passes through the server, Apple or Google.
 
 ## Relay framing (desktop ↔ server)
 

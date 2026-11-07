@@ -172,6 +172,9 @@ pub mod tests {
         fn git_diff(&self, _: &str, _: &str) -> Result<String, String> {
             Ok(String::new())
         }
+        fn term_new(&self, _: &str, _: Option<&str>) -> Result<tokio::sync::oneshot::Receiver<Result<String, String>>, String> {
+            Err("Not here".into())
+        }
     }
 
     pub const PHONE: &str = "6f0b0c2e-8f43-4a0e-9b7c-0d6a1f3a2b11";

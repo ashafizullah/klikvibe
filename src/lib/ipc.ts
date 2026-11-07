@@ -234,6 +234,8 @@ export const ipc = {
   remoteUnlink: () => invoke<RemoteStatus>("remote_unlink"),
   remoteProjects: (projects: RemoteProject[]) => invoke<void>("remote_projects", { projects }),
   remoteAttention: (root: string, term: string, title: string, body: string) => invoke<void>("remote_attention", { root, term, title, body }),
+  remoteAgents: (agents: { id: string; label: string }[]) => invoke<void>("remote_agents", { agents }),
+  remoteTermCreated: (nonce: string, id: string | null, error: string | null) => invoke<void>("remote_term_created", { nonce, id, error }),
   mcpLink: () => invoke<McpLink>("mcp_link"),
   mcpReply: (id: number, result: unknown) => invoke<void>("mcp_reply", { id, result }),
 

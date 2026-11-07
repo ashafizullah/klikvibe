@@ -14,6 +14,7 @@ import { t } from "./i18n/index.svelte";
 import { confirm, prompt, toast } from "./ui.svelte";
 import { persist, settings } from "./settings.svelte";
 import { treeKey } from "./grid";
+import type { AgentDef } from "./agents";
 
 /** commitFile: one file's changes in a commit; preview: a dev server's page (path is its address). */
 export type TabKind = "file" | "diff" | "commit" | "commitFile" | "preview";
@@ -107,6 +108,8 @@ export class ProjectState {
   askAgent: ((text: string) => void) | null = null;
   /** The terminals as KlikVibe Remote shows them on the phone; set by TerminalPanel. */
   remoteTerminals: (() => { id: string; name: string; agent: string | null }[]) | null = null;
+  /** Opens a terminal tab running `agent` (else a plain shell) for the phone; its session id once started. Set by TerminalPanel. */
+  newTerminal: ((agent: AgentDef | null) => Promise<string>) | null = null;
   // ---- what changed since the user last looked ----
   /** When each file last changed on disk (absolute path), not counting the user's own saves. */
   readonly lastChanged = new SvelteMap<string, number>();

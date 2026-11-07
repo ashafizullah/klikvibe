@@ -3,7 +3,7 @@
   import { useProject } from "../lib/project.svelte";
   import { persist, settings } from "../lib/settings.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
-  import { AGENTS, agentById } from "../lib/agents";
+  import { AGENTS, agentById, type AgentDef } from "../lib/agents";
   import { sessionHeld } from "../lib/session.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
@@ -77,10 +77,13 @@
   const cwd = project.root;
   const agent = $derived(agentById(settings.agent));
 
-  function add(run?: string) {
+  /** `auto`: its name until one is read from what runs in it. */
+  function add(run?: string, auto: string | null = null) {
     const s = shell(run);
+    s.auto = auto;
     shells.push(s);
     active = s.id;
+    return s;
   }
 
   const label = (s: Shell, i: number) => s.name ?? s.auto ?? t("terminal.shell", { n: i + 1 });
@@ -154,6 +157,26 @@
       return [{ id, name: label(s, i), agent }];
     });
 
+  /** How long a new shell may take to start before the phone is told it failed. */
+  const START_WAIT = 8000;
+  /**
+   * A terminal the phone asked for (KlikVibe Remote's `term.new`). The panel of every open
+   * project stays mounted (ProjectView), and a shell starts even while the panel is hidden,
+   * so nothing has to be shown first.
+   */
+  async function newTerminal(a: AgentDef | null): Promise<string> {
+    // Named after its agent at once, so the phone shows which it is before the name is read from the shell.
+    const s = add(a?.command, a?.label ?? null);
+    const until = Date.now() + START_WAIT;
+    while (Date.now() < until && shells.some((x) => x.id === s.id)) {
+      const id = refs[s.id]?.sessionId();
+      if (id) return id;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error("The terminal did not start");
+  }
+  project.newTerminal = newTerminal;
+
   // Kept up to date while it runs: KlikVibe can be quit (or the computer shut down) at any moment.
   let lastSaved = "";
   function save() {
@@ -181,6 +204,7 @@
     window.removeEventListener("pagehide", saveNow);
     if (project.askAgent === askAgent) project.askAgent = null;
     if (project.terminals === terminals) project.terminals = null;
+    if (project.newTerminal === newTerminal) project.newTerminal = null;
     // The project was closed: its terminals don't come back next time. (An update keeps them.)
     if (sessionHeld()) save();
     else

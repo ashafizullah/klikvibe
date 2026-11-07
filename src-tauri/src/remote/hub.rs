@@ -38,6 +38,13 @@ pub struct TerminalMeta {
     pub agent: Option<String>,
 }
 
+/// An agent the window knows (agents.ts), one the phone may start with `term.new`.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AgentMeta {
+    pub id: String,
+    pub label: String,
+}
+
 /// A project as the phone gets it (PROTOCOL.md, `Project`).
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct ProjectView {
@@ -108,6 +115,8 @@ impl Term {
 #[derive(Default)]
 struct State {
     projects: Vec<ProjectMeta>,
+    /// Reported once by the window at startup; empty until then.
+    agents: Vec<AgentMeta>,
     terms: HashMap<String, Term>,
     /// The last statuses sent, to tell when one changes.
     sent: Vec<ProjectView>,
@@ -209,6 +218,10 @@ impl Hub {
         }
     }
 
+    pub fn set_agents(&self, agents: Vec<AgentMeta>) {
+        self.state.lock().unwrap().agents = agents;
+    }
+
     pub fn attention(&self, root: &str, term: &str, title: &str, body: &str) {
         let _ = self.tx.send(Event::Attention { root: root.into(), term: term.into(), title: title.into(), body: body.into() });
     }
@@ -264,6 +277,16 @@ impl Hub {
         self.state.lock().unwrap().projects.iter().any(|p| p.root == root)
     }
 
+    pub fn agents(&self) -> Vec<AgentMeta> {
+        self.state.lock().unwrap().agents.clone()
+    }
+
+    /// The agent (agents.ts id) running in a terminal, as the window last reported it.
+    pub fn agent_of(&self, id: &str) -> Option<String> {
+        let st = self.state.lock().unwrap();
+        st.projects.iter().flat_map(|p| &p.terminals).find(|t| t.id == id).and_then(|t| t.agent.clone())
+    }
+
     /// Starts following a terminal. `events` must have been subscribed before
     /// this call; output after it arrives there, output before it is in `scrollback`.
     pub fn open(&self, id: &str) -> Option<Opened> {
@@ -310,6 +333,15 @@ mod tests {
         assert!(p[1].terminals.is_empty());
         assert_eq!(hub.root_of("a").as_deref(), Some("/p"));
         assert_eq!(hub.root_of("hidden"), None);
+    }
+
+    #[test]
+    fn the_agent_of_a_terminal() {
+        let hub = Hub::default();
+        hub.set_projects(vec![meta("a", Some("claude")), ProjectMeta { root: "/q".into(), ..meta("b", None) }]);
+        assert_eq!(hub.agent_of("a").as_deref(), Some("claude"));
+        assert_eq!(hub.agent_of("b"), None);
+        assert_eq!(hub.agent_of("nope"), None);
     }
 
     #[test]

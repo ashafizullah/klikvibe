@@ -141,6 +141,8 @@ pub fn run() {
             commands::remote_unlink,
             commands::remote_projects,
             commands::remote_attention,
+            commands::remote_agents,
+            commands::remote_term_created,
             commands::check_updates,
             commands::install_update,
             commands::set_update_mode,

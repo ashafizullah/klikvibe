@@ -153,9 +153,18 @@ pub async fn heartbeat(device_token: &str, info: Value) -> Result<Heartbeat, Clo
     call(reqwest::Method::POST, "/v1/desktop/heartbeat", Some(format!("Device {device_token}")), Some(info)).await
 }
 
-pub async fn notify(device_token: &str, title: &str, body: &str) -> Result<Value, CloudError> {
-    call(reqwest::Method::POST, "/v1/desktop/notify", Some(format!("Device {device_token}")), Some(json!({ "title": title, "body": body })))
-        .await
+/// A push to the account's phones. Its body stays empty: what the agent said never leaves the computer.
+pub async fn notify(device_token: &str, title: &str, term: &str, agent: Option<&str>) -> Result<Value, CloudError> {
+    call(reqwest::Method::POST, "/v1/desktop/notify", Some(format!("Device {device_token}")), Some(notice(title, term, agent))).await
+}
+
+/// The push's JSON: `agent` only when the terminal runs one (an older server drops both new keys).
+fn notice(title: &str, term: &str, agent: Option<&str>) -> Value {
+    let mut v = json!({ "title": title, "body": "", "term": term });
+    if let Some(a) = agent {
+        v["agent"] = json!(a);
+    }
+    v
 }
 
 pub async fn unlink(device_token: &str) -> Result<Value, CloudError> {
@@ -165,6 +174,15 @@ pub async fn unlink(device_token: &str) -> Result<Value, CloudError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_push_names_the_terminal_only() {
+        assert_eq!(
+            notice("Claude · app", "t1", Some("claude")),
+            json!({ "title": "Claude · app", "body": "", "term": "t1", "agent": "claude" })
+        );
+        assert_eq!(notice("Terminal · app", "t2", None), json!({ "title": "Terminal · app", "body": "", "term": "t2" }));
+    }
 
     #[test]
     fn statuses_parse() {

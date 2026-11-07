@@ -3,13 +3,21 @@
 //! carry it (encrypted) over the LAN or through the relay.
 
 use super::hub::{Event, Hub};
+use super::upload::{self, Chunk, Uploads};
 use base64::Engine;
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub const VERSION: u32 = 1;
+/// What this desktop can do beyond the first version, in `hello`: a phone offers only these.
+const FEATURES: [&str; 2] = ["term.new", "file.put"];
+/// How long the window has to open a terminal for `term.new`.
+const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
 /// Raw output per `term.data` message (base64 makes it a third larger; it still fits a Noise message).
 const DATA_CHUNK: usize = 32 * 1024;
 /// A diff larger than this is cut (a Noise message holds 64 KiB; JSON escaping can add to it, see `fit`).
@@ -29,6 +37,13 @@ pub trait Host: Send + Sync + 'static {
     fn git_status(&self, root: &str) -> Result<Value, String>;
     /// The working tree's diff of a changed file.
     fn git_diff(&self, root: &str, path: &str) -> Result<String, String>;
+    /// Asks the window for a new terminal tab in an open project, running `agent` (an id the
+    /// window reported, see `Hub::agents`) or a plain shell. The new terminal's id comes later.
+    fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String>;
+    /// Where `file.put` saves images.
+    fn upload_dir(&self) -> PathBuf {
+        upload::default_dir()
+    }
 }
 
 struct Session {
@@ -37,6 +52,9 @@ struct Session {
     tx: mpsc::Sender<Vec<u8>>,
     /// The terminals this phone follows, and the output offset it has seen up to.
     open: HashMap<String, u64>,
+    /// A `term.new` is waiting for the window: one at a time.
+    opening: Arc<AtomicBool>,
+    uploads: Uploads,
 }
 
 impl Session {
@@ -168,10 +186,69 @@ impl Session {
                     Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
                 }
             }
+            "term.new" => {
+                let root = s("root");
+                match self.term_new(&root, m.get("agent")) {
+                    Ok(answer) => {
+                        // Answered from its own task: the phone's terminals keep streaming meanwhile.
+                        let (tx, opening) = (self.tx.clone(), self.opening.clone());
+                        tokio::spawn(async move {
+                            let r = match tokio::time::timeout(TERM_NEW_WAIT, answer).await {
+                                Ok(Ok(r)) => r,
+                                Ok(Err(_)) | Err(_) => Err("The terminal did not start".into()),
+                            };
+                            opening.store(false, Ordering::SeqCst);
+                            let reply = match r {
+                                Ok(id) => json!({ "t": "term.new", "req": req, "id": id }),
+                                Err(e) => json!({ "t": "error", "req": req, "message": e }),
+                            };
+                            let _ = tx.send(reply.to_string().into_bytes()).await;
+                        });
+                        true
+                    }
+                    Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
+                }
+            }
+            "file.put" => {
+                let n = |k: &str| m.get(k).and_then(Value::as_u64);
+                let chunk = Chunk {
+                    up: s("up"),
+                    name: s("name"),
+                    size: n("size").unwrap_or(0),
+                    // A chunk without its offset can't be placed: it matches no upload.
+                    offset: n("offset").unwrap_or(u64::MAX),
+                    data: s("data"),
+                    last: m.get("last").and_then(Value::as_bool).unwrap_or(false),
+                };
+                match self.uploads.put(chunk).await {
+                    Ok(None) => self.send(json!({ "t": "file.put", "req": req, "ok": true })).await,
+                    Ok(Some(path)) => self.send(json!({ "t": "file.put", "req": req, "ok": true, "path": path.to_string_lossy() })).await,
+                    Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
+                }
+            }
             "ping" => self.send(json!({ "t": "pong" })).await,
             // Newer phones may send what this version doesn't know.
             _ => true,
         }
+    }
+}
+
+impl Session {
+    /// Checks a `term.new` and hands it to the window. Only an agent the window listed runs:
+    /// never a command from the phone.
+    fn term_new(&self, root: &str, agent: Option<&Value>) -> Result<oneshot::Receiver<Result<String, String>>, String> {
+        let agent = match agent {
+            None | Some(Value::Null) => None,
+            Some(Value::String(a)) if self.hub.agents().iter().any(|x| &x.id == a) => Some(a.as_str()),
+            Some(_) => return Err("Unknown agent".into()),
+        };
+        if !self.hub.has_project(root) {
+            return Err("Project not open".into());
+        }
+        if self.opening.swap(true, Ordering::SeqCst) {
+            return Err("Already opening a terminal".into());
+        }
+        self.host.term_new(root, agent).inspect_err(|_| self.opening.store(false, Ordering::SeqCst))
     }
 }
 
@@ -207,10 +284,13 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
         return;
     }
     let mut events = hub.subscribe();
-    let mut s = Session { hub, host, tx, open: HashMap::new() };
+    let uploads = Uploads::new(host.upload_dir());
+    let mut s = Session { hub, host, tx, open: HashMap::new(), opening: Arc::default(), uploads };
     let mut hello = s.host.hello();
     hello["t"] = json!("hello");
     hello["v"] = json!(VERSION);
+    hello["features"] = json!(FEATURES);
+    hello["agents"] = json!(s.hub.agents());
     if !s.send(hello).await || !s.projects().await {
         return;
     }
@@ -246,18 +326,33 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::remote::hub::{ProjectMeta, TerminalMeta};
+    use crate::remote::hub::{AgentMeta, ProjectMeta, TerminalMeta};
     use std::sync::Mutex;
 
-    #[derive(Default)]
-    struct Fake(Mutex<Vec<(String, String)>>);
+    struct Fake {
+        typed: Mutex<Vec<(String, String)>>,
+        /// Where this test's uploads go.
+        dir: PathBuf,
+    }
+
+    impl Default for Fake {
+        fn default() -> Self {
+            Self { typed: Mutex::default(), dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())) }
+        }
+    }
+
+    impl Drop for Fake {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
 
     impl Host for Fake {
         fn hello(&self) -> Value {
             json!({ "name": "Mac", "os": "macos", "app": "0.7.0" })
         }
         fn write(&self, id: &str, data: &str) -> Result<(), String> {
-            self.0.lock().unwrap().push((id.into(), data.into()));
+            self.typed.lock().unwrap().push((id.into(), data.into()));
             Ok(())
         }
         fn git_status(&self, _root: &str) -> Result<Value, String> {
@@ -266,6 +361,42 @@ mod tests {
         fn git_diff(&self, _root: &str, path: &str) -> Result<String, String> {
             Ok(if path == "big" { "é".repeat(MAX_DIFF) } else { format!("diff {path}") })
         }
+        fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String> {
+            let (tx, rx) = oneshot::channel();
+            let _ = tx.send(Ok(format!("new {root} {}", agent.unwrap_or("shell"))));
+            Ok(rx)
+        }
+        fn upload_dir(&self) -> PathBuf {
+            self.dir.clone()
+        }
+    }
+
+    /// A session past its hello and first project list.
+    async fn connected(hub: Arc<Hub>, host: Arc<Fake>) -> (mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>, tokio::task::JoinHandle<()>) {
+        let (to_desktop, rx) = mpsc::channel(16);
+        let (tx, mut from_desktop) = mpsc::channel(64);
+        let task = tokio::spawn(serve(hub, host, rx, tx));
+        to_desktop.send(br#"{"t":"hello","v":1}"#.to_vec()).await.unwrap();
+        next(&mut from_desktop).await; // hello
+        next(&mut from_desktop).await; // projects
+        (to_desktop, from_desktop, task)
+    }
+
+    fn app_hub() -> Arc<Hub> {
+        let hub = Arc::new(Hub::default());
+        hub.set_projects(vec![ProjectMeta { root: "/app".into(), name: "app".into(), attention: false, terminals: vec![] }]);
+        hub
+    }
+
+    fn chunk(req: u64, up: &str, name: &str, size: usize, offset: usize, data: &[u8], last: bool) -> Vec<u8> {
+        let data = base64::engine::general_purpose::STANDARD.encode(data);
+        json!({ "t": "file.put", "req": req, "up": up, "name": name, "size": size, "offset": offset, "data": data, "last": last })
+            .to_string()
+            .into_bytes()
+    }
+
+    fn files_in(dir: &std::path::Path) -> usize {
+        std::fs::read_dir(dir).map(|d| d.count()).unwrap_or(0)
     }
 
     async fn next(rx: &mut mpsc::Receiver<Vec<u8>>) -> Value {
@@ -294,6 +425,8 @@ mod tests {
         say(json!({ "t": "hello", "v": 1, "name": "iPhone" })).await.unwrap();
         let h = next(&mut from_desktop).await;
         assert_eq!((h["t"].as_str(), h["name"].as_str(), h["v"].as_u64()), (Some("hello"), Some("Mac"), Some(1)));
+        assert_eq!(h["features"], json!(["term.new", "file.put"]));
+        assert_eq!(h["agents"], json!([]));
         let p = next(&mut from_desktop).await;
         assert_eq!(p["projects"][0]["terminals"][0]["id"], "t1");
 
@@ -326,7 +459,7 @@ mod tests {
 
         say(json!({ "t": "ping" })).await.unwrap();
         assert_eq!(next(&mut from_desktop).await["t"], "pong");
-        assert_eq!(host.0.lock().unwrap().as_slice(), [("t1".to_string(), "y".to_string())]);
+        assert_eq!(host.typed.lock().unwrap().as_slice(), [("t1".to_string(), "y".to_string())]);
 
         hub.attention("/app", "t1", "Claude · app", "Waiting");
         assert_eq!(next(&mut from_desktop).await["t"], "attention");
@@ -382,5 +515,98 @@ mod tests {
         to_desktop.send(br#"{"t":"projects"}"#.to_vec()).await.unwrap();
         assert_eq!(next(&mut from_desktop).await["t"], "error");
         task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn new_terminals() {
+        let hub = app_hub();
+        hub.set_agents(vec![AgentMeta { id: "claude".into(), label: "Claude Code".into() }]);
+        let (to, mut from, task) = connected(hub, Arc::new(Fake::default())).await;
+        let say = |v: Value| to.send(v.to_string().into_bytes());
+        say(json!({ "t": "term.new", "req": 1, "root": "/app", "agent": "claude" })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "term.new", "req": 1, "id": "new /app claude" }));
+        say(json!({ "t": "term.new", "req": 2, "root": "/app", "agent": null })).await.unwrap();
+        assert_eq!(next(&mut from).await["id"], "new /app shell");
+        // Never a command of the phone's choosing, nor a project that isn't open.
+        say(json!({ "t": "term.new", "req": 3, "root": "/app", "agent": "rm -rf ~" })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        say(json!({ "t": "term.new", "req": 4, "root": "/etc", "agent": null })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        drop(to);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_upload_in_two_chunks() {
+        let host = Arc::new(Fake::default());
+        let (to, mut from, task) = connected(app_hub(), host.clone()).await;
+        let image: Vec<u8> = (0..upload::MAX_CHUNK + 1000).map(|i| (i % 251) as u8).collect();
+        let (a, b) = image.split_at(upload::MAX_CHUNK);
+        to.send(chunk(1, "up-12345", "My photo.JPG", image.len(), 0, a, false)).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "file.put", "req": 1, "ok": true }));
+        to.send(chunk(2, "up-12345", "My photo.JPG", image.len(), a.len(), b, true)).await.unwrap();
+        let done = next(&mut from).await;
+        assert_eq!((done["req"].as_u64(), done["ok"].as_bool()), (Some(2), Some(true)));
+        let path = PathBuf::from(done["path"].as_str().unwrap());
+        assert_eq!(path.parent(), Some(host.dir.as_path()));
+        assert!(path.file_name().unwrap().to_str().unwrap().ends_with("-My_photo.jpg"));
+        assert_eq!(std::fs::read(&path).unwrap(), image);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
+            assert_eq!(std::fs::metadata(&host.dir).unwrap().permissions().mode() & 0o777, 0o700);
+        }
+        // A finished upload stays when the phone hangs up.
+        drop(to);
+        task.await.unwrap();
+        assert!(path.exists());
+    }
+
+    #[tokio::test]
+    async fn a_chunk_out_of_order_ends_the_upload() {
+        let host = Arc::new(Fake::default());
+        let (to, mut from, task) = connected(app_hub(), host.clone()).await;
+        to.send(chunk(1, "up-12345", "a.png", 10, 0, b"12345", false)).await.unwrap();
+        assert_eq!(next(&mut from).await["ok"], true);
+        assert_eq!(files_in(&host.dir), 1);
+        to.send(chunk(2, "up-12345", "a.png", 10, 3, b"45678", true)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        assert_eq!(files_in(&host.dir), 0);
+        // It is gone: what follows matches no upload.
+        to.send(chunk(3, "up-12345", "a.png", 10, 5, b"67890", true)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        drop(to);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn only_images_of_a_sane_size() {
+        let host = Arc::new(Fake::default());
+        let (to, mut from, task) = connected(app_hub(), host.clone()).await;
+        to.send(chunk(1, "up-12345", "run.sh", 4, 0, b"echo", true)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        to.send(chunk(2, "up-12345", "huge.png", upload::MAX_SIZE as usize + 1, 0, b"x", false)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        to.send(chunk(3, "short", "a.png", 1, 0, b"x", true)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        assert_eq!(files_in(&host.dir), 0);
+        // At most two at once; the partial files go when the phone hangs up.
+        for (i, up) in ["up-aaaaaa", "up-bbbbbb"].into_iter().enumerate() {
+            to.send(chunk(4 + i as u64, up, "a.png", 10, 0, b"12345", false)).await.unwrap();
+            assert_eq!(next(&mut from).await["ok"], true);
+        }
+        to.send(chunk(6, "up-cccccc", "a.png", 10, 0, b"12345", false)).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        assert_eq!(files_in(&host.dir), 2);
+        drop(to);
+        task.await.unwrap();
+        for _ in 0..50 {
+            if files_in(&host.dir) == 0 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert_eq!(files_in(&host.dir), 0);
     }
 }

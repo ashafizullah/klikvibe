@@ -528,6 +528,18 @@ pub fn remote_projects(remote: State<'_, Remote>, projects: Vec<remote::hub::Pro
     remote.hub.set_projects(projects);
 }
 
+/// The agents the window knows (agents.ts), sent once at startup: the ones a phone may start.
+#[tauri::command]
+pub fn remote_agents(remote: State<'_, Remote>, agents: Vec<remote::hub::AgentMeta>) {
+    remote.hub.set_agents(agents);
+}
+
+/// The window opened (or could not open) the terminal a phone asked for (`remote-term-new`).
+#[tauri::command]
+pub fn remote_term_created(remote: State<'_, Remote>, nonce: String, id: Option<String>, error: Option<String>) {
+    remote.term_created(&nonce, id, error);
+}
+
 #[tauri::command]
 pub fn remote_attention(remote: State<'_, Remote>, root: String, term: String, title: String, body: String) {
     remote.attention(&root, &term, &title, &body);
