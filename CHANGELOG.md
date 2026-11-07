@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+
+KlikVibe Remote: start agents and send images from your phone.
+
+- Start a new terminal from the phone in any open project, with one of your agents (Claude Code, Codex, Gemini, ...) or a plain shell. The phone can only pick an agent KlikVibe knows, never send a command of its own.
+- Send an image from the phone to the computer and hand its path to the agent. Images are kept privately in a temporary folder (`klikvibe-remote`) and deleted after a week.
+- Push notifications (Pro) now say which terminal needs you, so tapping one opens that terminal, and Yes/No buttons answer the agent. The push still never carries what the agent said.
+- Needs KlikVibe Remote 1.0.1 on the phone; older phones keep working as before.
+
 ## 0.7.0
 
 KlikVibe Remote: your agents, from your phone.
