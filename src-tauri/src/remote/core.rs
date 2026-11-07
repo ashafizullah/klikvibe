@@ -5,6 +5,9 @@
 use super::hub::Hub;
 use super::noise::{self, Channel};
 use super::session::{self, Host};
+use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
@@ -17,6 +20,9 @@ pub struct Core {
     pub host: Arc<dyn Host>,
     /// Paired phones: id → key.
     keys: Mutex<HashMap<String, [u8; 32]>>,
+    /// Keys handed to phones (`key.new`) that they haven't confirmed yet: id → key. Also accepted
+    /// at the handshake, in case the `key.ok` was lost.
+    offered: Mutex<HashMap<String, [u8; 32]>>,
     /// Phones connected right now (id → connections), for the Remote dialog.
     connected: Mutex<HashMap<String, usize>>,
     /// A phone that was removed: its connections end.
@@ -44,7 +50,15 @@ impl Drop for Connected<'_> {
 
 impl Core {
     pub fn new(hub: Arc<Hub>, host: Arc<dyn Host>, changed: impl Fn() + Send + Sync + 'static) -> Self {
-        Self { hub, host, keys: Mutex::default(), connected: Mutex::default(), kicks: broadcast::channel(16).0, changed: Box::new(changed) }
+        Self {
+            hub,
+            host,
+            keys: Mutex::default(),
+            offered: Mutex::default(),
+            connected: Mutex::default(),
+            kicks: broadcast::channel(16).0,
+            changed: Box::new(changed),
+        }
     }
 
     /// Replaces the paired phones. The connections of phones no longer there end, and so do those
@@ -81,8 +95,16 @@ impl Core {
         }
         let Ok(id) = uuid::Uuid::from_slice(&first[..16]) else { return };
         let id = id.to_string();
-        let Some(psk) = self.keys.lock().unwrap().get(&id).copied() else { return };
-        let Ok((answer, channel)) = noise::respond(&psk, &first[16..]) else { return };
+        let Some(current) = self.keys.lock().unwrap().get(&id).copied() else { return };
+        let offered = self.offered.lock().unwrap().get(&id).copied();
+        // The key, or one this phone was offered but whose confirmation never arrived.
+        let (psk, answer, channel) = match noise::respond(&current, &first[16..]) {
+            Ok((a, c)) => (current, a, c),
+            Err(_) => match offered.map(|k| (k, noise::respond(&k, &first[16..]))) {
+                Some((k, Ok((a, c)))) => (k, a, c),
+                _ => return,
+            },
+        };
         if out.send(answer).await.is_err() {
             return;
         }
@@ -90,9 +112,14 @@ impl Core {
         // Its first sealed message proves it holds the key (a replayed first frame can't make one).
         let Ok(Some(frame)) = tokio::time::timeout(HANDSHAKE, frames.recv()).await else { return };
         let Ok(hello) = channel.open(&frame) else { return };
+        if psk != current {
+            self.adopt(&id, psk);
+        }
         if !self.key_is(&id, &psk) {
             return;
         }
+        // This connection's key: it changes when the phone takes a new one.
+        let psk = Mutex::new(psk);
         *self.connected.lock().unwrap().entry(id.clone()).or_default() += 1;
         let _guard = Connected(self, id.clone());
         (self.changed)();
@@ -104,15 +131,26 @@ impl Core {
             return;
         }
 
-        // Phone → session: open each frame; one that doesn't open ends the connection.
+        // Phone → session: open each frame; one that doesn't open ends the connection. Key
+        // rotation is answered here (Core holds the keys), everything else goes to the session.
+        let to_phone = session_tx.clone();
         let opener = {
             let channel = channel.clone();
+            let (id, psk) = (&id, &psk);
             async move {
                 while let Some(frame) = frames.recv().await {
                     let plain = match channel.lock().unwrap().open(&frame) {
                         Ok(p) => p,
                         Err(_) => break,
                     };
+                    if let Some(answer) = self.rotation(id, psk, &plain) {
+                        if let Some(a) = answer
+                            && to_phone.send(a).await.is_err()
+                        {
+                            break;
+                        }
+                        continue;
+                    }
                     if plain_in.send(plain).await.is_err() {
                         break;
                     }
@@ -136,7 +174,7 @@ impl Core {
             loop {
                 match kicks.recv().await {
                     Err(broadcast::error::RecvError::Closed) => break,
-                    _ if !self.key_is(&id, &psk) => break,
+                    _ if !self.key_is(&id, &psk.lock().unwrap()) => break,
                     _ => {}
                 }
             }
@@ -147,6 +185,62 @@ impl Core {
             _ = session::serve(self.hub.clone(), self.host.clone(), session_rx, session_tx) => {}
             _ = kicked => {}
         }
+    }
+}
+
+impl Core {
+    /// `key.new` and `key.ok` (PROTOCOL.md, "Key rotation"), with the answer to send if any; None
+    /// for any other message.
+    fn rotation(&self, id: &str, psk: &Mutex<[u8; 32]>, plain: &[u8]) -> Option<Option<Vec<u8>>> {
+        // Cheap test first: most messages are typing.
+        const KEY: &[u8] = b"\"key.";
+        if !plain.windows(KEY.len()).any(|w| w == KEY) {
+            return None;
+        }
+        let m: Value = serde_json::from_slice(plain).ok()?;
+        match m.get("t").and_then(Value::as_str)? {
+            "key.new" => {
+                let k = {
+                    let mut offered = self.offered.lock().unwrap();
+                    match offered.get(id) {
+                        Some(k) => *k,
+                        None => {
+                            let mut k = [0u8; 32];
+                            if getrandom::fill(&mut k).is_err() {
+                                return Some(serde_json::to_vec(&json!({ "t": "error", "req": m.get("req"), "message": "No key" })).ok());
+                            }
+                            offered.insert(id.to_string(), k);
+                            k
+                        }
+                    }
+                };
+                Some(serde_json::to_vec(&json!({ "t": "key.new", "req": m.get("req"), "k": URL_SAFE_NO_PAD.encode(k) })).ok())
+            }
+            "key.ok" => {
+                let k = self.offered.lock().unwrap().get(id).copied();
+                if let Some(k) = k {
+                    // This connection moves to the new key first, so only the others on the old one end.
+                    *psk.lock().unwrap() = k;
+                    self.adopt(id, k);
+                }
+                Some(None)
+            }
+            _ => None,
+        }
+    }
+
+    /// The phone has `k` now: it becomes its key (kept by the host), the old one stops working,
+    /// and connections still on it end.
+    fn adopt(&self, id: &str, k: [u8; 32]) {
+        self.offered.lock().unwrap().remove(id);
+        {
+            let mut keys = self.keys.lock().unwrap();
+            // Removed meanwhile: stays removed.
+            let Some(cur) = keys.get_mut(id) else { return };
+            *cur = k;
+        }
+        self.host.key_changed(id, k);
+        let _ = self.kicks.send(id.to_string());
     }
 }
 
@@ -245,6 +339,74 @@ pub mod tests {
         core.set_keys(HashMap::from([(PHONE.to_string(), [7u8; 32])]));
         tokio::time::timeout(std::time::Duration::from_secs(2), task).await.unwrap().unwrap();
         assert!(!core.is_connected(PHONE));
+    }
+
+    /// Connects with `psk` and says hello: the phone's channel, or None when not accepted.
+    async fn connect(core: &Arc<Core>, psk: &[u8; 32]) -> Option<(mpsc::Sender<Vec<u8>>, mpsc::Receiver<Vec<u8>>, Channel)> {
+        let (to, frames) = mpsc::channel(8);
+        let (out, mut from) = mpsc::channel(8);
+        let c = core.clone();
+        tokio::spawn(async move { c.phone(frames, out).await });
+        let (f, hs) = first_frame(PHONE, psk);
+        to.send(f).await.unwrap();
+        let mut ch = noise::finish(hs, &from.recv().await?).unwrap();
+        to.send(ch.seal(br#"{"t":"hello","v":1}"#).unwrap()).await.unwrap();
+        // Opened, so the next message's nonce follows.
+        ch.open(&from.recv().await?).unwrap();
+        Some((to, from, ch))
+    }
+
+    async fn say(to: &mpsc::Sender<Vec<u8>>, ch: &mut Channel, m: Value) {
+        to.send(ch.seal(m.to_string().as_bytes()).unwrap()).await.unwrap();
+    }
+
+    async fn hear(from: &mut mpsc::Receiver<Vec<u8>>, ch: &mut Channel) -> Option<Value> {
+        let f = tokio::time::timeout(std::time::Duration::from_secs(2), from.recv()).await.ok()??;
+        serde_json::from_slice(&ch.open(&f).unwrap()).ok()
+    }
+
+    /// The `key.new` answer's key.
+    async fn new_key(to: &mpsc::Sender<Vec<u8>>, from: &mut mpsc::Receiver<Vec<u8>>, ch: &mut Channel) -> [u8; 32] {
+        say(to, ch, json!({ "t": "key.new", "req": 7 })).await;
+        loop {
+            let m = hear(from, ch).await.unwrap();
+            if m["t"] == "key.new" {
+                assert_eq!(m["req"], 7);
+                return URL_SAFE_NO_PAD.decode(m["k"].as_str().unwrap()).unwrap().try_into().unwrap();
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn a_phone_takes_a_new_key_and_the_qr_key_stops_working() {
+        let core = core();
+        let (to, mut from, mut ch) = connect(&core, &PSK).await.unwrap();
+        let k = new_key(&to, &mut from, &mut ch).await;
+        assert_ne!(k, PSK);
+        say(&to, &mut ch, json!({ "t": "key.ok" })).await;
+        // This connection goes on.
+        say(&to, &mut ch, json!({ "t": "ping" })).await;
+        loop {
+            if hear(&mut from, &mut ch).await.unwrap()["t"] == "pong" {
+                break;
+            }
+        }
+        // The key from the QR code is no good any more; the new one is.
+        assert!(connect(&core, &PSK).await.is_none());
+        assert!(connect(&core, &k).await.is_some());
+    }
+
+    #[tokio::test]
+    async fn a_lost_confirmation_still_lets_the_new_key_in() {
+        let core = core();
+        let (to, mut from, mut ch) = connect(&core, &PSK).await.unwrap();
+        let k = new_key(&to, &mut from, &mut ch).await;
+        // Asking again offers the same key.
+        assert_eq!(new_key(&to, &mut from, &mut ch).await, k);
+        drop(to);
+        // No key.ok arrived: the old key works, and so does the offered one, which then becomes the key.
+        assert!(connect(&core, &k).await.is_some());
+        assert!(connect(&core, &PSK).await.is_none());
     }
 
     #[tokio::test]

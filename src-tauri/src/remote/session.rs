@@ -51,6 +51,8 @@ pub trait Host: Send + Sync + 'static {
     fn snapshot(&self, _id: &str) -> Option<oneshot::Receiver<Option<(String, u64)>>> {
         None
     }
+    /// A phone's key was replaced by a new one (`key.ok`, PROTOCOL.md "Key rotation"): keep it.
+    fn key_changed(&self, _phone: &str, _psk: [u8; 32]) {}
     /// Where `file.put` saves images.
     fn upload_dir(&self) -> PathBuf {
         upload::default_dir()

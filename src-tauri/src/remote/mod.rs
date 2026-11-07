@@ -201,6 +201,16 @@ impl session::Host for AppHost {
         Ok(rx)
     }
 
+    fn key_changed(&self, phone: &str, psk: [u8; 32]) {
+        let remote = self.0.state::<Remote>();
+        let mut c = remote.config.lock().unwrap();
+        let Some(p) = c.phones.iter_mut().find(|p| p.id == phone) else { return };
+        p.psk = URL_SAFE_NO_PAD.encode(psk);
+        let snapshot = c.clone();
+        drop(c);
+        remote.save(&snapshot);
+    }
+
     fn snapshot(&self, id: &str) -> Option<tokio::sync::oneshot::Receiver<Option<(String, u64)>>> {
         let nonce = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();

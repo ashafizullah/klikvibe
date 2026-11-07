@@ -59,6 +59,17 @@ The first frame and the first transport message (`hello`) must each arrive withi
 
 Either side may close at any time. The phone reconnects with a fresh handshake.
 
+## Key rotation
+
+The key from the QR code is replaced as soon as the phone connects, so it only works once: someone who saw the QR code (a screen share, a photo) can't use it after that.
+
+1. After its `hello`, a phone that supports it asks: `{"t":"key.new","req":n}`.
+2. The desktop answers `{"t":"key.new","req":n,"k":"<base64url 32-byte key>"}`. Asking again before step 4 gives the same key.
+3. The phone stores it: the key this connection used stays as its key, the new one as pending. Only then does it send `{"t":"key.ok"}`.
+4. The desktop makes the new key the phone's key and keeps it. The old key stops working, and the phone's other connections still on it end; this one goes on.
+
+The phone tries its pending key first, then its key. The desktop accepts the phone's key, and also a key it offered whose `key.ok` never arrived (it then becomes the key). A desktop that lost the offer (it restarted) refuses the pending key, and the phone falls back to the key it used last. A desktop without key rotation ignores `key.new`, and the phone gives up waiting.
+
 ## Messages
 
 Every message has `t`, its type. Requests that expect an answer carry `req`, a number the answer repeats.
