@@ -5,6 +5,7 @@
 KlikVibe Remote: close a terminal from your phone.
 
 - Close a terminal from the phone (after asking): its tab closes on the computer, and what runs in it stops, as when closed there.
+- Right-click the path above the editor (the project, a folder or the file): Reveal in Finder (Show in Explorer), show it in the file tree, copy its path or relative path.
 
 ## 0.7.1
 

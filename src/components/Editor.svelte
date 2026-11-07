@@ -66,6 +66,19 @@
     ]);
   }
 
+  /** Right-click on a breadcrumb (the project, a folder or the file): where it is, and its path. */
+  function crumbMenu(e: MouseEvent, path: string, file: boolean) {
+    openMenu(e, [
+      { label: revealLabel(), run: () => reveal(path) },
+      file
+        ? { label: t("crumbs.revealFile"), run: () => project.revealInTree(path) }
+        : { label: t("crumbs.revealFolder"), disabled: path === project.root, run: () => project.revealInTree(path, true) },
+      "sep",
+      { label: t("menu.copyPath"), run: () => copyText(path) },
+      { label: t("menu.copyRelative"), disabled: path === project.root, run: () => copyText(relative(project.root, path) ?? path) },
+    ]);
+  }
+
   const tabIcon = (tb: Tab) => (tb.kind === "file" ? fileIcon(tb.title) : { icon: ICON[tb.kind], color: undefined });
 
   function tabMenu(e: MouseEvent, tb: Tab) {
@@ -121,15 +134,34 @@
   {#if tab}
     {#if crumbs.length}
       <nav class="crumbs" aria-label={t("crumbs.label")}>
-        <button class="crumb" onclick={(e) => folderMenu(e.currentTarget, project.root)} title={project.root}>{project.current.name}</button>
+        <button
+          class="crumb"
+          onclick={(e) => folderMenu(e.currentTarget, project.root)}
+          oncontextmenu={(e) => crumbMenu(e, project.root, false)}
+          title={project.root}
+        >
+          {project.current.name}
+        </button>
         {#each crumbs as c (c.path)}
           <Icon name="right" size={11} class="crumb-sep" />
           {#if c.last}
-            <button class="crumb file" onclick={(e) => fileMenu(e.currentTarget, c.path)} title={c.path}>
+            <button
+              class="crumb file"
+              onclick={(e) => fileMenu(e.currentTarget, c.path)}
+              oncontextmenu={(e) => crumbMenu(e, c.path, true)}
+              title={c.path}
+            >
               <Icon name={fileIcon(c.name).icon} color={fileIcon(c.name).color} size={12} />{c.name}
             </button>
           {:else}
-            <button class="crumb" onclick={(e) => folderMenu(e.currentTarget, c.path)} title={c.path}>{c.name}</button>
+            <button
+              class="crumb"
+              onclick={(e) => folderMenu(e.currentTarget, c.path)}
+              oncontextmenu={(e) => crumbMenu(e, c.path, false)}
+              title={c.path}
+            >
+              {c.name}
+            </button>
           {/if}
         {/each}
       </nav>
