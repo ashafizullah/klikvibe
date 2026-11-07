@@ -326,6 +326,7 @@ const id: Record<Key, string> = {
   "remote.anywhere": "Pro: HP bisa terhubung dari mana saja, dan dapat notifikasi saat agen selesai atau menunggu jawabanmu.",
   "remote.relayOn": "Relay tersambung: HP bisa terhubung ke komputer ini dari mana saja.",
   "remote.relayOff": "Menghubungkan ke relay…",
+  "remote.relayError": "Koneksi relay gagal ({error}). Mencoba lagi dalam semenit…",
   "remote.confirmTitle": "Izinkan {phone} mengendalikan komputer ini?",
   "remote.confirmBody": "HP ini masuk sebagai {account}. HP akan melihat project yang terbuka beserta terminalnya, dan bisa mengetik di sana. Izinkan hanya HP yang baru saja kamu tambahkan sendiri.",
   "remote.confirmBodyNoAccount": "HP akan melihat project yang terbuka beserta terminalnya, dan bisa mengetik di sana. Izinkan hanya HP yang baru saja kamu tambahkan sendiri.",

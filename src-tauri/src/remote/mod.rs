@@ -77,6 +77,8 @@ pub struct Status {
     pub pro: bool,
     /// Connected to the relay: phones can reach this computer from anywhere.
     pub relay: bool,
+    /// The relay's last connection crashed (a bug); it is tried again every minute.
+    pub relay_error: Option<String>,
     pub phones: Vec<PhoneView>,
     pub pairing: Option<PairView>,
     /// A phone scanned the code and waits for the user to allow it.
@@ -118,6 +120,9 @@ pub struct Remote {
     pairing: Mutex<Option<Pairing>>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     relay_up: Arc<AtomicBool>,
+    relay_error: Mutex<Option<String>>,
+    /// Crash messages already reported this run (each once).
+    reported: Mutex<std::collections::HashSet<String>>,
     error: Mutex<Option<String>>,
     /// Turning Remote on, off and restarting it happen one at a time.
     life: tokio::sync::Mutex<()>,
@@ -234,6 +239,8 @@ impl Remote {
             pairing: Mutex::new(None),
             tasks: Mutex::new(Vec::new()),
             relay_up: Arc::new(AtomicBool::new(false)),
+            relay_error: Mutex::new(None),
+            reported: Mutex::default(),
             error: Mutex::new(None),
             life: tokio::sync::Mutex::new(()),
             pair_gen: AtomicU64::new(0),
@@ -304,6 +311,7 @@ impl Remote {
             account: c.account,
             pro: c.pro,
             relay: self.relay_up.load(Ordering::Relaxed),
+            relay_error: self.relay_error.lock().unwrap().clone(),
             phones: c
                 .phones
                 .iter()
@@ -375,10 +383,27 @@ impl Remote {
             };
             // A phone removed in the app: forgotten now, not at the next heartbeat.
             let revoke = |id: &str| me.forget_phone(id);
-            relay::run(core, cloud::base(), token, up, || me.changed(), revoke).await;
+            let crashed = |why: Option<String>| me.relay_crashed(why);
+            relay::run(core, cloud::base(), token, up, || me.changed(), revoke, crashed).await;
         });
         self.tasks.lock().unwrap().extend([tick, beat, relay]);
         Ok(())
+    }
+
+    /// The relay's connection panicked (Some), or connected again after one (None). Shown in the
+    /// dialog, and each new message reported once.
+    fn relay_crashed(&self, why: Option<String>) {
+        *self.relay_error.lock().unwrap() = why.clone();
+        let Some(why) = why else { return };
+        eprintln!("remote: relay crashed: {why}");
+        if !self.reported.lock().unwrap().insert(why.clone()) {
+            return;
+        }
+        let token = self.config.lock().unwrap().device_token.clone();
+        let version = self.version();
+        tauri::async_runtime::spawn(async move {
+            let _ = cloud::report_error(token.as_deref(), "relay", &why, &version).await;
+        });
     }
 
     /// Called with `life` held.
@@ -388,6 +413,7 @@ impl Remote {
             t.abort();
         }
         self.relay_up.store(false, Ordering::Relaxed);
+        self.relay_error.lock().unwrap().take();
         self.pair_cancel();
         self.confirm.lock().unwrap().take();
         // No key is accepted while off, so connections that are open (or still handshaking) end.

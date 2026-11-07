@@ -171,6 +171,30 @@ fn notice(title: &str, term: &str, agent: Option<&str>, kind: Option<&str>) -> V
     v
 }
 
+/// A bug's message, for /admin/errors (the privacy policy's "error reports"): only the panic text,
+/// never a terminal or a file.
+pub async fn report_error(device_token: Option<&str>, context: &str, message: &str, version: &str) -> Result<Value, CloudError> {
+    call(reqwest::Method::POST, "/v1/errors", device_token.map(|t| format!("Device {t}")), Some(error_report(context, message, version)))
+        .await
+}
+
+fn error_report(context: &str, message: &str, version: &str) -> Value {
+    let os = info("", version)["os"].clone();
+    let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(1);
+    json!({
+        "platform": "desktop",
+        "items": [{
+            "kind": "crash",
+            "message": message,
+            "context": context,
+            "appVersion": version,
+            "osVersion": format!("{} {}", std::env::consts::OS, std::env::consts::ARCH),
+            "device": os,
+            "at": at,
+        }],
+    })
+}
+
 pub async fn unlink(device_token: &str) -> Result<Value, CloudError> {
     call(reqwest::Method::DELETE, "/v1/desktop", Some(format!("Device {device_token}")), None).await
 }
@@ -211,5 +235,18 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(again, PairStatus::Linked { device_token: None, .. }));
+    }
+
+    #[test]
+    fn an_error_report_carries_only_the_message() {
+        let r = error_report("relay", "boom", "0.7.6");
+        assert_eq!(r["platform"], "desktop");
+        let item = &r["items"][0];
+        assert_eq!(
+            (item["kind"].as_str(), item["message"].as_str(), item["context"].as_str()),
+            (Some("crash"), Some("boom"), Some("relay"))
+        );
+        assert_eq!(item["appVersion"], "0.7.6");
+        assert!(item["at"].as_u64().unwrap() > 0);
     }
 }

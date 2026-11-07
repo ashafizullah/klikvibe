@@ -108,7 +108,7 @@
       </div>
       <p class="note small">{s.pro ? t("remote.anywhere") : t("remote.sameWifi")}</p>
       {#if s.pro && s.linked}
-        <p class="status" class:connected={s.relay}><span class="dot" class:on={s.relay}></span>{s.relay ? t("remote.relayOn") : t("remote.relayOff")}</p>
+        <p class="status" class:connected={s.relay} class:failed={!s.relay && s.relayError}><span class="dot" class:on={s.relay}></span>{s.relay ? t("remote.relayOn") : s.relayError ? t("remote.relayError", { error: s.relayError }) : t("remote.relayOff")}</p>
       {/if}
       <p class="note small">{t("remote.safety")}</p>
       <div class="foot">
@@ -258,6 +258,9 @@
   }
   .status.connected {
     color: var(--ok);
+  }
+  .status.failed {
+    color: var(--danger);
   }
   .confirm {
     display: flex;

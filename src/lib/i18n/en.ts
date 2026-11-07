@@ -324,6 +324,7 @@ const en = {
   "remote.anywhere": "Pro: your phone connects from anywhere, and you get a notification when an agent finishes or waits for you.",
   "remote.relayOn": "Relay connected: phones can reach this computer from anywhere.",
   "remote.relayOff": "Connecting to the relay…",
+  "remote.relayError": "The relay connection failed ({error}). Trying again in a minute…",
   "remote.confirmTitle": "Allow {phone} to control this computer?",
   "remote.confirmBody": "It is signed in as {account}. It will see the open projects and their terminals, and can type into them. Only allow a phone you just added yourself.",
   "remote.confirmBodyNoAccount": "It will see the open projects and their terminals, and can type into them. Only allow a phone you just added yourself.",

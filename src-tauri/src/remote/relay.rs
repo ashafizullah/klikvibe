@@ -4,9 +4,10 @@
 //! connection, so the relay only ever sees Noise ciphertext.
 
 use super::core::Core;
-use futures::{SinkExt, StreamExt};
+use futures::{FutureExt, SinkExt, StreamExt};
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::panic::AssertUnwindSafe;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -27,6 +28,8 @@ pub enum Ended {
     Refused,
     /// Couldn't connect at all (offline).
     Unreachable,
+    /// A bug: the connection panicked. Said in the dialog and reported, then tried again.
+    Crashed(String),
 }
 
 /// The relay's WebSocket address for this server (`https://…` → `wss://…/v1/relay/desktop`).
@@ -146,8 +149,23 @@ fn open(core: &Arc<Core>, ch: u32, out: &mpsc::Sender<Message>, channels: &Chann
     });
 }
 
+/// The text of a caught panic.
+fn panic_text(p: Box<dyn std::any::Any + Send>) -> String {
+    p.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| p.downcast_ref::<String>().cloned()).unwrap_or_else(|| "panic".into())
+}
+
+/// One connection, with a panic caught: without that, one bug ended the relay until the app was
+/// restarted, while the dialog kept saying "Connecting…".
+pub async fn attempt(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, revoke: &(dyn Fn(&str) + Sync)) -> Ended {
+    let ended =
+        AssertUnwindSafe(connect(core, url, token, up, revoke)).catch_unwind().await.unwrap_or_else(|p| Ended::Crashed(panic_text(p)));
+    up.store(false, Ordering::Relaxed);
+    ended
+}
+
 /// Keeps the relay connected while `token()` gives a token (Remote on, linked, Pro),
-/// reconnecting with backoff.
+/// reconnecting with backoff. `crashed` hears of each panic (Some) and of a connection that
+/// worked after one (None).
 pub async fn run(
     core: Arc<Core>,
     server: String,
@@ -155,6 +173,7 @@ pub async fn run(
     up: Arc<AtomicBool>,
     changed: impl Fn(),
     revoke: impl Fn(&str) + Sync,
+    crashed: impl Fn(Option<String>),
 ) {
     let mut backoff = Duration::from_secs(2);
     loop {
@@ -163,10 +182,18 @@ pub async fn run(
             continue;
         };
         let started = std::time::Instant::now();
-        let ended = connect(core.clone(), &url(&server), &t, &up, &revoke).await;
+        let ended = attempt(core.clone(), &url(&server), &t, &up, &revoke).await;
+        match &ended {
+            Ended::Crashed(why) => crashed(Some(why.clone())),
+            Ended::Closed => crashed(None),
+            _ => {}
+        }
         changed();
         let wait = if ended == Ended::Refused {
             Duration::from_secs(300)
+        } else if matches!(ended, Ended::Crashed(_)) {
+            // The same bug would likely panic again at once.
+            Duration::from_secs(60)
         } else if started.elapsed() > Duration::from_secs(60) {
             // A connection that lasted a while starts the backoff over.
             backoff = Duration::from_secs(2);
@@ -266,6 +293,23 @@ mod tests {
         let up = AtomicBool::new(false);
         assert_eq!(connect(core(), &format!("ws://{addr}/x"), "t", &up, &|_| {}).await, Ended::Refused);
         assert_eq!(connect(core(), "ws://127.0.0.1:1/x", "t", &up, &|_| {}).await, Ended::Unreachable);
+    }
+
+    #[tokio::test]
+    async fn a_panic_is_caught_and_told() {
+        // `revoke` panics on the relay's revoke message, standing in for any bug in a connection.
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+            ws.send(Message::Text(json!({ "t": "revoke", "phone": "p" }).to_string().into())).await.unwrap();
+            let _ = ws.next().await;
+        });
+        let up = AtomicBool::new(false);
+        let ended = attempt(core(), &format!("ws://{addr}/x"), "t", &up, &|_| panic!("boom")).await;
+        assert_eq!(ended, Ended::Crashed("boom".into()));
+        assert!(!up.load(Ordering::Relaxed));
     }
 }
 

@@ -117,6 +117,8 @@ export interface RemoteStatus {
   pro: boolean;
   /** Connected to the relay (Pro): phones reach this computer from anywhere. */
   relay: boolean;
+  /** The relay's last connection crashed (a bug); it is tried again every minute. */
+  relayError: string | null;
   phones: RemotePhone[];
   pairing: { url: string; svg: string; expiresAt: string } | null;
   /** A phone scanned the code: it is added only if the user allows it. */
