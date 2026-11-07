@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.7
+
+KlikVibe Remote: back on the relay right away.
+
+- Fixed: after a computer was removed from the account and added again, phones away from its Wi-Fi couldn't reach it for up to 5 minutes (it showed online, but "can't reach"). The relay now reconnects as soon as the computer is added again.
+
 ## 0.7.6
 
 KlikVibe Remote: safer pairing, and a relay that doesn't give up.
