@@ -56,6 +56,8 @@ hostname = "0.4"
 getrandom = "0.3"
 mdns-sd = "0.21"
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+# Both ring (tungstenite) and aws-lc-rs (reqwest) are compiled in, so rustls can't pick one itself: the relay installs aws-lc-rs.
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 
 # Debug builds keep line numbers for backtraces but not full debug info.
 [profile.dev]

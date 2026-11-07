@@ -39,9 +39,17 @@ pub fn url(server: &str) -> String {
 /// (sleep, a network change) even if the socket never said so.
 const SILENCE: Duration = Duration::from_secs(90);
 
+/// With both of rustls' providers compiled in (ring for tungstenite, aws-lc-rs for reqwest) it
+/// can't choose, and the wss handshake panics, ending the relay for good. An Err only means one is
+/// installed already.
+fn tls_provider() {
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+}
+
 /// One connection, until it ends. `up` is true while it is connected. `revoke` is called with
 /// a phone removed from the account.
 pub async fn connect(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, revoke: &(dyn Fn(&str) + Sync)) -> Ended {
+    tls_provider();
     let mut req = match url.into_client_request() {
         Ok(r) => r,
         Err(_) => return Ended::Unreachable,
@@ -258,5 +266,17 @@ mod tests {
         let up = AtomicBool::new(false);
         assert_eq!(connect(core(), &format!("ws://{addr}/x"), "t", &up, &|_| {}).await, Ended::Refused);
         assert_eq!(connect(core(), "ws://127.0.0.1:1/x", "t", &up, &|_| {}).await, Ended::Unreachable);
+    }
+}
+
+#[cfg(test)]
+mod tls {
+    /// The relay is wss: its TLS setup must not panic (it did, with two rustls providers).
+    #[tokio::test]
+    async fn wss_setup_does_not_panic() {
+        super::tls_provider();
+        // Nothing listens there: an error is fine, a panic is not.
+        let r = tokio::time::timeout(std::time::Duration::from_secs(5), tokio_tungstenite::connect_async("wss://127.0.0.1:9/")).await;
+        assert!(!matches!(r, Ok(Ok(_))));
     }
 }

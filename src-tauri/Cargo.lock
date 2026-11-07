@@ -2468,6 +2468,7 @@ dependencies = [
  "qrcode",
  "regex",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "snow",
