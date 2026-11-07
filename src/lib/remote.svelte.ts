@@ -94,6 +94,21 @@ function termKill({ root, id, nonce }: { root: string; id: string; nonce: string
   ipc.remoteTermCreated(nonce, error ? null : id, error).catch(() => {});
 }
 
+/** A phone opens a terminal: it gets the history as this window shows it (Rust falls back to raw output). */
+async function termSnapshot({ id, lines, nonce }: { id: string; lines: number; nonce: string }) {
+  let snap: { data: string; offset: number } | null = null;
+  try {
+    for (const p of workspace.projects) {
+      const pending = p.terminalSnapshot?.(id, lines);
+      if (pending) {
+        snap = await pending;
+        break;
+      }
+    }
+  } catch {}
+  ipc.remoteTermSnapshot(nonce, snap?.data ?? null, snap?.offset ?? 0).catch(() => {});
+}
+
 let started = false;
 export function initRemote() {
   if (started) return;
@@ -104,5 +119,6 @@ export function initRemote() {
   listen("remote-changed", () => refreshRemote());
   listen<{ root: string; agent: string | null; nonce: string }>("remote-term-new", (e) => termNew(e.payload));
   listen<{ root: string; id: string; nonce: string }>("remote-term-kill", (e) => termKill(e.payload));
+  listen<{ id: string; lines: number; nonce: string }>("remote-term-snapshot", (e) => termSnapshot(e.payload));
   setInterval(report, 1500);
 }

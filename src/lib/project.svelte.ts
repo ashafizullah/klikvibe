@@ -112,6 +112,8 @@ export class ProjectState {
   newTerminal: ((agent: AgentDef | null) => Promise<string>) | null = null;
   /** Closes the terminal with this session id (KlikVibe Remote's `term.kill`); false if it isn't here. */
   closeTerminal: ((session: string) => boolean) | null = null;
+  /** A terminal's scrollback as shown (ANSI) and the output bytes it covers, for KlikVibe Remote. */
+  terminalSnapshot: ((session: string, lines: number) => Promise<{ data: string; offset: number } | null> | null) | null = null;
   // ---- what changed since the user last looked ----
   /** When each file last changed on disk (absolute path), not counting the user's own saves. */
   readonly lastChanged = new SvelteMap<string, number>();

@@ -3,6 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import { Terminal, type ILink } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
+  import { SerializeAddon } from "@xterm/addon-serialize";
   import "@xterm/xterm/css/xterm.css";
   import { errorText, ipc } from "../lib/ipc";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -263,6 +264,9 @@
   let term: Terminal | null = null;
   let fit: FitAddon | null = null;
   let session: string | null = null;
+  let serializer: SerializeAddon | null = null;
+  /** Bytes of shell output written so far: the same count remote/hub.rs keeps for this terminal. */
+  let received = 0;
   let exited = $state(false);
   let cleanup: (() => void) | null = null;
 
@@ -277,6 +281,8 @@
     });
     const fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
+    serializer = new SerializeAddon();
+    xterm.loadAddon(serializer);
     xterm.open(host);
     // Let the app shortcuts (Ctrl+`, Ctrl+Tab, Mod+1..9) through instead of sending them to the shell.
     xterm.attachCustomKeyEventHandler((e) => !(e.ctrlKey && (e.key === "`" || e.key === "Tab")) && !((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key)));
@@ -293,6 +299,7 @@
       .terminalOpen(cwd, xterm.cols, xterm.rows, (e) => {
         if (e.type === "data") {
           const bytes = decode(e.data);
+          received += bytes.length;
           xterm.write(bytes);
           noteOutput();
           scanForUrl(bytes);
@@ -365,6 +372,18 @@
     term.paste(text);
     term.focus();
     return true;
+  }
+
+  /**
+   * What the terminal shows, scrollback included, as text with its colors and cursor (for KlikVibe
+   * Remote: a phone opening it sees the same history), and how many output bytes that covers.
+   */
+  export function snapshot(lines: number): Promise<{ data: string; offset: number } | null> {
+    const xterm = term;
+    if (!xterm || !serializer) return Promise.resolve(null);
+    const offset = received;
+    // After everything received so far has been parsed (later output is not in the snapshot).
+    return new Promise((done) => xterm.write("", () => done({ data: serializer?.serialize({ scrollback: lines }) ?? "", offset })));
   }
 
   /** The last `n` lines of output as plain text (wrapped lines joined back), for the MCP tools. */

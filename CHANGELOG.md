@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.3
+
+KlikVibe Remote: the whole history on the phone.
+
+- A phone opening a terminal gets its history as the window shows it (up to 3000 lines, with colors), instead of only the last raw output, which an agent's redrawing used up fast. You can scroll back as far as on the computer.
+
 ## 0.7.2
 
 KlikVibe Remote: close a terminal from your phone.

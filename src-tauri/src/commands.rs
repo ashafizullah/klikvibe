@@ -540,6 +540,12 @@ pub fn remote_term_created(remote: State<'_, Remote>, nonce: String, id: Option<
     remote.term_created(&nonce, id, error);
 }
 
+/// A terminal's history as the window shows it, for a phone opening it (`remote-term-snapshot`).
+#[tauri::command]
+pub fn remote_term_snapshot(remote: State<'_, Remote>, nonce: String, data: Option<String>, offset: u64) {
+    remote.term_snapshot(&nonce, data, offset);
+}
+
 #[tauri::command]
 pub fn remote_attention(remote: State<'_, Remote>, root: String, term: String, title: String, body: String) {
     remote.attention(&root, &term, &title, &body);

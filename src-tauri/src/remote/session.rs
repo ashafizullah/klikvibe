@@ -18,6 +18,8 @@ pub const VERSION: u32 = 1;
 const FEATURES: [&str; 3] = ["term.new", "term.kill", "file.put"];
 /// How long the window has to open a terminal for `term.new`.
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
+/// How long a phone opening a terminal waits for the window's view of it.
+const SNAPSHOT_WAIT: Duration = Duration::from_secs(3);
 /// Raw output per `term.data` message (base64 makes it a third larger; it still fits a Noise message).
 const DATA_CHUNK: usize = 32 * 1024;
 /// A diff larger than this is cut (a Noise message holds 64 KiB; JSON escaping can add to it, see `fit`).
@@ -43,6 +45,12 @@ pub trait Host: Send + Sync + 'static {
     /// Asks the window to close a terminal tab (its shell and what runs in it end), as if
     /// closed on the computer. The answer (the id, or why not) comes later.
     fn term_kill(&self, root: &str, id: &str) -> Result<oneshot::Receiver<Result<String, String>>, String>;
+    /// The terminal's history as the window shows it (text with its colors, scrollback included)
+    /// and how many output bytes it covers. None (or no answer) falls back to the raw output kept
+    /// in the hub, which is short for agents that redraw a lot.
+    fn snapshot(&self, _id: &str) -> Option<oneshot::Receiver<Option<(String, u64)>>> {
+        None
+    }
     /// Where `file.put` saves images.
     fn upload_dir(&self) -> PathBuf {
         upload::default_dir()
@@ -81,15 +89,33 @@ impl Session {
         true
     }
 
-    /// `term.reset`, then everything the terminal printed so far.
+    /// `term.reset`, then everything the terminal printed so far: the window's own view of it
+    /// when it answers in time (the whole scrollback), else the raw output kept in the hub.
     async fn open_term(&mut self, id: &str) -> bool {
-        let Some(o) = self.hub.root_of(id).and_then(|_| self.hub.open(id)) else {
+        if self.hub.root_of(id).is_none() || self.hub.open(id).is_none() {
             // With the terminal's id, so the phone shows it on that terminal's screen.
             return self.send(json!({ "t": "error", "id": id, "message": "No such terminal" })).await;
+        }
+        let snap = match self.host.snapshot(id) {
+            Some(rx) => tokio::time::timeout(SNAPSHOT_WAIT, rx).await.ok().and_then(Result::ok).flatten(),
+            None => None,
+        };
+        let Some(o) = self.hub.open(id) else {
+            return self.send(json!({ "t": "error", "id": id, "message": "No such terminal" })).await;
+        };
+        let history: Vec<u8> = match snap {
+            // The window may be a little behind the hub: what it hasn't drawn yet comes from the raw tail.
+            Some((view, at)) if at <= o.end && ((o.end - at) as usize) <= o.scrollback.len() => {
+                let gap = (o.end - at) as usize;
+                let mut b = view.into_bytes();
+                b.extend_from_slice(&o.scrollback[o.scrollback.len() - gap..]);
+                b
+            }
+            _ => o.scrollback,
         };
         self.open.insert(id.to_string(), o.end);
         self.send(json!({ "t": "term.reset", "id": id, "cols": o.cols, "rows": o.rows })).await
-            && self.data(id, &o.scrollback).await
+            && self.data(id, &history).await
             && match o.exited {
                 Some(code) => self.send(json!({ "t": "term.exit", "id": id, "code": code })).await,
                 None => true,
@@ -359,11 +385,13 @@ mod tests {
         typed: Mutex<Vec<(String, String)>>,
         /// Where this test's uploads go.
         dir: PathBuf,
+        /// The window's view of a terminal, when the test gives one.
+        view: Mutex<Option<(String, u64)>>,
     }
 
     impl Default for Fake {
         fn default() -> Self {
-            Self { typed: Mutex::default(), dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())) }
+            Self { typed: Mutex::default(), view: Mutex::default(), dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())) }
         }
     }
 
@@ -391,6 +419,12 @@ mod tests {
             let (tx, rx) = oneshot::channel();
             let _ = tx.send(Ok(format!("new {root} {}", agent.unwrap_or("shell"))));
             Ok(rx)
+        }
+        fn snapshot(&self, _id: &str) -> Option<oneshot::Receiver<Option<(String, u64)>>> {
+            let view = self.view.lock().unwrap().clone()?;
+            let (tx, rx) = oneshot::channel();
+            let _ = tx.send(Some(view));
+            Some(rx)
         }
         fn term_kill(&self, _root: &str, id: &str) -> Result<oneshot::Receiver<Result<String, String>>, String> {
             let (tx, rx) = oneshot::channel();
@@ -563,6 +597,31 @@ mod tests {
         assert_eq!(next(&mut from).await["t"], "error");
         say(json!({ "t": "term.new", "req": 4, "root": "/etc", "agent": null })).await.unwrap();
         assert_eq!(next(&mut from).await["t"], "error");
+        drop(to);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn opening_sends_the_windows_view_and_what_it_has_not_drawn_yet() {
+        let hub = Arc::new(Hub::default());
+        hub.started("t1", 80, 24);
+        hub.set_projects(vec![ProjectMeta {
+            root: "/app".into(),
+            name: "app".into(),
+            attention: false,
+            terminals: vec![TerminalMeta { id: "t1".into(), name: "zsh".into(), agent: None }],
+        }]);
+        hub.output("t1", b"old spinner frames");
+        hub.output("t1", b"+late");
+        // The window has drawn the first 18 bytes; its view holds the whole scrollback.
+        let host = Arc::new(Fake::default());
+        *host.view.lock().unwrap() = Some(("VIEW".into(), 18));
+        let (to, mut from, task) = connected(hub.clone(), host).await;
+        to.send(br#"{"t":"term.open","id":"t1"}"#.to_vec()).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "term.reset");
+        assert_eq!(next(&mut from).await["data"], base64::engine::general_purpose::STANDARD.encode("VIEW+late"));
+        hub.output("t1", b"!");
+        assert_eq!(next(&mut from).await["data"], base64::engine::general_purpose::STANDARD.encode("!"));
         drop(to);
         task.await.unwrap();
     }

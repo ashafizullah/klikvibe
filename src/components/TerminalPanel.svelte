@@ -186,6 +186,13 @@
   }
   project.closeTerminal = closeTerminal;
 
+  /** A terminal's history as the window shows it, for a phone opening it; null if it isn't here. */
+  function snapshot(session: string, lines: number) {
+    const s = shells.find((x) => refs[x.id]?.sessionId() === session);
+    return s ? (refs[s.id]?.snapshot(lines) ?? null) : null;
+  }
+  project.terminalSnapshot = snapshot;
+
   // Kept up to date while it runs: KlikVibe can be quit (or the computer shut down) at any moment.
   let lastSaved = "";
   function save() {
@@ -215,6 +222,7 @@
     if (project.terminals === terminals) project.terminals = null;
     if (project.newTerminal === newTerminal) project.newTerminal = null;
     if (project.closeTerminal === closeTerminal) project.closeTerminal = null;
+    if (project.terminalSnapshot === snapshot) project.terminalSnapshot = null;
     // The project was closed: its terminals don't come back next time. (An update keeps them.)
     if (sessionHeld()) save();
     else

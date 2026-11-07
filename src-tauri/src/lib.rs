@@ -143,6 +143,7 @@ pub fn run() {
             commands::remote_attention,
             commands::remote_agents,
             commands::remote_term_created,
+            commands::remote_term_snapshot,
             commands::check_updates,
             commands::install_update,
             commands::set_update_mode,

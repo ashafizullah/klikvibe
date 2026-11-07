@@ -65,7 +65,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 |---|---|---|
 | `hello` | `v`, `name` | Must come first. Answer: `hello` |
 | `projects` | | Answer: `projects` |
-| `term.open` | `id` | Start streaming a terminal: `term.reset`, the scrollback as `term.data`, then live output |
+| `term.open` | `id` | Start streaming a terminal: `term.reset`, the scrollback as `term.data`, then live output. The scrollback is the terminal as the desktop window shows it (up to 3000 lines of history, with colors and the cursor), or the last raw output when the window doesn't answer in time |
 | `term.close` | `id` | Stop streaming it |
 | `term.input` | `id`, `data` (string) | Typed into the terminal, as if on the keyboard |
 | `git.status` | `req`, `root` | Answer: `git.status` |

@@ -41,6 +41,10 @@ pub const CHANGED: &str = "remote-changed";
 pub const TERM_NEW: &str = "remote-term-new";
 /// The window closes a terminal tab for a phone's `term.kill`, then answers with `remote_term_created`.
 pub const TERM_KILL: &str = "remote-term-kill";
+/// The window sends a terminal's history (scrollback as shown) for a phone opening it: `remote_term_snapshot`.
+pub const TERM_SNAPSHOT: &str = "remote-term-snapshot";
+/// Scrollback lines a phone gets when it opens a terminal.
+const SNAPSHOT_LINES: u32 = 3000;
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -120,6 +124,8 @@ pub struct Remote {
     confirm: Mutex<Option<Confirm>>,
     /// `term.new` requests waiting for the window, by nonce.
     term_waits: Mutex<HashMap<String, tokio::sync::oneshot::Sender<Result<String, String>>>>,
+    /// Phones waiting for a terminal's history from the window (`remote-term-snapshot`).
+    snapshot_waits: Mutex<HashMap<String, tokio::sync::oneshot::Sender<Option<(String, u64)>>>>,
 }
 
 /// The computer's name as the user knows it ("Adam's MacBook Pro").
@@ -186,6 +192,19 @@ impl session::Host for AppHost {
         Ok(rx)
     }
 
+    fn snapshot(&self, id: &str) -> Option<tokio::sync::oneshot::Receiver<Option<(String, u64)>>> {
+        let nonce = uuid::Uuid::new_v4().to_string();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        {
+            let remote = self.0.state::<Remote>();
+            let mut waits = remote.snapshot_waits.lock().unwrap();
+            waits.retain(|_, w| !w.is_closed());
+            waits.insert(nonce.clone(), tx);
+        }
+        self.0.emit(TERM_SNAPSHOT, json!({ "id": id, "lines": SNAPSHOT_LINES, "nonce": nonce })).ok()?;
+        Some(rx)
+    }
+
     fn term_kill(&self, root: &str, id: &str) -> Result<tokio::sync::oneshot::Receiver<Result<String, String>>, String> {
         let nonce = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
@@ -218,6 +237,7 @@ impl Remote {
             pair_gen: AtomicU64::new(0),
             confirm: Mutex::new(None),
             term_waits: Mutex::default(),
+            snapshot_waits: Mutex::default(),
         }
     }
 
@@ -591,6 +611,12 @@ impl Remote {
         self.forget_account();
         self.reannounce().await;
         self.changed();
+    }
+
+    /// The window's view of a terminal for a phone opening it (None: it doesn't have that terminal).
+    pub fn term_snapshot(&self, nonce: &str, data: Option<String>, offset: u64) {
+        let Some(tx) = self.snapshot_waits.lock().unwrap().remove(nonce) else { return };
+        let _ = tx.send(data.map(|d| (d, offset)));
     }
 
     /// The window's answer to a `term.new` (the new terminal's id) or a `term.kill` (the closed one's), or why not.
