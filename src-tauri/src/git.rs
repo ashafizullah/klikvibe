@@ -372,20 +372,30 @@ pub fn unstage(root: &Path, paths: &[String]) -> AppResult<()> {
     Ok(())
 }
 
+/// The remote to use: "origin", else the first one; None without remotes.
+fn remote_name(root: &Path) -> Option<String> {
+    let list = run(root, &["remote"]).ok()?;
+    if list.lines().any(|l| l.trim() == "origin") {
+        return Some("origin".to_string());
+    }
+    list.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string)
+}
+
 /// The URL of the "origin" remote (else the first remote), for web links; None without remotes.
 pub fn remote_url(root: &Path) -> Option<String> {
-    let name = match run(root, &["remote"]) {
-        Ok(list) if list.lines().any(|l| l.trim() == "origin") => "origin".to_string(),
-        Ok(list) => list.lines().next()?.trim().to_string(),
-        Err(_) => return None,
-    };
+    let name = remote_name(root)?;
     run(root, &["remote", "get-url", &name]).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
-/// Pushes the branch, setting its upstream on the first push.
+/// Pushes the branch, setting its upstream on the first push (to "origin", else the only remote).
 pub fn push(root: &Path) -> AppResult<String> {
     let has_upstream = run(root, &["rev-parse", "--abbrev-ref", "@{u}"]).is_ok();
-    if has_upstream { run_all(root, &["push"]) } else { run_all(root, &["push", "--set-upstream", "origin", "HEAD"]) }
+    if has_upstream {
+        return run_all(root, &["push"]);
+    }
+    // Without remotes, git's own message ("origin does not appear to be a git repository") says so.
+    let remote = remote_name(root).unwrap_or_else(|| "origin".to_string());
+    run_all(root, &["push", "--set-upstream", &remote, "HEAD"])
 }
 
 /// Pulls without merge commits: fast-forward only, like a careful terminal user.
@@ -792,6 +802,24 @@ mod tests {
         assert_eq!(log[0].parents, ["bbb222", "ccc333"]);
         assert_eq!(log[0].refs, ["HEAD -> refs/heads/main", "refs/remotes/origin/main", "tag: refs/tags/v0.2.0"]);
         assert!(log[1].parents.is_empty() && log[1].refs.is_empty());
+    }
+
+    #[test]
+    fn publishes_to_a_remote_not_named_origin() {
+        let base = std::env::temp_dir().join(format!("klikvibe-git-{}", uuid::Uuid::new_v4()));
+        let (dir, bare) = (base.join("repo"), base.join("bare.git"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(&bare).unwrap();
+        run(&bare, &["init", "--bare"]).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        commit(&dir, "First", true).unwrap();
+        run(&dir, &["remote", "add", "github", &bare.display().to_string()]).unwrap();
+        push(&dir).unwrap();
+        assert!(run(&dir, &["rev-parse", "--abbrev-ref", "@{u}"]).unwrap().trim().starts_with("github/"));
+        std::fs::remove_dir_all(&base).ok();
     }
 
     #[test]

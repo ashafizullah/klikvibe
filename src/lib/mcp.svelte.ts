@@ -7,7 +7,7 @@
 import type { EditorView } from "@codemirror/view";
 import { errorText, ipc, type Checkpoint, type McpInfo } from "./ipc";
 import { languageName } from "./languages";
-import { join, relative } from "./paths";
+import { join, relative, relativeLoose } from "./paths";
 import { currentProject, isDirty, showProject, workspace, type ProjectState, type Tab } from "./project.svelte";
 import { persist, settings } from "./settings.svelte";
 import { toast } from "./ui.svelte";
@@ -60,9 +60,11 @@ function pickProject(which: unknown): ProjectState {
 /** The open project holding `path`, and the absolute path. */
 function locate(path: string): { project: ProjectState; abs: string } {
   if (/^([a-zA-Z]:[\\/]|[\\/])/.test(path)) {
-    const project = workspace.projects.filter((p) => relative(p.root, path) !== null).sort((a, b) => b.root.length - a.root.length)[0];
+    const project = workspace.projects.filter((p) => relativeLoose(p.root, path) !== null).sort((a, b) => b.root.length - a.root.length)[0];
     if (!project) throw new Error(`${path} is outside the projects open in KlikVibe (${workspace.projects.map((p) => p.root).join(", ") || "none"}).`);
-    return { project, abs: path.replace(/[\\/]+$/, "") };
+    // Spelled as KlikVibe spells it (its open tabs are found by path).
+    const rel = relativeLoose(project.root, path) ?? "";
+    return { project, abs: rel ? join(project.root, rel) : project.root.replace(/[\\/]+$/, "") };
   }
   const rel = path.replace(/^\.[\\/]/, "");
   if (rel.split(/[\\/]/).includes("..")) throw new Error("Give a path inside the project, without '..'.");

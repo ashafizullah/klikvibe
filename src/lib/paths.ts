@@ -18,6 +18,22 @@ export function relative(root: string, path: string): string | null {
   return path.slice(base.length + 1).split("\\").join("/");
 }
 
+/** Like `relative`, for a path someone else wrote (an agent): either slash, and on Windows any
+ *  letter case ("c:/users/a/proj/x.ts" is under "C:\\Users\\a\\proj"). */
+export function relativeLoose(root: string, path: string): string | null {
+  const windows = /^[a-zA-Z]:/.test(root) || root.includes("\\");
+  const norm = (p: string) => {
+    const s = p.replace(/\\/g, "/").replace(/\/+$/, "");
+    return windows ? s.toLowerCase() : s;
+  };
+  const base = norm(root);
+  const full = norm(path);
+  if (full === base) return "";
+  if (!full.startsWith(`${base}/`)) return null;
+  // The rest in the caller's own spelling (only the root's case is ignored).
+  return path.replace(/\\/g, "/").replace(/\/+$/, "").slice(base.length + 1);
+}
+
 export function baseName(path: string): string {
   return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
 }
