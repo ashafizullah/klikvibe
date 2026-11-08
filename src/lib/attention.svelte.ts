@@ -9,8 +9,10 @@ import { SvelteSet } from "svelte/reactivity";
 import { settings } from "./settings.svelte";
 import { ipc } from "./ipc";
 
-/** Project roots with a terminal waiting for the user. */
+/** Project roots with a terminal waiting for the user (the project tab's dot). */
 export const attention = new SvelteSet<string>();
+/** The same for the phone (KlikVibe Remote), which is told even with desktop notifications off. */
+export const phoneAttention = new SvelteSet<string>();
 
 /** What happened, for the phone's push: an agent went quiet, an agent's own notification, or the bell. */
 export type AttentionKind = "waiting" | "message" | "bell";
@@ -47,6 +49,7 @@ export async function needsYou(
   last.set(key, now);
   // The phone too (and a push with Pro), even with desktop notifications off; nothing happens while Remote is off.
   if (session) ipc.remoteAttention(root, session, title, body, kind).catch(() => {});
+  phoneAttention.add(root);
   if (!settings.notifyAgents) return;
   attention.add(root);
   getCurrentWindow()
@@ -58,4 +61,5 @@ export async function needsYou(
 /** The user looked: the project's dot goes away. */
 export function seen(root: string) {
   attention.delete(root);
+  phoneAttention.delete(root);
 }

@@ -141,13 +141,17 @@ async fn upgrade(
     })
 }
 
+const PHONE_SILENCE: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// Carries one WebSocket's binary frames to and from Core.
 pub async fn serve(core: Arc<Core>, socket: WebSocket) {
     let (mut sink, mut stream) = socket.split();
     let (frames_tx, frames) = mpsc::channel::<Vec<u8>>(64);
     let (out, mut out_rx) = mpsc::channel::<Vec<u8>>(64);
     let reader = async move {
-        while let Some(Ok(m)) = stream.next().await {
+        // Phones ping every 20 seconds: a connection silent for a minute is a phone that left the
+        // Wi-Fi (or the Mac slept), and it would otherwise hold its slot and show as connected.
+        while let Ok(Some(Ok(m))) = tokio::time::timeout(PHONE_SILENCE, stream.next()).await {
             match m {
                 Message::Binary(b) => {
                     if frames_tx.send(b.to_vec()).await.is_err() {

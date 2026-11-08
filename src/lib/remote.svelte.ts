@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { errorText, ipc, type RemoteProject, type RemoteStatus } from "./ipc";
 import { AGENTS } from "./agents";
 import { workspace } from "./project.svelte";
-import { attention } from "./attention.svelte";
+import { phoneAttention } from "./attention.svelte";
 import { ui } from "./ui.svelte";
 
 export const remote = $state({ status: null as RemoteStatus | null, busy: false, error: null as string | null });
@@ -33,7 +33,7 @@ function projects(): RemoteProject[] {
   return workspace.projects.map((p) => ({
     root: p.root,
     name: p.current.name,
-    attention: attention.has(p.root),
+    attention: phoneAttention.has(p.root),
     terminals: p.remoteTerminals?.() ?? [],
   }));
 }

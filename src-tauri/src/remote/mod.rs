@@ -644,14 +644,21 @@ impl Remote {
     }
 
     /// "Disconnect from account": the server forgets the computer, and it forgets every phone.
-    pub async fn unlink(&self) {
+    /// Offline (or on a server error) nothing changes: forgetting the token here would leave the
+    /// computer in the account with no way to remove itself.
+    pub async fn unlink(&self) -> Result<(), String> {
         let token = self.config.lock().unwrap().device_token.clone();
         if let Some(t) = token {
-            let _ = cloud::unlink(&t).await;
+            match cloud::unlink(&t).await {
+                // Unlinked already (removed from the phone app meanwhile): forgetting it is right.
+                Ok(_) | Err(cloud::CloudError::Unlinked) => {}
+                Err(e) => return Err(e.to_string()),
+            }
         }
         self.forget_account();
         self.reannounce().await;
         self.changed();
+        Ok(())
     }
 
     /// The window's view of a terminal for a phone opening it (None: it doesn't have that terminal).

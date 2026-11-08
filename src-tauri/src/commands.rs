@@ -518,7 +518,7 @@ pub fn remote_forget_phone(remote: State<'_, Remote>, id: String) -> remote::Sta
 
 #[tauri::command]
 pub async fn remote_unlink(remote: State<'_, Remote>) -> AppResult<remote::Status> {
-    remote.unlink().await;
+    remote.unlink().await.map_err(AppError::msg)?;
     Ok(remote.status())
 }
 

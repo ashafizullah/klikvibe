@@ -152,7 +152,8 @@
   project.remoteTerminals = () =>
     shells.flatMap((s, i) => {
       const id = refs[s.id]?.sessionId();
-      if (!id || s.exited) return [];
+      // An ended shell stays listed (as "exited"), as its tab stays here: the phone can read its last output and close it.
+      if (!id) return [];
       const agent = isAgent(s) ? (AGENTS.find((a) => a.label === s.auto)?.id ?? null) : null;
       return [{ id, name: label(s, i), agent }];
     });

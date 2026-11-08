@@ -38,9 +38,12 @@ pub fn url(server: &str) -> String {
     format!("{}/v1/relay/desktop", ws.trim_end_matches('/'))
 }
 
-/// The relay pings every 30 seconds: this long without any frame means the link is dead
-/// (sleep, a network change) even if the socket never said so.
-const SILENCE: Duration = Duration::from_secs(90);
+/// The relay pings a quiet link about every 30 seconds: this long without any frame means the link
+/// is dead (a network change) even if the socket never said so. Measured in wall-clock time: tokio's
+/// timers stop while the Mac sleeps, but the relay dropped the link after 40 s of silence, so after
+/// a longer sleep it reconnects within a few seconds of waking instead of 90 s later.
+const SILENCE: Duration = Duration::from_secs(60);
+const SILENCE_CHECK: Duration = Duration::from_secs(5);
 
 /// With both of rustls' providers compiled in (ring for tungstenite, aws-lc-rs for reqwest) it
 /// can't choose, and the wss handshake panics, ending the relay for good. An Err only means one is
@@ -82,7 +85,20 @@ pub async fn connect(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, r
     // The phones' tasks: aborted together when this connection ends or Remote is turned off.
     let mut tasks = tokio::task::JoinSet::new();
 
-    while let Ok(Some(Ok(msg))) = tokio::time::timeout(SILENCE, stream.next()).await {
+    let mut last = std::time::SystemTime::now();
+    let mut check = tokio::time::interval(SILENCE_CHECK);
+    loop {
+        let next = tokio::select! {
+            m = stream.next() => Some(m),
+            _ = check.tick() => None,
+        };
+        let msg = match next {
+            Some(Some(Ok(msg))) => msg,
+            Some(_) => break,
+            None if last.elapsed().unwrap_or_default() > SILENCE => break,
+            None => continue,
+        };
+        last = std::time::SystemTime::now();
         match msg {
             Message::Text(t) => {
                 let Ok(m) = serde_json::from_str::<Value>(&t) else { continue };

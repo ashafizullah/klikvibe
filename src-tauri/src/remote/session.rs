@@ -75,6 +75,31 @@ struct Session {
     resize_at: Option<tokio::time::Instant>,
 }
 
+/// The `git.status` answer. A huge working tree (an unignored build folder, a folder renamed) is
+/// listed only in part: at most MAX_CHANGES entries, and fewer when long paths would make the
+/// message too large for one Noise message.
+fn status_message(req: &Value, mut status: Value) -> Value {
+    let mut truncated = false;
+    if let Some(list) = status.get_mut("changes").and_then(Value::as_array_mut)
+        && list.len() > MAX_CHANGES
+    {
+        list.truncate(MAX_CHANGES);
+        truncated = true;
+    }
+    loop {
+        let m = json!({ "t": "git.status", "req": req, "status": status.clone(), "truncated": truncated });
+        let len = m.to_string().len();
+        let Some(list) = status.get_mut("changes").and_then(Value::as_array_mut) else { return m };
+        if len <= MAX_MESSAGE || list.is_empty() {
+            return m;
+        }
+        // Cut in proportion, a little more, then measure again.
+        let keep = list.len() * MAX_MESSAGE / len * 9 / 10;
+        list.truncate(keep.min(list.len() - 1));
+        truncated = true;
+    }
+}
+
 impl Session {
     /// Sends one message. One too large for a Noise message becomes an error for its request,
     /// so the phone isn't left waiting.
@@ -200,17 +225,7 @@ impl Session {
                 let r =
                     if self.hub.has_project(&root) { self.git(move |h| h.git_status(&root)).await } else { Err("Project not open".into()) };
                 match r {
-                    Ok(mut status) => {
-                        // A huge working tree (an unignored build folder) is listed only in part.
-                        let mut truncated = false;
-                        if let Some(list) = status.get_mut("changes").and_then(Value::as_array_mut)
-                            && list.len() > MAX_CHANGES
-                        {
-                            list.truncate(MAX_CHANGES);
-                            truncated = true;
-                        }
-                        self.send(json!({ "t": "git.status", "req": req, "status": status, "truncated": truncated })).await
-                    }
+                    Ok(status) => self.send(status_message(&req, status)).await,
                     Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
                 }
             }
@@ -371,10 +386,11 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
             },
             e = events.recv() => match e {
                 Ok(e) => s.event(e).await,
-                // Too far behind (a slow connection): start the open terminals over.
+                // Too far behind (a slow connection): start the open terminals over, and send the
+                // project list again (a change in it may have been among the messages skipped).
                 Err(broadcast::error::RecvError::Lagged(_)) => {
                     let ids: Vec<String> = s.open.drain().map(|(id, _)| id).collect();
-                    let mut ok = true;
+                    let mut ok = s.projects().await;
                     for id in ids {
                         ok = ok && s.open_term(&id).await;
                     }
@@ -494,6 +510,19 @@ mod tests {
     async fn next(rx: &mut mpsc::Receiver<Vec<u8>>) -> Value {
         let b = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
         serde_json::from_slice(&b).unwrap()
+    }
+
+    #[test]
+    fn a_long_change_list_is_cut_to_fit_one_message() {
+        let long = "node_modules/.pnpm/some-package@1.2.3_peer-dependency@4.5.6/node_modules/some-package/dist/esm/a/deeply/nested/file";
+        let changes: Vec<Value> = (0..300).map(|i| json!({ "path": format!("{long}/{long}{i}.js"), "kind": "untracked", "staged": false, "unstaged": true })).collect();
+        let m = status_message(&json!(7), json!({ "repo": true, "branch": "main", "changes": changes }));
+        assert!(m.to_string().len() <= MAX_MESSAGE);
+        assert_eq!(m["truncated"], true);
+        let kept = m["status"]["changes"].as_array().unwrap().len();
+        assert!(kept > 100 && kept < 300, "{kept}");
+        let small = status_message(&json!(8), json!({ "changes": [{ "path": "a.ts" }] }));
+        assert_eq!(small["truncated"], false);
     }
 
     #[tokio::test]
