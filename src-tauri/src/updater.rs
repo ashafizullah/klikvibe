@@ -155,7 +155,7 @@ async fn download(app: AppHandle) -> bool {
     result.is_ok()
 }
 
-/// Looks for a newer version and keeps it for `install_available`.
+/// Looks for a newer version and keeps it for `prepare`.
 pub async fn check(app: &AppHandle) -> Result<Check, String> {
     if let Some(ready) = pending() {
         // Already downloaded in the background: offer that one.
@@ -176,14 +176,23 @@ pub async fn check(app: &AppHandle) -> Result<Check, String> {
     }
 }
 
-/// Installs what `check` found (or what was downloaded already) and restarts into it.
-pub async fn install_available(app: &AppHandle) -> Result<(), String> {
+/// Downloads what `check` found, unless it was downloaded already, so installing it can't fail on
+/// the network after the window has closed its projects. A failed download keeps it for a retry.
+pub async fn prepare(_app: &AppHandle) -> Result<(), String> {
     if PENDING.lock().unwrap().is_some() {
-        return install_now(app);
+        return Ok(());
     }
     let update = AVAILABLE.lock().unwrap().take().ok_or("No update to install; check again")?;
-    update.download_and_install(|_, _| {}, || {}).await.map_err(|e| e.to_string())?;
-    app.restart()
+    match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) => {
+            *PENDING.lock().unwrap() = Some((update, bytes));
+            Ok(())
+        }
+        Err(e) => {
+            AVAILABLE.lock().unwrap().get_or_insert(update);
+            Err(e.to_string())
+        }
+    }
 }
 
 /// Installs the downloaded update and restarts into it.

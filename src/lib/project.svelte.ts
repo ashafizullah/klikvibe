@@ -843,10 +843,11 @@ export async function confirmQuit(): Promise<boolean> {
   return !dirty.length || confirmDiscard(dirty);
 }
 
-/** Closes a project tab (and its terminals); false when the user keeps unsaved edits. */
-export async function closeProject(p: ProjectState): Promise<boolean> {
+/** Closes a project tab (and its terminals); false when the user keeps unsaved edits. `force`:
+ *  the user already chose to throw them away (see `confirmQuit`). */
+export async function closeProject(p: ProjectState, force = false): Promise<boolean> {
   const dirty = p.tabs.filter(isDirty);
-  if (dirty.length && !(await confirmDiscard(dirty, p.current.name))) return false;
+  if (!force && dirty.length && !(await confirmDiscard(dirty, p.current.name))) return false;
   const i = workspace.projects.indexOf(p);
   if (i < 0) return true;
   workspace.projects.splice(i, 1);
@@ -855,13 +856,9 @@ export async function closeProject(p: ProjectState): Promise<boolean> {
   return true;
 }
 
-/** Closes every project; false when the user keeps unsaved edits in one. */
-export async function closeAllProjects(): Promise<boolean> {
-  for (const p of [...workspace.projects]) {
-    workspace.active = p.root;
-    if (!(await closeProject(p))) return false;
-  }
-  return true;
+/** Closes every project, after the user agreed to lose their unsaved edits (`confirmQuit`). */
+export async function closeAllProjects(): Promise<void> {
+  for (const p of [...workspace.projects]) await closeProject(p, true);
 }
 
 /** Moves to the next (+1) or previous (-1) project tab. */

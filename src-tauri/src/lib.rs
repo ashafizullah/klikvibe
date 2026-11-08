@@ -201,6 +201,7 @@ pub fn run() {
             commands::remote_term_snapshot,
             commands::check_updates,
             commands::install_update,
+            commands::prepare_update,
             commands::set_update_mode,
             commands::pending_update,
             commands::update_changelog,

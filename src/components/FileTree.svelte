@@ -119,12 +119,15 @@
     if (line) project.revealLines(`file:${abs}`, line);
   }
 
+  let list = $state<HTMLElement>();
+
   function onKey(e: KeyboardEvent) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const n = flat.length;
       if (n) cursor = (cursor + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
-      document.querySelector(`[data-result="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
+      // In this project's list: every open project keeps its tree (hidden ones too).
+      list?.querySelector(`[data-result="${cursor}"]`)?.scrollIntoView({ block: "nearest" });
     } else if (e.key === "Enter" && flat[cursor]) {
       e.preventDefault();
       open(flat[cursor].path, flat[cursor].line);
@@ -195,7 +198,7 @@
     {/if}
   </div>
 
-  <div class="items" role="tree" tabindex="-1" oncontextmenu={rootMenu}>
+  <div class="items" role="tree" tabindex="-1" bind:this={list} oncontextmenu={rootMenu}>
     {#if !searching}
       {#if mode === "names" && focused}<p class="hint">{t("search.hint")}</p>{/if}
       {#each entries as entry (entry.path)}

@@ -602,7 +602,13 @@ pub async fn check_updates(app: AppHandle) -> AppResult<updater::Check> {
 /// Installs the version the last check found (or the one downloaded in the background) and restarts.
 #[tauri::command]
 pub async fn install_update(app: AppHandle) -> AppResult<()> {
-    updater::install_available(&app).await.map_err(AppError::msg)
+    updater::install_now(&app).map_err(AppError::msg)
+}
+
+/// Downloads the update `check_updates` found, before the window closes anything for it.
+#[tauri::command]
+pub async fn prepare_update(app: AppHandle) -> AppResult<()> {
+    updater::prepare(&app).await.map_err(AppError::msg)
 }
 
 /// "auto", "notify" or "off".

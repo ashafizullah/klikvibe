@@ -4,8 +4,8 @@
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { errorText, ipc, type Release } from "./ipc";
-import { closeAllProjects } from "./project.svelte";
-import { holdSession } from "./session.svelte";
+import { closeAllProjects, confirmQuit } from "./project.svelte";
+import { holdSession, restoreSession } from "./session.svelte";
 import { hadSettings, persist, settings, type UpdateMode } from "./settings.svelte";
 import { dismissToast, showAlert, toast } from "./ui.svelte";
 import { changelogSection } from "./changelog";
@@ -78,20 +78,29 @@ export async function checkForUpdates() {
   }
 }
 
-/** Closes the projects (asking about unsaved edits), then installs and restarts. */
+/** Asks about unsaved edits (every project at once, before anything closes), downloads the update
+ *  with the projects still open, then closes them and installs and restarts. A failure on the way
+ *  leaves the projects as they were, or opens them again. */
 export async function installUpdate() {
   if (updates.installing) return;
-  // The projects close before the restart, but should open again after it.
-  holdSession(true);
-  if (!(await closeAllProjects())) return holdSession(false);
+  if (!(await confirmQuit())) return;
   updates.installing = true;
   // Stays until KlikVibe restarts into the new version.
   const notice = toast(t("update.installing"), "info", undefined, 0);
+  let closed = false;
   try {
+    await ipc.prepareUpdate();
+    // The projects close before the restart, but open again after it (the session isn't saved empty).
+    holdSession(true);
+    closed = true;
+    await closeAllProjects();
     await ipc.installUpdate();
   } catch (e) {
     dismissToast(notice);
-    holdSession(false);
+    if (closed) {
+      await restoreSession();
+      holdSession(false);
+    }
     await showAlert({ tone: "error", title: t("update.installFailed"), message: errorText(e) });
   } finally {
     updates.installing = false;
