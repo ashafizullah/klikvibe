@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.11
+
+Updates that can't lose your projects, and a steadier KlikVibe Remote.
+
+- Installing an update downloads it first, with your projects still open, and asks about unsaved edits in every project before anything closes. Before, a failed download (slow or no internet) left KlikVibe with no projects open and none to restore, keeping the edits in one project still closed the others, and a second try always failed with "No update to install".
+- In file search, ↑ and ↓ scroll the results of the project you're in (with another project's search open, they scrolled that one).
+- KlikVibe Remote:
+  - After the Mac wakes from sleep, the relay reconnects within seconds (before, it could take 90 seconds while showing connected).
+  - A phone that left the Wi-Fi is let go after a minute, instead of showing as connected.
+  - The phone's Git list fits huge working trees (long paths no longer turn it into an error).
+  - "Disconnect from account" while offline says so and keeps the link, instead of leaving the computer in the account with no way to remove it.
+  - The phone shows which projects need you even with desktop notifications off, and keeps a terminal whose shell has ended (to read its last output, or close it).
+  - On a slow connection, changes to the terminal list are no longer missed.
+- The file tree can take keyboard focus (accessibility).
+
 ## 0.7.10
 
 Unsaved edits are safe, and fixes for Windows files, worktrees and Publish.
