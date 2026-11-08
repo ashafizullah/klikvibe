@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.9
+
+No more "A dev server is running" for an agent's own addresses.
+
+- Fixed: a terminal running an agent (Claude Code, Codex, ...) offered the preview for any local address the agent printed, such as a plugin's own server (claude-mem's http://localhost:37777), each time a project opened. Only addresses printed outside an agent offer it now, as a dev server started from a terminal or the Scripts menu does.
+
 ## 0.7.8
 
 Copy and paste in the terminal, without the beep.
