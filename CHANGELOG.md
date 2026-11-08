@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.8
+
+Copy and paste in the terminal, without the beep.
+
+- Fixed: on macOS, ⌘C in the terminal copied but made the system's "can't do that" sound. It now copies quietly.
+- Windows and Linux, as in Windows Terminal: Ctrl+C copies while text is selected in the terminal (and interrupts as before when nothing is), Ctrl+Shift+C always copies, and Ctrl+Shift+V pastes (Ctrl+V too on Windows). Before, these keys only went to the shell.
+
 ## 0.7.7
 
 KlikVibe Remote: back on the relay right away.
