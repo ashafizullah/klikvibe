@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.10
+
+Unsaved edits are safe, and fixes for Windows files, worktrees and Publish.
+
+- Quitting (⌘Q) or closing the window with unsaved edits asks first. Before, KlikVibe closed and the edits were lost.
+- Files with Windows line ends (CRLF) keep them when saved. Before, saving turned every line end into LF (so Git showed the whole file as changed), and an agent's edit to such a file marked its tab as unsaved.
+- "This file changed on disk" shows only when the file's text really changed: no longer after your own save while you kept typing, or after `npm install` or a build touched many files. Keys typed while a file is being saved are no longer counted as saved.
+- Deleting a file that .gitignore leaves out (such as `.env`) says it can't be undone: checkpoints don't keep those files. Deleting a folder says its gitignored files won't come back.
+- In a task's worktree (agents in parallel), the Git panel follows commits made there, so Merge no longer asks to commit first.
+- Publish pushes to the repository's remote when it isn't called `origin`.
+- MCP tools take Windows paths with either slash and any letter case.
+- KlikVibe Remote: a terminal resized on the computer is shown at its new size on the phone (before, the screen was garbled until the terminal was opened again).
+
 ## 0.7.9
 
 No more "A dev server is running" for an agent's own addresses.
