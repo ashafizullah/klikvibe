@@ -142,6 +142,6 @@ export const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.p
 export const mod = isMac ? "⌘" : "Ctrl+";
 /** A shortcut with Alt / Option: modAlt("G") is "⌘⌥G" or "Ctrl+Alt+G". */
 export const modAlt = (key: string) => (isMac ? `⌘⌥${key}` : `Ctrl+Alt+${key}`);
-const isWindows = typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent);
+export const isWindows = typeof navigator !== "undefined" && /Win/i.test(navigator.platform || navigator.userAgent);
 /** "Reveal in Finder" and its counterparts. */
 export const revealLabel = () => t(isMac ? "menu.revealMac" : isWindows ? "menu.revealWindows" : "menu.reveal");

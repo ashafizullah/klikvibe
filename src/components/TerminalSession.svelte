@@ -13,7 +13,7 @@
   import { agentIn, terminalName } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
   import { join } from "../lib/paths";
-  import { isMac, toast } from "../lib/ui.svelte";
+  import { isMac, isWindows, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
 
   let {
@@ -286,7 +286,33 @@
     xterm.loadAddon(serializer);
     xterm.open(host);
     // Let the app shortcuts (Ctrl+`, Ctrl+Tab, Mod+1..9) through instead of sending them to the shell.
-    xterm.attachCustomKeyEventHandler((e) => !(e.ctrlKey && (e.key === "`" || e.key === "Tab")) && !((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key)));
+    xterm.attachCustomKeyEventHandler((e) => {
+      // ⌘C on macOS: copy the selection here. Left to the Edit menu, its Copy finds no page selection
+      // (xterm draws its own) and macOS beeps, although xterm's copy handler still fills the clipboard.
+      if (isMac && e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === "c") {
+        if (e.type === "keydown") {
+          e.preventDefault();
+          if (xterm.hasSelection()) navigator.clipboard.writeText(xterm.getSelection()).catch(() => {});
+        }
+        return false;
+      }
+      // Windows and Linux, as in Windows Terminal: Ctrl+C copies while text is selected (else it
+      // interrupts), Ctrl+Shift+C always copies; Ctrl+Shift+V (and Ctrl+V on Windows) is left to the
+      // browser's paste, which xterm takes as a paste. Before, Ctrl+C and Ctrl+V only reached the shell.
+      if (!isMac && e.ctrlKey && !e.altKey && !e.metaKey) {
+        const key = e.key.toLowerCase();
+        if (key === "c" && (e.shiftKey || xterm.hasSelection())) {
+          if (e.type === "keydown") {
+            e.preventDefault();
+            if (xterm.hasSelection()) navigator.clipboard.writeText(xterm.getSelection()).catch(() => {});
+            if (!e.shiftKey) xterm.clearSelection();
+          }
+          return false;
+        }
+        if (key === "v" && (e.shiftKey || isWindows)) return false;
+      }
+      return !(e.ctrlKey && (e.key === "`" || e.key === "Tab")) && !((e.metaKey || e.ctrlKey) && /^[1-9]$/.test(e.key));
+    });
     fitAddon.fit();
     term = xterm;
     fit = fitAddon;
