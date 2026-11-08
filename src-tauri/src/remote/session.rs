@@ -6,7 +6,7 @@ use super::hub::{Event, Hub};
 use super::upload::{self, Chunk, Uploads};
 use base64::Engine;
 use serde_json::{Value, json};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -20,6 +20,8 @@ const FEATURES: [&str; 3] = ["term.new", "term.kill", "file.put"];
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
 /// How long a phone opening a terminal waits for the window's view of it.
 const SNAPSHOT_WAIT: Duration = Duration::from_secs(3);
+/// A resized terminal is sent again this long after its last size change.
+const RESIZE_SETTLE: Duration = Duration::from_millis(400);
 /// Raw output per `term.data` message (base64 makes it a third larger; it still fits a Noise message).
 const DATA_CHUNK: usize = 32 * 1024;
 /// A diff larger than this is cut (a Noise message holds 64 KiB; JSON escaping can add to it, see `fit`).
@@ -68,6 +70,9 @@ struct Session {
     /// A `term.new` is waiting for the window: one at a time.
     opening: Arc<AtomicBool>,
     uploads: Uploads,
+    /// Open terminals resized on the computer, sent again at the new size once resizing stops.
+    resized: HashSet<String>,
+    resize_at: Option<tokio::time::Instant>,
 }
 
 impl Session {
@@ -143,6 +148,13 @@ impl Session {
             }
             Event::Exit { id, code } if self.open.contains_key(&id) => self.send(json!({ "t": "term.exit", "id": id, "code": code })).await,
             Event::Projects => self.projects().await,
+            // Phones only take the terminal's size with a `term.reset`, so the terminal starts over
+            // at the new size, once the resizing (a dragged window) has stopped for a moment.
+            Event::Resize { id } if self.open.contains_key(&id) => {
+                self.resized.insert(id);
+                self.resize_at = Some(tokio::time::Instant::now() + RESIZE_SETTLE);
+                true
+            }
             Event::Attention { root, term, title, body } => {
                 self.send(json!({ "t": "attention", "root": root, "term": term, "title": title, "body": body })).await
             }
@@ -339,7 +351,7 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
     }
     let mut events = hub.subscribe();
     let uploads = Uploads::new(host.upload_dir());
-    let mut s = Session { hub, host, tx, open: HashMap::new(), opening: Arc::default(), uploads };
+    let mut s = Session { hub, host, tx, open: HashMap::new(), opening: Arc::default(), uploads, resized: HashSet::new(), resize_at: None };
     let mut hello = s.host.hello();
     hello["t"] = json!("hello");
     hello["v"] = json!(VERSION);
@@ -370,6 +382,15 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
                 }
                 Err(broadcast::error::RecvError::Closed) => false,
             },
+            _ = tokio::time::sleep_until(s.resize_at.unwrap_or_else(tokio::time::Instant::now)), if s.resize_at.is_some() => {
+                s.resize_at = None;
+                let ids: Vec<String> = s.resized.drain().filter(|id| s.open.contains_key(id)).collect();
+                let mut ok = true;
+                for id in ids {
+                    ok = ok && s.open_term(&id).await;
+                }
+                ok
+            }
         };
         if !ok {
             break;
@@ -473,6 +494,37 @@ mod tests {
     async fn next(rx: &mut mpsc::Receiver<Vec<u8>>) -> Value {
         let b = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
         serde_json::from_slice(&b).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_resize_starts_the_terminal_over_at_the_new_size() {
+        let hub = Arc::new(Hub::default());
+        hub.started("t1", 100, 30);
+        hub.output("t1", b"hi");
+        hub.set_projects(vec![ProjectMeta {
+            root: "/app".into(),
+            name: "app".into(),
+            attention: false,
+            terminals: vec![TerminalMeta { id: "t1".into(), name: "zsh".into(), agent: None }],
+        }]);
+        let (to_desktop, rx) = mpsc::channel(16);
+        let (tx, mut from_desktop) = mpsc::channel(64);
+        let _task = tokio::spawn(serve(hub.clone(), Arc::new(Fake::default()), rx, tx));
+        to_desktop.send(br#"{"t":"hello","v":1}"#.to_vec()).await.unwrap();
+        next(&mut from_desktop).await; // hello
+        next(&mut from_desktop).await; // projects
+        to_desktop.send(br#"{"t":"term.open","id":"t1"}"#.to_vec()).await.unwrap();
+        let r = next(&mut from_desktop).await;
+        assert_eq!((r["t"].as_str(), r["cols"].as_u64()), (Some("term.reset"), Some(100)));
+        assert_eq!(next(&mut from_desktop).await["t"], "term.data");
+
+        hub.resized("t1", 100, 30); // the same size: nothing
+        hub.resized("t1", 70, 20);
+        hub.resized("t1", 60, 20); // still being dragged: one reset, at the last size
+        let r = next(&mut from_desktop).await;
+        assert_eq!((r["t"].as_str(), r["cols"].as_u64(), r["rows"].as_u64()), (Some("term.reset"), Some(60), Some(20)));
+        assert_eq!(next(&mut from_desktop).await["t"], "term.data");
+        assert!(tokio::time::timeout(Duration::from_millis(700), from_desktop.recv()).await.is_err());
     }
 
     #[tokio::test]

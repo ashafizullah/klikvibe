@@ -83,6 +83,10 @@ pub enum Event {
         title: String,
         body: String,
     },
+    /// A terminal's size changed on the computer.
+    Resize {
+        id: String,
+    },
 }
 
 struct Term {
@@ -183,9 +187,12 @@ impl Hub {
     }
 
     pub fn resized(&self, id: &str, cols: u16, rows: u16) {
-        if let Some(t) = self.state.lock().unwrap().terms.get_mut(id) {
+        if let Some(t) = self.state.lock().unwrap().terms.get_mut(id)
+            && (t.cols, t.rows) != (cols, rows)
+        {
             t.cols = cols;
             t.rows = rows;
+            let _ = self.tx.send(Event::Resize { id: id.to_string() });
         }
     }
 

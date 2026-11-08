@@ -96,7 +96,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 |---|---|---|
 | `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "term.kill", "file.put"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts |
 | `projects` | `projects: [Project]` | Also sent unasked whenever something changes |
-| `term.reset` | `id`, `cols`, `rows` | Clear the screen; the desktop's size (the phone never resizes the terminal) |
+| `term.reset` | `id`, `cols`, `rows` | Clear the screen; the desktop's size (the phone never resizes the terminal). Also sent again, with the output so far, when the terminal is resized on the computer |
 | `term.data` | `id`, `data` (base64) | Raw output bytes, at most 32 KiB per message |
 | `term.exit` | `id`, `code` | Also when the tab is closed on the computer (`code`: null) |
 | `attention` | `root`, `term`, `title`, `body` | An agent needs the user |

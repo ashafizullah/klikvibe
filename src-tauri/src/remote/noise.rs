@@ -128,8 +128,6 @@ mod tests {
         let mut i = init.into_transport_mode().unwrap();
         let mut out = [0u8; 128];
         let n3 = i.write_message(b"hello", &mut out).unwrap();
-        let hex = |b: &[u8]| b.iter().map(|x| format!("{x:02x}")).collect::<String>();
-        println!("m1 {}\nm2 {}\nt1 {}", hex(&m1[..n1]), hex(&m2[..n2]), hex(&out[..n3]));
         assert_eq!(n1, 48);
         assert_eq!(n2, 48);
         assert_eq!(n3, 5 + 16);
