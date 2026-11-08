@@ -12,6 +12,7 @@ mod watch;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 
 /// The first folder among launch arguments (`klikvibe .`), resolved against `cwd`.
@@ -33,6 +34,29 @@ fn focus(app: &tauri::AppHandle) {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// The window has unsaved edits (the window says so with `set_unsaved`): quitting asks first.
+static UNSAVED: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn set_unsaved(unsaved: bool) {
+    UNSAVED.store(unsaved, Ordering::Relaxed);
+}
+
+/// Quits, after the window has asked about unsaved edits.
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+/// Quit or the window's close button: with unsaved edits the window asks first ("quit-asked").
+fn ask_to_quit(app: &tauri::AppHandle) -> bool {
+    if UNSAVED.load(Ordering::Relaxed) {
+        let _ = app.emit("quit-asked", ());
+        return false;
+    }
+    true
+}
+
 pub fn run() {
     // What the terminals print, kept for KlikVibe Remote (see remote/hub.rs).
     let hub = Arc::new(remote::hub::Hub::default());
@@ -57,6 +81,18 @@ pub fn run() {
             tauri::async_runtime::spawn_blocking(move || responder.respond(media::serve(&app.state::<projects::Projects>(), &request)));
         })
         .manage(terminals)
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event
+                && !ask_to_quit(window.app_handle())
+            {
+                api.prevent_close();
+            }
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "quit" && ask_to_quit(app) {
+                app.exit(0);
+            }
+        })
         .manage(watch::Watchers::default())
         .setup(|app| {
             let projects = projects::Projects::new(app.path().app_data_dir()?);
@@ -66,6 +102,25 @@ pub fn run() {
                 *projects.launch.lock().unwrap() = Some(project);
             }
             app.manage(projects);
+            // macOS: the menu's Quit (⌘Q) ends the app at once, so it is swapped for one that asks
+            // about unsaved edits first.
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::menu::{Menu, MenuItem, MenuItemKind};
+                let menu = Menu::default(app.handle())?;
+                if let Some(MenuItemKind::Submenu(first)) = menu.items()?.into_iter().next() {
+                    for item in first.items()? {
+                        if let MenuItemKind::Predefined(p) = &item
+                            && let Ok(text) = p.text()
+                            && text.starts_with("Quit")
+                        {
+                            first.remove(&item)?;
+                            first.append(&MenuItem::with_id(app, "quit", text, true, Some("CmdOrCtrl+Q"))?)?;
+                        }
+                    }
+                }
+                app.set_menu(menu)?;
+            }
             app.manage(mcp::Mcp::new(app.path().app_data_dir()?));
             app.manage(remote::Remote::new(app.path().app_data_dir()?, hub));
             remote::Remote::init(app.handle());
@@ -149,6 +204,8 @@ pub fn run() {
             commands::set_update_mode,
             commands::pending_update,
             commands::update_changelog,
+            set_unsaved,
+            quit_app,
         ])
         .build(tauri::generate_context!())
         .expect("error while building KlikVibe")

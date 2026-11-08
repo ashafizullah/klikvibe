@@ -249,6 +249,8 @@ export const ipc = {
   setUpdateMode: (mode: string) => invoke<void>("set_update_mode", { mode }),
   pendingUpdate: () => invoke<Release | null>("pending_update"),
   updateChangelog: (version: string, locale: string) => invoke<string>("update_changelog", { version, locale }),
+  setUnsaved: (unsaved: boolean) => invoke<void>("set_unsaved", { unsaved }),
+  quitApp: () => invoke<void>("quit_app"),
 };
 
 export function errorText(e: unknown): string {

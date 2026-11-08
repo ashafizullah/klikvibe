@@ -3,7 +3,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { errorText, ipc, type Project } from "./lib/ipc";
-  import { currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
+  import { confirmQuit, currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
   import { persist, settings } from "./lib/settings.svelte";
   import { isMac, toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
@@ -31,6 +31,10 @@
   onMount(() => {
     document.documentElement.lang = i18n.locale;
     const off = listen<Project>("open-project", (e) => openProject(e.payload));
+    // Quit (⌘Q) or the close button with unsaved edits: ask, then quit.
+    const offQuit = listen("quit-asked", async () => {
+      if (await confirmQuit()) ipc.quitApp().catch(() => {});
+    });
     // The last session first, then a folder from the launch arguments in front of it.
     restoreSession()
       .then(() => ipc.takeLaunchProject())
@@ -38,7 +42,16 @@
     initUpdates();
     initRemote();
     if (settings.mcpEnabled) startMcp();
-    return () => off.then((f) => f());
+    return () => {
+      off.then((f) => f());
+      offQuit.then((f) => f());
+    };
+  });
+
+  // The app asks before quitting while any project has unsaved edits.
+  $effect(() => {
+    const unsaved = workspace.projects.some((p) => p.dirty);
+    ipc.setUnsaved(unsaved).catch(() => {});
   });
 
   // Remember the open projects and file tabs for the next launch.
