@@ -44,12 +44,15 @@
   const scan = new TextDecoder();
   let scanTail = "";
   let lastUrl = "";
-  function scanForUrl(bytes: Uint8Array) {
+  async function scanForUrl(bytes: Uint8Array) {
     const text = scanTail + scan.decode(bytes, { stream: true });
     scanTail = text.slice(-120);
     const url = devServerUrl(text);
     if (url && url !== lastUrl) {
       lastUrl = url;
+      // An agent prints local addresses that aren't a dev server to preview (its plugins' own
+      // servers, such as claude-mem's at localhost:37777, or one it mentions), so not from an agent.
+      if (agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null)) return;
       onurl(url);
     }
   }
