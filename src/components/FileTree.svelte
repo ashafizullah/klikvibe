@@ -195,7 +195,7 @@
     {/if}
   </div>
 
-  <div class="items" role="tree" oncontextmenu={rootMenu}>
+  <div class="items" role="tree" tabindex="-1" oncontextmenu={rootMenu}>
     {#if !searching}
       {#if mode === "names" && focused}<p class="hint">{t("search.hint")}</p>{/if}
       {#each entries as entry (entry.path)}
