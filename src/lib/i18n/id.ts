@@ -49,6 +49,7 @@ const id: Record<Key, string> = {
   "files.deleteFileBody": "File ini dihapus dari disk.",
   "files.deleteFolderBody": "Folder ini dan seluruh isinya dihapus dari disk.",
   "files.deleteUndo": "Checkpoint dibuat dulu, jadi bisa dikembalikan dari tab Checkpoint.",
+  "files.deleteUndoFolder": "Checkpoint dibuat dulu, jadi bisa dikembalikan dari tab Checkpoint, kecuali file yang diabaikan .gitignore.",
   "files.deleteNoUndo": "Ini tidak bisa dibatalkan.",
   "files.deleted": "{name} dihapus.",
   "tree.title": "File",

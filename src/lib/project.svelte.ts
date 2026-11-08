@@ -1,6 +1,7 @@
 // The open projects, one per tab in the title bar. Each keeps its own file
 // tree, open files, Git state and terminals, kept in step with the disk
 // while an agent (or anything else) changes files.
+import { fromDisk, toDisk, type Eol } from "./eol";
 import { getContext, setContext, tick } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
@@ -27,8 +28,10 @@ export interface Tab {
   path: string;
   /** What the editor shows; for diff and commit tabs, the patch. */
   text: string;
-  /** The text as last read from or written to disk. */
+  /** The text as last read from or written to disk (with "\n" line ends, as the editor keeps them). */
   saved: string;
+  /** The file's line ends, kept when it is saved: CodeMirror turns "\r\n" into "\n". */
+  eol: Eol;
   binary: boolean;
   tooLarge: boolean;
   /** The file changed on disk while it had unsaved edits here. */
@@ -48,7 +51,7 @@ export const isDirty = (tab: Tab) => tab.kind === "file" && tab.text !== tab.sav
 const lastLines = (s: string) => s.trim().split("\n").slice(-3).join("\n");
 
 function newTab(kind: TabKind, id: string, title: string, path: string): Tab {
-  return { id, kind, title, path, text: "", saved: "", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null };
+  return { id, kind, title, path, text: "", saved: "", eol: "\n", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null };
 }
 
 function selectLines(view: EditorView, line: number, endLine: number) {
@@ -399,13 +402,14 @@ export class ProjectState {
     }
   }
 
-  async deleteEntry(path: string, isDir: boolean) {
+  /** `ignored`: .gitignore leaves it out, so no checkpoint can bring it back. */
+  async deleteEntry(path: string, isDir: boolean, ignored = false) {
     const name = baseName(path);
     // A checkpoint first, so it can come back from the Checkpoints tab.
-    const canUndo = settings.checkpoints && !this.checkpointsOff;
+    const canUndo = settings.checkpoints && !this.checkpointsOff && !ignored;
     const ok = await confirm({
       title: t("files.deleteTitle", { name }),
-      message: `${isDir ? t("files.deleteFolderBody") : t("files.deleteFileBody")} ${canUndo ? t("files.deleteUndo") : t("files.deleteNoUndo")}`,
+      message: `${isDir ? t("files.deleteFolderBody") : t("files.deleteFileBody")} ${canUndo ? t(isDir ? "files.deleteUndoFolder" : "files.deleteUndo") : t("files.deleteNoUndo")}`,
       confirm: t("files.delete"),
       danger: true,
     });
@@ -448,7 +452,9 @@ export class ProjectState {
       const file = await ipc.readFile(tab.path);
       tab.binary = file.binary;
       tab.tooLarge = file.tooLarge;
-      tab.text = tab.saved = file.text ?? "";
+      const disk = fromDisk(file.text ?? "");
+      tab.text = tab.saved = disk.text;
+      tab.eol = disk.eol;
       tab.changedOnDisk = false;
       tab.revision++;
     } catch (e) {
@@ -457,6 +463,33 @@ export class ProjectState {
     } finally {
       tab.loading = false;
     }
+  }
+
+  /** The file changed on disk: show the new text, unless it is what the tab last saved or read
+   *  (the echo of a save, or a build touching many files). With unsaved edits, or typing while it
+   *  was read, the edits stay and the tab says the file changed. */
+  private async syncFromDisk(tab: Tab) {
+    const typed = tab.text;
+    let file;
+    try {
+      file = await ipc.readFile(tab.path);
+    } catch {
+      // Gone (deleted or renamed): an unedited tab closes, as before.
+      if (!isDirty(tab)) this.readInto(tab);
+      return;
+    }
+    const disk = fromDisk(file.text ?? "");
+    if (!file.binary && !file.tooLarge && disk.text === tab.saved) return;
+    if (isDirty(tab) || tab.text !== typed) {
+      tab.changedOnDisk = true;
+      return;
+    }
+    tab.binary = file.binary;
+    tab.tooLarge = file.tooLarge;
+    tab.text = tab.saved = disk.text;
+    tab.eol = disk.eol;
+    tab.changedOnDisk = false;
+    tab.revision++;
   }
 
   async openFile(path: string, quiet = false) {
@@ -587,9 +620,11 @@ export class ProjectState {
   async saveTab(tab: Tab | undefined = this.activeTab()) {
     if (!tab || tab.kind !== "file" || tab.media || tab.binary || tab.tooLarge) return;
     try {
+      // What is written counts as saved, not keys typed while it was being written.
+      const text = tab.text;
       this.ownWrites.set(tab.path, Date.now());
-      await ipc.writeFile(tab.path, tab.text);
-      tab.saved = tab.text;
+      await ipc.writeFile(tab.path, toDisk(text, tab.eol));
+      tab.saved = text;
       tab.changedOnDisk = false;
     } catch (e) {
       toast(errorText(e), "error");
@@ -635,8 +670,7 @@ export class ProjectState {
       if (tab.kind === "file" && tab.media) {
         tab.revision++;
       } else if (tab.kind === "file") {
-        if (!isDirty(tab)) this.readInto(tab);
-        else tab.changedOnDisk = true;
+        this.syncFromDisk(tab);
       } else if (tab.kind === "diff") {
         const rel = relative(this.root, tab.path);
         if (rel) this.loadDiff(tab, rel);
@@ -801,6 +835,12 @@ export async function openProject(p: Project) {
 
 export function showProject(root: string | null) {
   workspace.active = root;
+}
+
+/** Before quitting: asks about the unsaved edits in every project; false when the user keeps them. */
+export async function confirmQuit(): Promise<boolean> {
+  const dirty = workspace.projects.flatMap((p) => p.tabs.filter(isDirty));
+  return !dirty.length || confirmDiscard(dirty);
 }
 
 /** Closes a project tab (and its terminals); false when the user keeps unsaved edits. */

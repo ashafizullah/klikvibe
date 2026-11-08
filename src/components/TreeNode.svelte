@@ -31,7 +31,7 @@
       { label: t("files.newFolder"), icon: "folder-plus", run: () => project.newEntry(folder, true) },
       "sep",
       { label: t("files.renameMenu"), run: () => project.renameEntry(entry.path, entry.dir) },
-      { label: t("files.deleteMenu"), run: () => project.deleteEntry(entry.path, entry.dir) },
+      { label: t("files.deleteMenu"), run: () => project.deleteEntry(entry.path, entry.dir, entry.ignored) },
     ];
     const where: MenuItem[] = [
       { label: t("menu.copyPath"), run: () => copyText(entry.path) },

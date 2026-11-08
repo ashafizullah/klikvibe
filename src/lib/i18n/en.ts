@@ -47,6 +47,7 @@ const en = {
   "files.deleteFileBody": "The file is deleted from disk.",
   "files.deleteFolderBody": "The folder and everything in it are deleted from disk.",
   "files.deleteUndo": "A checkpoint is taken first, so you can bring it back from the Checkpoints tab.",
+  "files.deleteUndoFolder": "A checkpoint is taken first, so you can bring it back from the Checkpoints tab, except files that .gitignore leaves out.",
   "files.deleteNoUndo": "This can't be undone.",
   "files.deleted": "Deleted {name}.",
   "tree.title": "Files",
