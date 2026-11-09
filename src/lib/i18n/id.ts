@@ -225,7 +225,6 @@ const id: Record<Key, string> = {
   "forge.newPR": "Buat pull request di {name}",
   "forge.newMR": "Buat merge request di {name}",
   "forge.pushedBranch": "{branch} sudah di-push.",
-  "forge.notPushed": "Push dulu: ini belum ada di remote",
   "unseen.dot": "Berubah sejak terakhir kamu lihat",
   "unseen.count": "{count} berubah sejak terakhir kamu lihat",
   "unseen.markAll": "Tandai semua sudah dilihat",

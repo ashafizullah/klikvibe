@@ -223,7 +223,6 @@ const en = {
   "forge.newPR": "Create a pull request on {name}",
   "forge.newMR": "Create a merge request on {name}",
   "forge.pushedBranch": "Pushed {branch}.",
-  "forge.notPushed": "Push first: this isn't on the remote yet",
   "unseen.dot": "Changed since you last looked",
   "unseen.count": "{count} changed since you last looked",
   "unseen.markAll": "Mark all as seen",
