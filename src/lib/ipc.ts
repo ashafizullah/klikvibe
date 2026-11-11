@@ -67,7 +67,10 @@ export interface Commit {
   refs: string[];
 }
 export interface CommitFile {
+  /** From the repository's top, as the commit names it. */
   path: string;
+  /** The same file from the project folder (it may be a folder inside the repository). */
+  local: string;
   from: string | null;
   kind: "added" | "modified" | "deleted" | "renamed";
   /** Lines added and removed; null for binary files. */
@@ -205,6 +208,8 @@ export const ipc = {
   checkpointList: (root: string, limit = 1000) => invoke<Checkpoint[]>("checkpoint_list", { root, limit }),
   checkpointPrune: (root: string, keep: number) => invoke<boolean>("checkpoint_prune", { root, keep }),
   /** Bytes on disk; null when Git is too old to say. */
+  /** Folders the checkpoints leave out: Git repositories of their own inside the project. */
+  checkpointSkipped: (root: string) => invoke<string[]>("checkpoint_skipped", { root }),
   checkpointSize: (root: string) => invoke<number | null>("checkpoint_size", { root }),
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),
   checkpointClear: (root: string) => invoke<void>("checkpoint_clear", { root }),

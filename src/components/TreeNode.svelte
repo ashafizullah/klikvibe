@@ -20,7 +20,7 @@
   const changedInside = $derived(entry.dir && project.folderChanged(entry.path));
   const fresh = $derived(project.isFresh(entry.path, now));
   const ignored = $derived(dim || entry.ignored);
-  const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${entry.path}`);
+  const active = $derived(project.active === `file:${entry.path}` || project.active === `diff:${relative(project.root, entry.path)}`);
   function menu(e: MouseEvent) {
     const rel = relative(project.root, entry.path) ?? entry.path;
     // New things go in this folder, or next to this file.

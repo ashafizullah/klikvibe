@@ -89,6 +89,8 @@ export class ProjectState {
   /** Why checkpoints can't be taken here (not a repository, a subfolder of one), if so. */
   checkpointsOff = $state<string | null>(null);
   checkpointBusy = $state(false);
+  /** Folders the checkpoints leave out (Git repositories of their own), so a restore can't bring them back. */
+  checkpointSkipped = $state<string[]>([]);
   /** What the checkpoints take on disk, in bytes; null until measured (or when Git can't say). */
   checkpointBytes = $state<number | null>(null);
   private checkpointTimer: ReturnType<typeof setTimeout> | null = null;
@@ -255,6 +257,7 @@ export class ProjectState {
     try {
       this.checkpoints = await ipc.checkpointList(this.root);
       this.measureCheckpoints();
+      this.checkpointSkipped = await ipc.checkpointSkipped(this.root).catch(() => []);
     } catch (e) {
       this.checkpointsOff = errorText(e);
     }
@@ -392,6 +395,10 @@ export class ProjectState {
         if (tb.kind === "file") {
           tb.id = `file:${moved}`;
           tb.title = baseName(moved);
+        } else if (tb.kind === "diff") {
+          // The same id its change opens now, so a click on it comes back to this tab.
+          tb.id = `diff:${relative(this.root, moved) ?? moved}`;
+          tb.title = baseName(moved);
         }
         if (wasActive) this.active = tb.id;
       }
@@ -406,10 +413,21 @@ export class ProjectState {
   async deleteEntry(path: string, isDir: boolean, ignored = false) {
     const name = baseName(path);
     // A checkpoint first, so it can come back from the Checkpoints tab.
-    const canUndo = settings.checkpoints && !this.checkpointsOff && !ignored;
+    let canUndo = settings.checkpoints && !this.checkpointsOff && !ignored;
+    // A Git repository of its own inside the project is in no checkpoint.
+    const skipped = canUndo ? await ipc.checkpointSkipped(this.root).catch(() => [] as string[]) : [];
+    const rel = relative(this.root, path) ?? "";
+    const within = skipped.find((s) => rel === s || rel.startsWith(`${s}/`));
+    const holds = skipped.filter((s) => s.startsWith(`${rel}/`));
+    if (within) canUndo = false;
+    const undo = within
+      ? t("files.deleteInRepo", { folder: within })
+      : canUndo
+        ? t(isDir ? "files.deleteUndoFolder" : "files.deleteUndo") + (holds.length ? ` ${t("files.deleteHoldsRepo", { folders: holds.join(", ") })}` : "")
+        : t("files.deleteNoUndo");
     const ok = await confirm({
       title: t("files.deleteTitle", { name }),
-      message: `${isDir ? t("files.deleteFolderBody") : t("files.deleteFileBody")} ${canUndo ? t(isDir ? "files.deleteUndoFolder" : "files.deleteUndo") : t("files.deleteNoUndo")}`,
+      message: `${isDir ? t("files.deleteFolderBody") : t("files.deleteFileBody")} ${undo}`,
       confirm: t("files.delete"),
       danger: true,
     });
@@ -578,13 +596,18 @@ export class ProjectState {
     const label = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
     const { tab } = this.show(newTab("preview", `preview:${url}`, label, url));
     tab.loading = false;
+    // The tab may have gone elsewhere since it was opened: asked for again, it comes back here.
+    if (tab.path !== url) {
+      tab.path = url;
+      tab.revision++;
+    }
     showProject(this.root);
   }
 
   /** One file's changes in a commit, in a tab. */
   async openCommitFile(commit: Pick<Commit, "hash" | "short">, file: CommitFile) {
     const id = `commitfile:${commit.hash}:${file.path}`;
-    const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.path)));
+    const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.local)));
     if (!fresh) return;
     try {
       tab.text = await ipc.gitCommitFileDiff(this.root, commit.hash, file.path, file.from);
@@ -597,10 +620,13 @@ export class ProjectState {
   }
 
   async closeTab(id: string, force = false) {
-    const i = this.tabs.findIndex((t) => t.id === id);
-    if (i < 0) return;
-    const tab = this.tabs[i];
+    const tab = this.tabs.find((t) => t.id === id);
+    if (!tab) return;
     if (!force && isDirty(tab) && !(await confirmDiscard([tab]))) return;
+    // Found again: other tabs (or this one) may have closed while the question was up.
+    const i = this.tabs.findIndex((t) => t === tab);
+    if (i < 0) return;
+    id = tab.id;
     this.tabs.splice(i, 1);
     if (this.active === id) this.active = this.tabs[Math.min(i, this.tabs.length - 1)]?.id ?? null;
   }
@@ -666,7 +692,8 @@ export class ProjectState {
       this.reloadDirsSoon(this.tree.keys());
     }
     for (const tab of this.tabs) {
-      if (changed && !changed.has(tab.path)) continue;
+      // A commit, a stage or a discard changes what a diff shows without touching its file.
+      if (changed && !changed.has(tab.path) && !(e.git && tab.kind === "diff")) continue;
       if (tab.kind === "file" && tab.media) {
         tab.revision++;
       } else if (tab.kind === "file") {
@@ -687,6 +714,8 @@ export class ProjectState {
   // ---- git ----
 
   /** Refreshes the Git status soon (and the history with `withLog`), at most a few times a second. */
+  private gitSeq = 0;
+
   refreshGit(withLog = false) {
     this.wantLog ||= withLog;
     if (this.gitTimer || this.closed) return;
@@ -694,13 +723,23 @@ export class ProjectState {
       this.gitTimer = null;
       const log = this.wantLog;
       this.wantLog = false;
+      // A refresh started after this one has the newer answer: this one's is dropped.
+      const mine = ++this.gitSeq;
       try {
         const status = await ipc.gitStatus(this.root);
         if (this.closed) return;
+        if (mine !== this.gitSeq) {
+          this.wantLog ||= log;
+          return;
+        }
         // A remote added or a branch published from the terminal: the web links follow.
         if (status.upstream !== this.git?.upstream) this.loadRemote();
         this.git = status;
-        if (log && status.repo) this.log = await ipc.gitLog(this.root, settings.historyAll);
+        if (log && status.repo) {
+          const history = await ipc.gitLog(this.root, settings.historyAll);
+          if (mine === this.gitSeq) this.log = history;
+          else this.wantLog = true;
+        }
       } catch (e) {
         if (this.closed) return;
         this.git = null;
@@ -838,6 +877,11 @@ export function showProject(root: string | null) {
 }
 
 /** Before quitting: asks about the unsaved edits in every project; false when the user keeps them. */
+/** The tabs with unsaved edits in every project, each named so it can be told apart later. */
+export function unsavedTabs(): string[] {
+  return workspace.projects.flatMap((p) => p.tabs.filter(isDirty).map((tb) => `${p.root}\n${tb.id}`));
+}
+
 export async function confirmQuit(): Promise<boolean> {
   const dirty = workspace.projects.flatMap((p) => p.tabs.filter(isDirty));
   return !dirty.length || confirmDiscard(dirty);

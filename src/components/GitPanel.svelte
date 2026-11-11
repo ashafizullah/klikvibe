@@ -369,6 +369,9 @@
         {:else if project.checkpoints === null}
           <p class="empty-note">{t("common.loading")}</p>
         {:else}
+          {#if project.checkpointSkipped.length}
+            <p class="empty-note">{t("checkpoints.skipped", { folders: project.checkpointSkipped.join(", ") })}</p>
+          {/if}
           {#each project.checkpoints as cp (cp.hash)}
             {@const open = project.expandedCommit === cp.hash}
             {@const when = moment(cp.date)}

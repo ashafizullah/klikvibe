@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 
-/// Patches and logs larger than this are cut off.
+/// Patches larger than this are cut off.
 const MAX_OUTPUT: usize = 512 * 1024;
 
 /// The PATH of the user's login shell. Apps started from the Dock or Finder
@@ -58,7 +58,12 @@ fn run_env(root: &Path, args: &[&str], env: &[(&str, &str)]) -> AppResult<String
         let err = if err.is_empty() { String::from_utf8_lossy(&out.stdout).trim().to_string() } else { err };
         return Err(AppError::msg(if err.is_empty() { format!("git {} failed", args[0]) } else { err }));
     }
-    let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
+    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Cuts text that is only shown (a patch) at MAX_OUTPUT. Never for output that is parsed:
+/// a list cut in the middle of a record would be read wrong, and the rest lost.
+fn capped(mut text: String) -> String {
     if text.len() > MAX_OUTPUT {
         let mut cut = MAX_OUTPUT;
         while !text.is_char_boundary(cut) {
@@ -67,7 +72,33 @@ fn run_env(root: &Path, args: &[&str], env: &[(&str, &str)]) -> AppResult<String
         text.truncate(cut);
         text.push_str("\n… (cut off)\n");
     }
-    Ok(text)
+    text
+}
+
+/// Like `run`, for a patch to show: cut off when very long.
+fn run_capped(root: &Path, args: &[&str]) -> AppResult<String> {
+    run(root, args).map(capped)
+}
+
+/// The project folder's place in its repository: "" at the top, else "sub/dir/".
+fn prefix(root: &Path) -> String {
+    run(root, &["rev-parse", "--show-prefix"]).map(|s| s.trim().to_string()).unwrap_or_default()
+}
+
+/// A path as Git reports it (from the repository's top) as seen from the project folder
+/// at `prefix`, which is what the other commands take: "sub/a.txt" is "a.txt" in "sub/",
+/// and "README.md" is "../README.md".
+pub fn from_top(prefix: &str, path: &str) -> String {
+    if prefix.is_empty() {
+        return path.to_string();
+    }
+    let here: Vec<&str> = prefix.trim_end_matches('/').split('/').collect();
+    let there: Vec<&str> = path.split('/').collect();
+    // The last part of `path` is the file itself, never a folder in common.
+    let common = here.iter().zip(&there[..there.len() - 1]).take_while(|(a, b)| a == b).count();
+    let mut out = "../".repeat(here.len() - common);
+    out.push_str(&there[common..].join("/"));
+    out
 }
 
 /// Like `run`, with stdout and stderr together (push and pull report on stderr).
@@ -167,8 +198,24 @@ pub fn parse_status(out: &str) -> Status {
 }
 
 pub fn status(root: &Path) -> AppResult<Status> {
-    match run(root, &["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"]) {
-        Ok(out) => Ok(parse_status(&out)),
+    // Only what is in the project folder: it may be a folder inside a larger repository,
+    // and nothing outside it is ever staged, discarded or shown from here.
+    match run(root, &["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all", "--", "."]) {
+        Ok(out) => {
+            let mut status = parse_status(&out);
+            // Git lists paths from the repository's top; every other command here takes them
+            // from the project folder.
+            let prefix = prefix(root);
+            if !prefix.is_empty() {
+                for change in &mut status.changes {
+                    change.path = from_top(&prefix, &change.path);
+                    // A rename from outside the project is a new file here.
+                    change.from = change.from.take().map(|from| from_top(&prefix, &from)).filter(|from| !from.starts_with("../"));
+                }
+                status.changes.retain(|c| !c.path.starts_with("../"));
+            }
+            Ok(status)
+        }
         Err(e) if e.to_string().contains("not a git repository") => Ok(Status::default()),
         Err(e) => Err(e),
     }
@@ -240,15 +287,32 @@ pub fn log(root: &Path, limit: u32, all: bool) -> AppResult<Vec<Commit>> {
 pub fn diff(root: &Path, path: &str) -> AppResult<String> {
     let has_head = run(root, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok();
     if has_head {
-        let tracked = run(root, &["diff", "HEAD", "--no-color", "--", path])?;
+        let tracked = run_capped(root, &["--literal-pathspecs", "diff", "HEAD", "--no-color", "--", path])?;
         if !tracked.is_empty() {
             return Ok(tracked);
+        }
+        // A file Git tracks with nothing changed (edited back, or just committed) has no diff;
+        // only one it doesn't know is shown whole.
+        if run(root, &["--literal-pathspecs", "ls-files", "--error-unmatch", "--", path]).is_ok() {
+            return Ok(String::new());
         }
     }
     // Untracked (or no commit yet): compare with nothing.
     let null = if cfg!(windows) { "NUL" } else { "/dev/null" };
-    let out = git(root).args(["diff", "--no-color", "--no-index", "--", null, path]).output()?;
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    let mut child = git(root)
+        .args(["diff", "--no-color", "--no-index", "--", null, path])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()?;
+    // Read only as much as is shown: the file can be of any size.
+    let mut bytes = Vec::new();
+    if let Some(out) = child.stdout.take() {
+        use std::io::Read;
+        out.take(MAX_OUTPUT as u64 + 1).read_to_end(&mut bytes)?;
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    Ok(capped(String::from_utf8_lossy(&bytes).into_owned()))
 }
 
 fn check_hash(hash: &str) -> AppResult<()> {
@@ -261,7 +325,7 @@ fn check_hash(hash: &str) -> AppResult<()> {
 /// A commit's message, files and patch.
 pub fn show(root: &Path, hash: &str) -> AppResult<String> {
     check_hash(hash)?;
-    run(root, &["show", "--no-color", "--stat", "--patch", "--format=fuller", hash])
+    run_capped(root, &["show", "--no-color", "--stat", "--patch", "--format=fuller", hash])
 }
 
 /// Git's empty tree: what the first commit is compared with.
@@ -275,7 +339,11 @@ fn base_of(root: &Path, hash: &str) -> String {
 #[derive(Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitFile {
+    /// From the repository's top, as Git names it in the commit.
     pub path: String,
+    /// The same file from the project folder (which may be a folder inside the repository):
+    /// "../README.md" for one outside it.
+    pub local: String,
     /// The old path of a rename.
     pub from: Option<String>,
     /// added, modified, deleted or renamed.
@@ -298,7 +366,7 @@ pub fn parse_commit_files(names: &str, nums: &str) -> Vec<CommitFile> {
         };
         let (from, path) = if kind == "renamed" { (f.next().map(String::from), f.next()) } else { (None, f.next()) };
         let Some(path) = path else { break };
-        files.push(CommitFile { path: path.into(), from, kind: kind.into(), added: None, removed: None });
+        files.push(CommitFile { path: path.into(), local: path.into(), from, kind: kind.into(), added: None, removed: None });
     }
     // numstat: "added\tremoved\tpath", or "added\tremoved\t" then old and new paths for a rename.
     let mut n = nums.split('\0');
@@ -327,7 +395,12 @@ pub fn commit_files(root: &Path, hash: &str) -> AppResult<Vec<CommitFile>> {
     let base = base_of(root, hash);
     let names = run(root, &["diff", "--no-color", "-M", "-z", "--name-status", &base, hash])?;
     let nums = run(root, &["diff", "--no-color", "-M", "-z", "--numstat", &base, hash])?;
-    Ok(parse_commit_files(&names, &nums))
+    let mut files = parse_commit_files(&names, &nums);
+    let prefix = prefix(root);
+    for file in &mut files {
+        file.local = from_top(&prefix, &file.path);
+    }
+    Ok(files)
 }
 
 /// One file's changes in a commit (`from`: its old path, for a rename).
@@ -336,7 +409,9 @@ pub fn commit_file_diff(root: &Path, hash: &str, path: &str, from: Option<&str>)
     let base = base_of(root, hash);
     let mut args = vec!["--literal-pathspecs", "diff", "--no-color", "-M", &base, hash, "--", path];
     args.extend(from);
-    run(root, &args)
+    // A commit's paths are from the repository's top, which the project folder may be inside.
+    let top = run(root, &["rev-parse", "--show-toplevel"]).map(|s| PathBuf::from(s.trim())).unwrap_or_else(|_| root.to_path_buf());
+    run_capped(&top, &args)
 }
 
 /// Commits what is staged; with `all`, stages everything first.
@@ -345,7 +420,7 @@ pub fn commit(root: &Path, message: &str, all: bool) -> AppResult<String> {
         return Err(AppError::msg("Write a commit message first"));
     }
     if all {
-        run(root, &["add", "--all"])?;
+        run(root, &["add", "--all", "--", "."])?;
     }
     run_all(root, &["commit", "-m", message])
 }
@@ -408,8 +483,13 @@ pub fn pull(root: &Path) -> AppResult<String> {
 /// Paths are literal, so a name like `*.ts` never matches other files.
 pub fn discard(root: &Path, path: &str, from: Option<&str>, untracked: bool) -> AppResult<()> {
     if untracked {
-        // `clean` only ever deletes untracked files.
-        run(root, &["--literal-pathspecs", "clean", "-f", "-q", "--", path])?;
+        // `clean` only ever deletes untracked files. A folder is listed as one entry only when
+        // it is a repository of its own, which takes `-d` and a second `-f` to delete.
+        if path.ends_with('/') {
+            run(root, &["--literal-pathspecs", "clean", "-f", "-f", "-d", "-q", "--", path])?;
+        } else {
+            run(root, &["--literal-pathspecs", "clean", "-f", "-q", "--", path])?;
+        }
         return Ok(());
     }
     let has_head = run(root, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok();
@@ -566,10 +646,35 @@ pub fn checkpoint_size(root: &Path) -> AppResult<Option<u64>> {
     Ok(out.ok().and_then(|s| s.trim().parse().ok()))
 }
 
+/// Folders in the project that are Git repositories of their own (a submodule, or a repository
+/// made inside the project): Git keeps none of their files in the project's, so a checkpoint
+/// has none either and a restore can't bring them back. Paths from the project folder.
+pub fn checkpoint_skipped(root: &Path) -> Vec<String> {
+    let mut folders: Vec<String> = Vec::new();
+    // Tracked ones are entries of mode 160000 ("mode hash stage<TAB>path").
+    let tracked = run(root, &["ls-files", "-s", "-z"]).unwrap_or_default();
+    folders.extend(
+        tracked.split('\0').filter(|e| e.starts_with("160000 ")).filter_map(|e| e.split_once('\t')).map(|(_, path)| path.to_string()),
+    );
+    // Untracked files are listed one by one, so a folder listed as such is a repository.
+    let untracked = status(root).map(|s| s.changes).unwrap_or_default();
+    folders.extend(untracked.into_iter().filter(|c| c.kind == "untracked").filter_map(|c| c.path.strip_suffix('/').map(String::from)));
+    folders.sort();
+    folders.dedup();
+    folders
+}
+
 fn checkpoint(root: &Path, reason: &str, note: &str) -> AppResult<Option<Checkpoint>> {
     let index = checkpoint_index(root)?;
     let env = [("GIT_INDEX_FILE", index.as_str())];
-    run_env(root, &["add", "-A", "--", "."], &env)?;
+    if let Err(e) = run_env(root, &["add", "-A", "--", "."], &env) {
+        // A folder that is a repository of its own with no commit yet can't be snapshotted;
+        // the rest of the project still is.
+        if !e.to_string().contains("does not have a commit checked out") {
+            return Err(e);
+        }
+        let _ = run_env(root, &["add", "-A", "--ignore-errors", "--", "."], &env);
+    }
     let tree = run_env(root, &["write-tree"], &env)?.trim().to_string();
     let parent = run(root, &["rev-parse", "--verify", "-q", CHECKPOINTS]).ok().map(|s| s.trim().to_string());
     let files = match &parent {
@@ -789,6 +894,93 @@ mod tests {
         );
         assert_eq!(s.changes.iter().map(|c| c.unstaged).collect::<Vec<_>>(), [true, false, false, true]);
         assert_eq!(s.changes[2].from.as_deref(), Some("lib/a.ts"));
+    }
+
+    #[test]
+    fn paths_are_seen_from_the_project_folder() {
+        assert_eq!(from_top("", "src/a.ts"), "src/a.ts");
+        assert_eq!(from_top("sub/", "sub/src/a.ts"), "src/a.ts");
+        assert_eq!(from_top("sub/", "README.md"), "../README.md");
+        assert_eq!(from_top("a/b/", "a/c/d.ts"), "../c/d.ts");
+        assert_eq!(from_top("a/b/", "a/b"), "../b");
+    }
+
+    #[test]
+    fn a_project_inside_a_repository_sees_and_changes_only_its_own_files() {
+        let top = std::env::temp_dir().join(format!("klikvibe-sub-{}", uuid::Uuid::new_v4()));
+        let dir = top.join("sub");
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        init(&top).unwrap();
+        run(&top, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&top, &["config", "user.name", "Test"]).unwrap();
+        for file in ["README.md", "sub/README.md", "sub/src/a.txt"] {
+            std::fs::write(top.join(file), "one\n").unwrap();
+        }
+        commit(&top, "First", true).unwrap();
+        for file in ["README.md", "sub/README.md", "sub/src/a.txt", "sub/new.txt"] {
+            std::fs::write(top.join(file), "two\n").unwrap();
+        }
+        let mut paths: Vec<String> = status(&dir).unwrap().changes.into_iter().map(|c| c.path).collect();
+        paths.sort();
+        assert_eq!(paths, ["README.md", "new.txt", "src/a.txt"]);
+        assert!(diff(&dir, "src/a.txt").unwrap().contains("+two"));
+        stage(&dir, &["src/a.txt".into()]).unwrap();
+        assert!(status(&dir).unwrap().changes.iter().any(|c| c.path == "src/a.txt" && c.staged));
+        // The project's README, not the repository's.
+        discard(&dir, "README.md", None, false).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("README.md")).unwrap(), "one\n");
+        assert_eq!(std::fs::read_to_string(top.join("README.md")).unwrap(), "two\n");
+        discard(&dir, "new.txt", None, true).unwrap();
+        assert!(!dir.join("new.txt").exists());
+        // "Commit all" takes the project's files only.
+        commit(&dir, "Second", true).unwrap();
+        assert!(status(&dir).unwrap().changes.is_empty());
+        assert_eq!(status(&top).unwrap().changes.len(), 1);
+        let head = log_head(&dir);
+        let in_commit = commit_files(&dir, &head).unwrap();
+        assert_eq!((in_commit[0].path.as_str(), in_commit[0].local.as_str()), ("sub/src/a.txt", "src/a.txt"));
+        assert!(commit_file_diff(&dir, &head, "sub/src/a.txt", None).unwrap().contains("+two"));
+        std::fs::remove_dir_all(top).unwrap();
+    }
+
+    #[test]
+    fn long_lists_are_read_whole_and_an_unchanged_file_has_no_diff() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-long-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        commit(&dir, "First", true).unwrap();
+        assert_eq!(diff(&dir, "a.txt").unwrap(), "");
+        // More than MAX_OUTPUT of status: every file is still listed.
+        let long = "x".repeat(200);
+        for i in 0..3000 {
+            std::fs::write(dir.join(format!("{long}-{i}.txt")), "").unwrap();
+        }
+        assert_eq!(status(&dir).unwrap().changes.len(), 3000);
+        // A big untracked file is shown cut off.
+        std::fs::write(dir.join("big.log"), "line\n".repeat(300_000)).unwrap();
+        let shown = diff(&dir, "big.log").unwrap();
+        assert!(shown.len() < MAX_OUTPUT + 100 && shown.ends_with("(cut off)\n"));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_repository_inside_the_project_is_skipped_by_checkpoints_and_can_be_discarded() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-nested-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(dir.join("nested")).unwrap();
+        init(&dir).unwrap();
+        init(&dir.join("nested")).unwrap();
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        std::fs::write(dir.join("nested/f.txt"), "x\n").unwrap();
+        assert!(checkpoint(&dir, "opened", "").unwrap().is_some());
+        let st = status(&dir).unwrap();
+        assert!(st.changes.iter().any(|c| c.path == "nested/"));
+        assert_eq!(checkpoint_skipped(&dir), ["nested"]);
+        discard(&dir, "nested/", None, true).unwrap();
+        assert!(!dir.join("nested").exists());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

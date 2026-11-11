@@ -52,9 +52,16 @@ fn tls_provider() {
     let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
 }
 
-/// One connection, until it ends. `up` is true while it is connected. `revoke` is called with
-/// a phone removed from the account.
-pub async fn connect(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, revoke: &(dyn Fn(&str) + Sync)) -> Ended {
+/// One connection, until it ends. `up` is true while it is connected, and `connected` is called
+/// once it is (the window shows it). `revoke` is called with a phone removed from the account.
+pub async fn connect(
+    core: Arc<Core>,
+    url: &str,
+    token: &str,
+    up: &AtomicBool,
+    connected: &(dyn Fn() + Sync),
+    revoke: &(dyn Fn(&str) + Sync),
+) -> Ended {
     tls_provider();
     let mut req = match url.into_client_request() {
         Ok(r) => r,
@@ -70,6 +77,7 @@ pub async fn connect(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, r
         _ => return Ended::Unreachable,
     };
     up.store(true, Ordering::Relaxed);
+    connected();
     let (mut sink, mut stream) = ws.split();
     // Everything to the relay goes through one writer.
     let (out, mut out_rx) = mpsc::channel::<Message>(256);
@@ -142,6 +150,9 @@ pub async fn connect(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, r
 fn open(core: &Arc<Core>, ch: u32, out: &mpsc::Sender<Message>, channels: &Channels, tasks: &mut tokio::task::JoinSet<()>) {
     let (frames_tx, frames) = mpsc::channel::<Vec<u8>>(64);
     let (phone_out, mut phone_rx) = mpsc::channel::<Vec<u8>>(64);
+    // To tell this phone's entry from a later one on the same channel number, without keeping
+    // the channel open (dropping the entry is what ends the session).
+    let mine = frames_tx.downgrade();
     channels.lock().unwrap().insert(ch, frames_tx);
     let tag = ch.to_be_bytes();
     let to_relay = out.clone();
@@ -158,8 +169,17 @@ fn open(core: &Arc<Core>, ch: u32, out: &mpsc::Sender<Message>, channels: &Chann
     let (core, out, channels) = (core.clone(), out.clone(), channels.clone());
     tasks.spawn(async move {
         core.phone(frames, phone_out).await;
-        // Over (hung up, wrong key, removed): tell the relay to drop the phone.
-        if channels.lock().unwrap().remove(&ch).is_some() {
+        // Over (hung up, wrong key, removed): tell the relay to drop the phone, unless the relay
+        // closed it first; a phone that has taken the channel number since is left alone.
+        let still_mine = {
+            let mut map = channels.lock().unwrap();
+            let same = map.get(&ch).is_some_and(|tx| mine.upgrade().is_some_and(|m| m.same_channel(tx)));
+            if same {
+                map.remove(&ch);
+            }
+            same
+        };
+        if still_mine {
             let _ = out.send(Message::Text(json!({ "t": "close", "ch": ch }).to_string().into())).await;
         }
     });
@@ -172,9 +192,18 @@ fn panic_text(p: Box<dyn std::any::Any + Send>) -> String {
 
 /// One connection, with a panic caught: without that, one bug ended the relay until the app was
 /// restarted, while the dialog kept saying "Connecting…".
-pub async fn attempt(core: Arc<Core>, url: &str, token: &str, up: &AtomicBool, revoke: &(dyn Fn(&str) + Sync)) -> Ended {
-    let ended =
-        AssertUnwindSafe(connect(core, url, token, up, revoke)).catch_unwind().await.unwrap_or_else(|p| Ended::Crashed(panic_text(p)));
+pub async fn attempt(
+    core: Arc<Core>,
+    url: &str,
+    token: &str,
+    up: &AtomicBool,
+    connected: &(dyn Fn() + Sync),
+    revoke: &(dyn Fn(&str) + Sync),
+) -> Ended {
+    let ended = AssertUnwindSafe(connect(core, url, token, up, connected, revoke))
+        .catch_unwind()
+        .await
+        .unwrap_or_else(|p| Ended::Crashed(panic_text(p)));
     up.store(false, Ordering::Relaxed);
     ended
 }
@@ -187,7 +216,7 @@ pub async fn run(
     server: String,
     token: impl Fn() -> Option<String>,
     up: Arc<AtomicBool>,
-    changed: impl Fn(),
+    changed: impl Fn() + Sync,
     revoke: impl Fn(&str) + Sync,
     crashed: impl Fn(Option<String>),
 ) {
@@ -198,7 +227,7 @@ pub async fn run(
             continue;
         };
         let started = std::time::Instant::now();
-        let ended = attempt(core.clone(), &url(&server), &t, &up, &revoke).await;
+        let ended = attempt(core.clone(), &url(&server), &t, &up, &changed, &revoke).await;
         match &ended {
             Ended::Crashed(why) => crashed(Some(why.clone())),
             Ended::Closed => crashed(None),
@@ -279,7 +308,7 @@ mod tests {
             auth
         });
         let up = AtomicBool::new(false);
-        let ended = connect(core(), &format!("ws://{addr}/v1/relay/desktop"), "secret", &up, &|_| {}).await;
+        let ended = connect(core(), &format!("ws://{addr}/v1/relay/desktop"), "secret", &up, &|| {}, &|_| {}).await;
         assert_eq!(ended, Ended::Closed);
         assert_eq!(relay.await.unwrap(), "Device secret");
         assert!(!up.load(Ordering::Relaxed));
@@ -297,7 +326,7 @@ mod tests {
         });
         let up = AtomicBool::new(false);
         let gone = std::sync::Mutex::new(Vec::new());
-        connect(core(), &format!("ws://{addr}/x"), "t", &up, &|id| gone.lock().unwrap().push(id.to_string())).await;
+        connect(core(), &format!("ws://{addr}/x"), "t", &up, &|| {}, &|id| gone.lock().unwrap().push(id.to_string())).await;
         assert_eq!(gone.into_inner().unwrap(), ["p-1"]);
     }
 
@@ -315,8 +344,8 @@ mod tests {
             .await;
         });
         let up = AtomicBool::new(false);
-        assert_eq!(connect(core(), &format!("ws://{addr}/x"), "t", &up, &|_| {}).await, Ended::Refused);
-        assert_eq!(connect(core(), "ws://127.0.0.1:1/x", "t", &up, &|_| {}).await, Ended::Unreachable);
+        assert_eq!(connect(core(), &format!("ws://{addr}/x"), "t", &up, &|| {}, &|_| {}).await, Ended::Refused);
+        assert_eq!(connect(core(), "ws://127.0.0.1:1/x", "t", &up, &|| {}, &|_| {}).await, Ended::Unreachable);
     }
 
     #[tokio::test]
@@ -372,7 +401,7 @@ mod tests {
             let _ = ws.next().await;
         });
         let up = AtomicBool::new(false);
-        let ended = attempt(core(), &format!("ws://{addr}/x"), "t", &up, &|_| panic!("boom")).await;
+        let ended = attempt(core(), &format!("ws://{addr}/x"), "t", &up, &|| {}, &|_| panic!("boom")).await;
         assert_eq!(ended, Ended::Crashed("boom".into()));
         assert!(!up.load(Ordering::Relaxed));
     }

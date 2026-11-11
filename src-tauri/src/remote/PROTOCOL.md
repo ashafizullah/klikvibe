@@ -171,4 +171,4 @@ The desktop keeps one connection to `wss://…/v1/relay/desktop` (header `Author
 - **Text frames** carry control messages from the server: `{"t":"open","ch":n}`, `{"t":"close","ch":n}`, and `{"t":"revoke","phone":id}` (forget that phone's key now). The desktop sends `{"t":"close","ch":n}` to hang up one phone.
 - **Binary frames** carry a 4-byte big-endian channel number followed by exactly the frame the phone sent or should receive.
 
-The server sends a WebSocket ping every 30 seconds. The desktop treats 90 seconds without any frame as a dead link, and reconnects with backoff.
+The server sends a WebSocket ping every 30 seconds. The desktop treats 60 seconds without any frame as a dead link, and reconnects with backoff.

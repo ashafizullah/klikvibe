@@ -58,3 +58,32 @@ test("names languages from file names", () => {
   expect(languageName("Dockerfile")).toBe("Plain text");
   expect(languageName("tsconfig.json")).toBe("JSON");
 });
+
+test("an empty diff has no rows", () => {
+  expect(parseDiff("")).toEqual([]);
+  expect(parseDiff("\n")).toEqual([]);
+});
+
+test("parses a merge's combined diff", () => {
+  const rows = parseDiff(`diff --cc f
+index 4dc8328,2339517..3e42aa1
+--- a/f
++++ b/f
+@@@ -1,3 -1,3 +1,3 @@@
+  one
+- TWO main
+ -TWO side
+++TWO both
+  three
+`);
+  expect(rows[0]).toEqual({ kind: "file", text: "f" });
+  const body = rows.filter((r) => ["add", "del", "ctx"].includes(r.kind));
+  expect(body.map((r) => [r.kind, r.text, r.old, r.new])).toEqual([
+    ["ctx", "one", 1, 1],
+    ["del", "TWO main", 2, undefined],
+    ["del", "TWO side", undefined, undefined],
+    ["add", "TWO both", undefined, 2],
+    ["ctx", "three", 3, 3],
+  ]);
+  expect(stats(rows)).toEqual({ added: 1, removed: 2 });
+});

@@ -8,6 +8,10 @@
   let { tab }: { tab: Tab } = $props();
   // svelte-ignore state_referenced_locally
   let address = $state(tab.path);
+  // The tab can be sent to another address from outside (its link in a terminal).
+  $effect(() => {
+    address = tab.path;
+  });
 
   /** Only local addresses: the frame is allowed to show nothing else. */
   const local = (u: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/.test(u);

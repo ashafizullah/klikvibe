@@ -4,7 +4,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { errorText, ipc, type Release } from "./ipc";
-import { closeAllProjects, confirmQuit } from "./project.svelte";
+import { closeAllProjects, confirmQuit, unsavedTabs } from "./project.svelte";
 import { holdSession, restoreSession } from "./session.svelte";
 import { hadSettings, persist, settings, type UpdateMode } from "./settings.svelte";
 import { dismissToast, showAlert, toast } from "./ui.svelte";
@@ -84,12 +84,18 @@ export async function checkForUpdates() {
 export async function installUpdate() {
   if (updates.installing) return;
   if (!(await confirmQuit())) return;
+  const agreed = new Set(unsavedTabs());
   updates.installing = true;
   // Stays until KlikVibe restarts into the new version.
   const notice = toast(t("update.installing"), "info", undefined, 0);
   let closed = false;
   try {
     await ipc.prepareUpdate();
+    // Edits typed while it downloaded weren't asked about yet. Kept: the download stays for the next try.
+    if (unsavedTabs().some((tab) => !agreed.has(tab)) && !(await confirmQuit())) {
+      dismissToast(notice);
+      return;
+    }
     // The projects close before the restart, but open again after it (the session isn't saved empty).
     holdSession(true);
     closed = true;

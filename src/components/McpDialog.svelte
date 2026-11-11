@@ -36,7 +36,12 @@
     <div class="body">
       <p class="note">{t("mcp.intro")}</p>
       <label class="toggle">
-        <input type="checkbox" checked={settings.mcpEnabled} onchange={(e) => (e.currentTarget.checked ? startMcp() : stopMcp())} />
+        <input type="checkbox" checked={settings.mcpEnabled} onchange={async (e) => {
+            const box = e.currentTarget;
+            await (box.checked ? startMcp() : stopMcp());
+            // Back to what is true: a server that failed to start leaves the setting off, which it already was.
+            box.checked = settings.mcpEnabled;
+          }} />
         {t("mcp.enable")}
       </label>
       {#if mcp.error}<p class="error">{mcp.error}</p>{/if}

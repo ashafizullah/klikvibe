@@ -207,7 +207,7 @@ impl Session {
                 let id = s("id");
                 let id_for_error = id.clone();
                 // Only terminals of the open projects, the ones the phone was shown.
-                // Off the async workers: a program that isn't reading its input can block the write.
+                // The write is queued: a program that isn't reading its input holds up nothing here.
                 let result = match self.hub.root_of(&id) {
                     Some(_) => {
                         let data = s("data");
@@ -515,7 +515,9 @@ mod tests {
     #[test]
     fn a_long_change_list_is_cut_to_fit_one_message() {
         let long = "node_modules/.pnpm/some-package@1.2.3_peer-dependency@4.5.6/node_modules/some-package/dist/esm/a/deeply/nested/file";
-        let changes: Vec<Value> = (0..300).map(|i| json!({ "path": format!("{long}/{long}{i}.js"), "kind": "untracked", "staged": false, "unstaged": true })).collect();
+        let changes: Vec<Value> = (0..300)
+            .map(|i| json!({ "path": format!("{long}/{long}{i}.js"), "kind": "untracked", "staged": false, "unstaged": true }))
+            .collect();
         let m = status_message(&json!(7), json!({ "repo": true, "branch": "main", "changes": changes }));
         assert!(m.to_string().len() <= MAX_MESSAGE);
         assert_eq!(m["truncated"], true);

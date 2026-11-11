@@ -13,6 +13,8 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 
 /// How long a phone has for its handshake and first message.
+/// How long a session's last message may take to go out once the session is over.
+const LAST_WORDS: std::time::Duration = std::time::Duration::from_secs(2);
 const HANDSHAKE: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub struct Core {
@@ -158,7 +160,7 @@ impl Core {
             }
         };
         // Session → phone: seal each message.
-        let sealer = async move {
+        let sealer = async {
             while let Some(plain) = plain_out.recv().await {
                 let sealed = match seal(&channel, &plain) {
                     Some(s) => s,
@@ -179,11 +181,20 @@ impl Core {
                 }
             }
         };
-        tokio::select! {
-            _ = opener => {}
-            _ = sealer => {}
-            _ = session::serve(self.hub.clone(), self.host.clone(), session_rx, session_tx) => {}
-            _ = kicked => {}
+        let served = tokio::select! {
+            _ = opener => false,
+            _ = sealer => false,
+            _ = session::serve(self.hub.clone(), self.host.clone(), session_rx, session_tx) => true,
+            _ = kicked => false,
+        };
+        // The session's last words (why it ended) are still queued: they go out before the hang-up.
+        if served {
+            while let Ok(plain) = plain_out.try_recv() {
+                let Some(sealed) = seal(&channel, &plain) else { continue };
+                if !matches!(tokio::time::timeout(LAST_WORDS, out.send(sealed)).await, Ok(Ok(()))) {
+                    break;
+                }
+            }
         }
     }
 }
@@ -233,13 +244,19 @@ impl Core {
     /// and connections still on it end.
     fn adopt(&self, id: &str, k: [u8; 32]) {
         self.offered.lock().unwrap().remove(id);
+        if !self.keys.lock().unwrap().contains_key(id) {
+            // Removed meanwhile: stays removed.
+            return;
+        }
+        // The host keeps it first, and only then is it the key here: the host hands its keys back
+        // at any moment (`set_keys`), and one read in between must not be the old key written
+        // over the new, which would shut this phone out until the next start.
+        self.host.key_changed(id, k);
         {
             let mut keys = self.keys.lock().unwrap();
-            // Removed meanwhile: stays removed.
             let Some(cur) = keys.get_mut(id) else { return };
             *cur = k;
         }
-        self.host.key_changed(id, k);
         let _ = self.kicks.send(id.to_string());
     }
 }
@@ -254,8 +271,18 @@ pub mod tests {
     use crate::remote::hub::{ProjectMeta, TerminalMeta};
     use serde_json::{Value, json};
 
-    pub struct Fake;
+    /// `on_key`: called when a phone's new key is to be kept, as the real host's config is.
+    #[derive(Default)]
+    pub struct Fake {
+        on_key: Mutex<Option<OnKey>>,
+    }
+    type OnKey = Box<dyn Fn([u8; 32]) + Send + Sync>;
     impl Host for Fake {
+        fn key_changed(&self, _: &str, psk: [u8; 32]) {
+            if let Some(f) = &*self.on_key.lock().unwrap() {
+                f(psk);
+            }
+        }
         fn hello(&self) -> Value {
             json!({ "name": "Mac", "os": "macos", "app": "test" })
         }
@@ -280,6 +307,10 @@ pub mod tests {
     pub const PSK: [u8; 32] = [9u8; 32];
 
     pub fn core() -> Arc<Core> {
+        core_with(Arc::new(Fake::default()))
+    }
+
+    fn core_with(host: Arc<Fake>) -> Arc<Core> {
         let hub = Arc::new(Hub::default());
         hub.started("t1", 80, 24);
         hub.set_projects(vec![ProjectMeta {
@@ -288,7 +319,7 @@ pub mod tests {
             attention: false,
             terminals: vec![TerminalMeta { id: "t1".into(), name: "zsh".into(), agent: None }],
         }]);
-        let core = Arc::new(Core::new(hub, Arc::new(Fake), || {}));
+        let core = Arc::new(Core::new(hub, host, || {}));
         core.set_keys(HashMap::from([(PHONE.to_string(), PSK)]));
         core
     }
@@ -392,6 +423,36 @@ pub mod tests {
             }
         }
         // The key from the QR code is no good any more; the new one is.
+        assert!(connect(&core, &PSK).await.is_none());
+        assert!(connect(&core, &k).await.is_some());
+    }
+
+    #[tokio::test]
+    async fn the_hosts_keys_handed_back_during_a_rotation_dont_undo_it() {
+        let host = Arc::new(Fake::default());
+        let core = core_with(host.clone());
+        // The host's config, and its keys handed to Core from it (as after a pairing or a
+        // forgotten phone), right before and right after the new key is written there.
+        let config = Arc::new(Mutex::new(PSK));
+        let (weak, kept) = (Arc::downgrade(&core), config.clone());
+        *host.on_key.lock().unwrap() = Some(Box::new(move |k| {
+            let core = weak.upgrade().unwrap();
+            let sync = || core.set_keys(HashMap::from([(PHONE.to_string(), *kept.lock().unwrap())]));
+            sync();
+            *kept.lock().unwrap() = k;
+            sync();
+        }));
+        let (to, mut from, mut ch) = connect(&core, &PSK).await.unwrap();
+        let k = new_key(&to, &mut from, &mut ch).await;
+        say(&to, &mut ch, json!({ "t": "key.ok" })).await;
+        // The connection that took the key goes on, and the key is the new one everywhere.
+        say(&to, &mut ch, json!({ "t": "ping" })).await;
+        loop {
+            if hear(&mut from, &mut ch).await.unwrap()["t"] == "pong" {
+                break;
+            }
+        }
+        assert_eq!(*config.lock().unwrap(), k);
         assert!(connect(&core, &PSK).await.is_none());
         assert!(connect(&core, &k).await.is_some());
     }

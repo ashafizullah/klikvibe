@@ -66,7 +66,10 @@ pub fn watch_project(app: AppHandle, projects: State<'_, Projects>, watchers: St
 
 #[tauri::command]
 pub fn unwatch_project(projects: State<'_, Projects>, watchers: State<'_, Watchers>, root: String) -> AppResult<()> {
-    watchers.unwatch(&projects.root(&root)?);
+    // A folder that is gone can't be resolved, but its watcher is still to be dropped
+    // (`root` is the resolved path it was watched under).
+    let path = projects.root(&root).unwrap_or_else(|_| PathBuf::from(&root));
+    watchers.unwatch(&path);
     Ok(())
 }
 
@@ -118,14 +121,21 @@ pub async fn create_entry(projects: State<'_, Projects>, dir: String, name: Stri
 /// Renames a file or folder in place; returns the new path.
 #[tauri::command]
 pub async fn rename_entry(projects: State<'_, Projects>, path: String, name: String) -> AppResult<String> {
-    let from = projects.existing(&path)?;
+    // The entry itself: a symlink is renamed, not the file or folder it points to.
+    let from = projects.entry(&path)?;
     let root = projects.project_of(&from).ok_or_else(|| AppError::msg("That is outside the open project"))?;
     if from == root {
         return Err(AppError::msg("The project folder itself can't be renamed here"));
     }
     let name = files::plain_name(&name)?.to_string();
-    let parent = from.parent().ok_or_else(|| AppError::msg("Invalid path"))?.display().to_string();
-    let to = projects.fresh(&parent, &name)?;
+    let parent = from.parent().ok_or_else(|| AppError::msg("Invalid path"))?.to_path_buf();
+    // Only the capitals change ("readme.md" to "README.md"): where capitals don't tell files
+    // apart, the new name finds the file itself and would count as taken. It is free when the
+    // folder lists no entry spelled exactly so.
+    let old = from.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let recased = name != old && name.to_lowercase() == old.to_lowercase();
+    let listed = || std::fs::read_dir(&parent).is_ok_and(|dir| dir.flatten().any(|e| e.file_name().to_string_lossy() == name));
+    let to = if recased && !listed() { parent.join(&name) } else { projects.fresh(&parent.display().to_string(), &name)? };
     let shown = to.display().to_string();
     blocking(move || Ok(std::fs::rename(&from, &to)?)).await?;
     Ok(shown)
@@ -134,13 +144,17 @@ pub async fn rename_entry(projects: State<'_, Projects>, path: String, name: Str
 /// Deletes a file or a folder with everything in it.
 #[tauri::command]
 pub async fn delete_entry(projects: State<'_, Projects>, path: String) -> AppResult<()> {
-    let target = projects.existing(&path)?;
+    // The entry itself: deleting a symlink removes the link, never what it points to.
+    let target = projects.entry(&path)?;
     let root = projects.project_of(&target).ok_or_else(|| AppError::msg("That is outside the open project"))?;
     if target == root || target.strip_prefix(&root).is_ok_and(|rel| rel.components().next().is_some_and(|c| c.as_os_str() == ".git")) {
         return Err(AppError::msg("KlikVibe doesn't delete the project folder or anything in .git"));
     }
     blocking(move || {
-        if target.is_dir() {
+        if target.symlink_metadata()?.file_type().is_symlink() {
+            // On Windows a link to a folder is removed as a folder.
+            std::fs::remove_file(&target).or_else(|_| std::fs::remove_dir(&target))?
+        } else if target.is_dir() {
             std::fs::remove_dir_all(&target)?
         } else {
             std::fs::remove_file(&target)?
@@ -370,6 +384,13 @@ pub async fn checkpoint_list(projects: State<'_, Projects>, root: String, limit:
 pub async fn checkpoint_prune(projects: State<'_, Projects>, root: String, keep: u32) -> AppResult<bool> {
     let root = projects.root(&root)?;
     blocking(move || git::prune_checkpoints(&root, keep)).await
+}
+
+/// Folders the checkpoints leave out: Git repositories of their own inside the project.
+#[tauri::command]
+pub async fn checkpoint_skipped(projects: State<'_, Projects>, root: String) -> AppResult<Vec<String>> {
+    let root = projects.root(&root)?;
+    blocking(move || Ok(git::checkpoint_skipped(&root))).await
 }
 
 /// What the checkpoints take on disk, in bytes (null when Git can't say).

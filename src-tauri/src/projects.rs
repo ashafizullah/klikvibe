@@ -118,6 +118,20 @@ impl Projects {
         Ok(resolved)
     }
 
+    /// `path` itself inside an open project, not what it points to when it is a symlink:
+    /// for renaming and deleting, which act on the link. Its folder is resolved; it must exist.
+    pub fn entry(&self, path: &str) -> AppResult<PathBuf> {
+        let p = Path::new(path);
+        let (Some(parent), Some(name)) = (p.parent(), p.file_name()) else {
+            return Err(AppError::msg("Invalid path"));
+        };
+        let parent = dunce(parent.canonicalize().map_err(|_| AppError::msg(format!("Not found: {path}")))?);
+        let at = parent.join(name);
+        at.symlink_metadata().map_err(|_| AppError::msg(format!("Not found: {path}")))?;
+        self.inside(&at)?;
+        Ok(at)
+    }
+
     /// `path` inside an open project for writing: its folder must exist and
     /// be inside, and it must not point into `.git`.
     pub fn writable(&self, path: &str) -> AppResult<PathBuf> {
@@ -222,6 +236,30 @@ mod tests {
         projects.admit(&dir).unwrap();
         assert!(projects.existing(&file).is_ok());
         assert!(projects.existing(&std::env::temp_dir().display().to_string()).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_entry_is_the_link_itself_not_what_it_points_to() {
+        let dir = temp();
+        let projects = Projects::new(dir.join("data"));
+        projects.admit(&dir).unwrap();
+        let outside = std::env::temp_dir().join(format!("klikvibe-outside-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&outside).unwrap();
+        std::os::unix::fs::symlink(dir.join("src"), dir.join("link")).unwrap();
+        std::os::unix::fs::symlink(&outside, dir.join("away")).unwrap();
+        std::os::unix::fs::symlink(dir.join("nothing"), dir.join("dangling")).unwrap();
+        for name in ["link", "away", "dangling"] {
+            let at = projects.entry(&dir.join(name).display().to_string()).unwrap();
+            assert_eq!(at.file_name().unwrap(), name);
+            assert!(at.symlink_metadata().unwrap().file_type().is_symlink());
+        }
+        // Through a link that leads out of the project: refused.
+        assert!(projects.entry(&dir.join("away/x").display().to_string()).is_err());
+        assert!(projects.entry(&dir.join("missing").display().to_string()).is_err());
+        assert!(projects.entry(&outside.display().to_string()).is_err());
+        std::fs::remove_dir_all(&outside).unwrap();
         std::fs::remove_dir_all(dir).unwrap();
     }
 

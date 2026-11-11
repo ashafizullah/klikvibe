@@ -204,6 +204,11 @@ pub fn install_now(app: &AppHandle) -> Result<(), String> {
 
 /// Installs a downloaded update as the app quits, so the next launch runs it.
 pub fn install_on_exit() {
+    // Only "auto" installs without asking: a download kept after an install the user asked
+    // for didn't go through is for their next try, not for the next quit.
+    if MODE.load(Ordering::SeqCst) != 1 {
+        return;
+    }
     if let Some((update, bytes)) = PENDING.lock().unwrap().take() {
         let _ = update.install(bytes);
     }

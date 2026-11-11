@@ -26,8 +26,9 @@ pub enum TerminalEvent {
 
 struct Session {
     master: Box<dyn MasterPty + Send>,
-    /// Its own lock: a write that blocks (a program not reading its input) holds up only this terminal.
-    writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    /// Input on its way to the program, written by a thread of the session's own: a write
+    /// that blocks (a program not reading its input) holds up nothing else, and the order stays.
+    input: std::sync::mpsc::Sender<Vec<u8>>,
     killer: Box<dyn ChildKiller + Send + Sync>,
 }
 
@@ -74,7 +75,16 @@ impl Terminals {
         let mut child = pair.slave.spawn_command(cmd).map_err(|e| AppError::msg(e.to_string()))?;
         drop(pair.slave);
         let mut reader = pair.master.try_clone_reader().map_err(|e| AppError::msg(e.to_string()))?;
-        let writer = pair.master.take_writer().map_err(|e| AppError::msg(e.to_string()))?;
+        let mut writer = pair.master.take_writer().map_err(|e| AppError::msg(e.to_string()))?;
+        let (input, typed) = std::sync::mpsc::channel::<Vec<u8>>();
+        // Ends when the session is closed (the sender goes) or the terminal is gone (the write fails).
+        std::thread::spawn(move || {
+            for data in typed {
+                if writer.write_all(&data).is_err() || writer.flush().is_err() {
+                    break;
+                }
+            }
+        });
         let killer = child.clone_killer();
         let id = uuid::Uuid::new_v4().to_string();
         self.hub.started(&id, cols, rows);
@@ -100,17 +110,14 @@ impl Terminals {
             let _ = on_event.send(TerminalEvent::Exit { code });
         });
 
-        self.sessions.lock().unwrap().insert(id.clone(), Session { master: pair.master, writer: Arc::new(Mutex::new(writer)), killer });
+        self.sessions.lock().unwrap().insert(id.clone(), Session { master: pair.master, input, killer });
         Ok(id)
     }
 
     pub fn write(&self, id: &str, data: &str) -> AppResult<()> {
-        let writer =
-            self.sessions.lock().unwrap().get(id).map(|s| s.writer.clone()).ok_or_else(|| AppError::msg("Terminal session has ended"))?;
-        let mut w = writer.lock().unwrap();
-        w.write_all(data.as_bytes())?;
-        w.flush()?;
-        drop(w);
+        let ended = || AppError::msg("Terminal session has ended");
+        // Queued, never waited for: this is called from the window's and the phone's own loops.
+        self.sessions.lock().unwrap().get(id).ok_or_else(ended)?.input.send(data.as_bytes().to_vec()).map_err(|_| ended())?;
         self.hub.input(id);
         Ok(())
     }

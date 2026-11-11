@@ -17,29 +17,38 @@ export interface DiffStats {
 
 export function parseDiff(text: string): Row[] {
   const rows: Row[] = [];
+  // Nothing changed: no rows (not one empty line).
+  if (!text.trim()) return rows;
   let oldNo = 0;
   let newNo = 0;
   let inHunk = false;
+  // The columns of +, - or space before each line: one, or one per parent in a merge's
+  // combined diff ("@@@ -1,3 -1,3 +1,5 @@@", after "diff --cc").
+  let cols = 1;
   for (const line of text.replace(/\n$/, "").split("\n")) {
-    const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+    const hunk = /^(@@+) -(\d+)(?:,\d+)? (?:-\d+(?:,\d+)? )*\+(\d+)(?:,\d+)? \1/.exec(line);
+    const file = /^diff --(?:git a\/(.*) b\/.*|(?:cc|combined) (.*))$/.exec(line);
     if (hunk) {
-      oldNo = Number(hunk[1]);
-      newNo = Number(hunk[2]);
+      cols = hunk[1].length - 1;
+      oldNo = Number(hunk[2]);
+      newNo = Number(hunk[3]);
       inHunk = true;
       rows.push({ kind: "hunk", text: line });
-    } else if (line.startsWith("diff --git ")) {
+    } else if (file) {
       inHunk = false;
-      rows.push({ kind: "file", text: line.replace(/^diff --git a\/(.*) b\/.*$/, "$1") });
+      rows.push({ kind: "file", text: file[1] ?? file[2] });
     } else if (!inHunk) {
       rows.push({ kind: "meta", text: line });
-    } else if (line.startsWith("+")) {
-      rows.push({ kind: "add", text: line.slice(1), new: newNo++ });
-    } else if (line.startsWith("-")) {
-      rows.push({ kind: "del", text: line.slice(1), old: oldNo++ });
     } else if (line.startsWith("\\")) {
       rows.push({ kind: "meta", text: line });
     } else {
-      rows.push({ kind: "ctx", text: line.slice(1), old: oldNo++, new: newNo++ });
+      // In a combined diff the old line numbers are the first parent's.
+      const marks = line.slice(0, cols);
+      const body = line.slice(cols);
+      if (marks.includes("+")) rows.push({ kind: "add", text: body, new: newNo++ });
+      // A line only the other parent had isn't one of the first parent's: it has no number.
+      else if (marks.includes("-")) rows.push({ kind: "del", text: body, old: marks[0] === "-" ? oldNo++ : undefined });
+      else rows.push({ kind: "ctx", text: body, old: oldNo++, new: newNo++ });
     }
   }
   return rows;

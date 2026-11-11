@@ -43,7 +43,13 @@
   <div class="body">
     <p class="note">{t("remote.intro")}</p>
     <label class="toggle">
-      <input type="checkbox" checked={s?.enabled ?? false} disabled={remote.busy} onchange={(e) => remoteAction(() => ipc.remoteSetEnabled(e.currentTarget.checked))} />
+      <input type="checkbox" checked={s?.enabled ?? false} disabled={remote.busy} onchange={async (e) => {
+          const box = e.currentTarget;
+          const on = box.checked;
+          await remoteAction(() => ipc.remoteSetEnabled(on));
+          // Back to what is true: turning it on may have failed.
+          box.checked = remote.status?.enabled ?? false;
+        }} />
       {t("remote.enable")}
     </label>
     {#if remote.error || s?.error}<p class="error">{remote.error ?? s?.error}</p>{/if}

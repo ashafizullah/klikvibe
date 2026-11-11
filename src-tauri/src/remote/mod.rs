@@ -112,6 +112,18 @@ struct Confirm {
     account: Option<String>,
 }
 
+impl Confirm {
+    /// Not allowed (or never answered): a computer the phone had just added to its account
+    /// is removed from it again, as nobody holds its token.
+    fn decline(self) {
+        if let Some(token) = self.device_token {
+            tauri::async_runtime::spawn(async move {
+                let _ = cloud::unlink(&token).await;
+            });
+        }
+    }
+}
+
 pub struct Remote {
     dir: PathBuf,
     pub hub: Arc<Hub>,
@@ -206,9 +218,8 @@ impl session::Host for AppHost {
         let mut c = remote.config.lock().unwrap();
         let Some(p) = c.phones.iter_mut().find(|p| p.id == phone) else { return };
         p.psk = URL_SAFE_NO_PAD.encode(psk);
-        let snapshot = c.clone();
         drop(c);
-        remote.save(&snapshot);
+        remote.save();
     }
 
     fn snapshot(&self, id: &str) -> Option<tokio::sync::oneshot::Receiver<Option<(String, u64)>>> {
@@ -278,16 +289,24 @@ impl Remote {
         self.app().package_info().version.to_string()
     }
 
-    fn save(&self, config: &Config) {
-        if let Err(e) = store::save(&self.dir, config) {
+    /// Writes the configuration as it is now. One writer at a time, each with the latest:
+    /// two saves side by side (a heartbeat and a phone's new key) could otherwise leave the
+    /// older one on disk, and the phone locked out after a restart. Call without `config` held.
+    fn save(&self) {
+        static SAVING: Mutex<()> = Mutex::new(());
+        let _one = SAVING.lock().unwrap_or_else(|e| e.into_inner());
+        let config = self.config.lock().unwrap().clone();
+        if let Err(e) = store::save(&self.dir, &config) {
             *self.error.lock().unwrap() = Some(e.to_string());
         }
     }
 
     /// The paired phones' keys, handed to Core.
     fn sync_keys(&self) {
-        let keys: HashMap<String, [u8; 32]> =
-            self.config.lock().unwrap().phones.iter().filter_map(|p| Some((p.id.clone(), decode_key(&p.psk)?))).collect();
+        // Read and handed over as one step: a phone's new key written in between (`key_changed`)
+        // would otherwise be replaced by the one read before it.
+        let config = self.config.lock().unwrap();
+        let keys: HashMap<String, [u8; 32]> = config.phones.iter().filter_map(|p| Some((p.id.clone(), decode_key(&p.psk)?))).collect();
         self.core().set_keys(keys);
     }
 
@@ -350,9 +369,8 @@ impl Remote {
         {
             let mut c = self.config.lock().unwrap();
             c.enabled = on;
-            let snapshot = c.clone();
             drop(c);
-            self.save(&snapshot);
+            self.save();
         }
         if on {
             self.start().await?;
@@ -428,7 +446,10 @@ impl Remote {
         self.relay_up.store(false, Ordering::Relaxed);
         self.relay_error.lock().unwrap().take();
         self.pair_cancel();
-        self.confirm.lock().unwrap().take();
+        // A phone left waiting for an answer gets "no".
+        if let Some(c) = self.confirm.lock().unwrap().take() {
+            c.decline();
+        }
         // No key is accepted while off, so connections that are open (or still handshaking) end.
         self.core().set_keys(HashMap::new());
     }
@@ -443,9 +464,8 @@ impl Remote {
         let mut c = self.config.lock().unwrap();
         if c.port != Some(running.port) {
             c.port = Some(running.port);
-            let snapshot = c.clone();
             drop(c);
-            self.save(&snapshot);
+            self.save();
         }
         *self.server.lock().unwrap() = Some(running);
         Ok(())
@@ -470,9 +490,8 @@ impl Remote {
         c.account = None;
         c.pro = false;
         c.phones.clear();
-        let snapshot = c.clone();
         drop(c);
-        self.save(&snapshot);
+        self.save();
         self.core().set_keys(HashMap::new());
     }
 
@@ -496,7 +515,7 @@ impl Remote {
                 let snapshot = c.clone();
                 drop(c);
                 if snapshot != before {
-                    self.save(&snapshot);
+                    self.save();
                     if snapshot.enabled {
                         self.sync_keys();
                     }
@@ -561,7 +580,14 @@ impl Remote {
                     Ok(cloud::PairStatus::Pending) => continue,
                     Ok(cloud::PairStatus::Linked { desktop, phone, device_token, account }) => {
                         me.pairing.lock().unwrap().take();
-                        *me.confirm.lock().unwrap() = Some(Confirm { desktop, phone, device_token, psk, account });
+                        let new = Confirm { desktop, phone, device_token, psk, account };
+                        // A phone still waiting for an answer is declined: only one is asked about.
+                        let old = me.confirm.lock().unwrap().replace(new);
+                        if let Some(old) = old
+                            && old.device_token != me.confirm.lock().unwrap().as_ref().and_then(|c| c.device_token.clone())
+                        {
+                            old.decline();
+                        }
                         me.changed();
                         break;
                     }
@@ -604,9 +630,8 @@ impl Remote {
             cfg.desktop_id = Some(c.desktop.id);
             cfg.phones.retain(|p| p.id != c.phone.id);
             cfg.phones.push(Phone { id: c.phone.id, name: c.phone.name, platform: c.phone.platform, psk: URL_SAFE_NO_PAD.encode(c.psk) });
-            let snapshot = cfg.clone();
             drop(cfg);
-            self.save(&snapshot);
+            self.save();
             new_id
         };
         if self.config.lock().unwrap().enabled {
@@ -636,7 +661,7 @@ impl Remote {
         c.phones.retain(|p| p.id != id);
         let snapshot = c.clone();
         drop(c);
-        self.save(&snapshot);
+        self.save();
         if snapshot.enabled {
             self.sync_keys();
         }

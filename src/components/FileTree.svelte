@@ -64,6 +64,8 @@
     const q = query.trim();
     const inc = include.trim();
     if (mode !== "text" || q.length < 2) {
+      // A search still on its way is for a query that is gone.
+      seq++;
       found = null;
       busy = false;
       return;
