@@ -1,5 +1,118 @@
 # Catatan perubahan
 
+## 0.7.12
+
+Serangkaian perbaikan: panel Git di project yang berupa subfolder, daftar Git yang panjang, ganti nama dan link di pohon file, dan KlikVibe Remote yang lebih stabil.
+
+- Panel Git:
+  - Project yang berupa subfolder dari sebuah repositori hanya menampilkan dan mengubah file miliknya sendiri, dengan path yang benar. Sebelumnya path dihitung dari puncak repositori, jadi membuka, men-stage, atau membuang perubahan sebuah file bisa gagal, dan "Commit semua" ikut mengambil file di luar project.
+  - Daftar yang panjang (banyak file berubah, riwayat panjang) dibaca utuh. Sebelumnya daftar yang terpotong di tengah bisa menampilkan entri terakhir yang rusak.
+  - Diff yang terbuka mengikuti file-nya: dimuat ulang setelah commit atau buang perubahan, dan tab-nya tetap ada saat file diganti nama. File tanpa perubahan menampilkan diff kosong, bukan error.
+  - Commit merge menampilkan diff-nya (diff gabungan sebelumnya tampil sebagai teks biasa).
+  - File dengan karakter tak biasa di namanya (`*`, `[`, `:`) di-diff sebagai file itu, bukan sebagai pola.
+- Checkpoint: folder yang merupakan repositori Git tersendiri (submodule, atau clone di dalam project) tidak lagi membuat checkpoint gagal. Folder itu dilewati, tab Checkpoint mencantumkannya, dan saat menghapusnya dikatakan bahwa itu tidak bisa dibatalkan.
+- Pohon file: mengganti nama file hanya beda huruf besar-kecil (`readme.md` jadi `README.md`) berfungsi di Mac dan Windows. Mengganti nama atau menghapus link berlaku pada link-nya, bukan pada yang ditunjuknya. Pencarian yang sudah dikosongkan tidak lagi menampilkan hasil yang terlambat.
+- Terminal: menempel teks besar ke terminal yang sedang sibuk tidak lagi membekukan jendela.
+- Pembaruan: dengan pembaruan otomatis dimatikan, pembaruan yang sudah diunduh tidak dipasang saat keluar. Suntingan yang diketik selama pembaruan diunduh ditanyakan dulu sebelum project ditutup.
+- Preview: tab mengikuti alamat yang dikirim lagi kepadanya.
+- KlikVibe Remote:
+  - Mengganti kunci pemasangan saat HP sedang terhubung tidak bisa lagi membuat komputer dan HP memegang kunci yang berbeda.
+  - Pesan terakhir ke HP (misalnya "akses dicabut") sampai sebelum koneksi ditutup.
+  - HP yang sedang menunggu izin saat Remote dimatikan, atau saat HP lain meminta, ditolak dan tidak dibiarkan menunggu.
+  - Pengaturan yang diubah pada saat bersamaan tidak lagi saling menimpa.
+  - Tombol Remote dan MCP menampilkan keadaan sebenarnya setelah sebuah perubahan gagal.
+
+## 0.7.11
+
+Pembaruan yang tidak bisa menghilangkan project-mu, dan KlikVibe Remote yang lebih stabil.
+
+- Memasang pembaruan kini mengunduhnya dulu, dengan project-mu masih terbuka, dan menanyakan suntingan yang belum disimpan di setiap project sebelum ada yang ditutup. Sebelumnya, unduhan yang gagal (internet lambat atau mati) meninggalkan KlikVibe tanpa project terbuka dan tanpa yang bisa dipulihkan, mempertahankan suntingan di satu project tetap menutup yang lain, dan percobaan kedua selalu gagal dengan "Tidak ada pembaruan untuk dipasang".
+- Di pencarian file, ↑ dan ↓ menggulir hasil project tempatmu berada (dengan pencarian project lain terbuka, yang tergulir malah yang itu).
+- KlikVibe Remote:
+  - Setelah Mac bangun dari tidur, relay tersambung lagi dalam hitungan detik (sebelumnya bisa 90 detik sambil tetap tampil terhubung).
+  - HP yang meninggalkan Wi-Fi dilepas setelah satu menit, tidak lagi tampil terhubung.
+  - Daftar Git di HP muat untuk working tree yang sangat besar (path panjang tidak lagi mengubahnya jadi error).
+  - "Putuskan dari akun" saat offline memberi tahu dan mempertahankan tautannya, tidak lagi meninggalkan komputer di akun tanpa cara menghapusnya.
+  - HP menampilkan project mana yang membutuhkanmu walau notifikasi desktop dimatikan, dan mempertahankan terminal yang shell-nya sudah berakhir (untuk membaca keluaran terakhirnya, atau menutupnya).
+  - Di koneksi lambat, perubahan pada daftar terminal tidak lagi terlewat.
+- Pohon file bisa menerima fokus keyboard (aksesibilitas).
+
+## 0.7.10
+
+Suntingan yang belum disimpan kini aman, dan perbaikan untuk file Windows, worktree, dan Publish.
+
+- Keluar (⌘Q) atau menutup jendela dengan suntingan yang belum disimpan kini bertanya dulu. Sebelumnya KlikVibe langsung tertutup dan suntingannya hilang.
+- File dengan akhir baris Windows (CRLF) mempertahankannya saat disimpan. Sebelumnya, menyimpan mengubah semua akhir baris jadi LF (sehingga Git menampilkan seluruh file sebagai berubah), dan suntingan agen pada file seperti itu menandai tab-nya belum disimpan.
+- "File ini berubah di disk" hanya muncul kalau teks file benar-benar berubah: tidak lagi setelah kamu sendiri menyimpan sambil terus mengetik, atau setelah `npm install` atau build menyentuh banyak file. Ketikan saat file sedang disimpan tidak lagi dianggap sudah tersimpan.
+- Menghapus file yang dikecualikan .gitignore (seperti `.env`) mengatakan bahwa itu tidak bisa dibatalkan: checkpoint tidak menyimpan file tersebut. Menghapus folder mengatakan bahwa file gitignore di dalamnya tidak akan kembali.
+- Di worktree sebuah tugas (agen paralel), panel Git mengikuti commit yang dibuat di sana, jadi Merge tidak lagi meminta commit dulu.
+- Publish melakukan push ke remote repositori walau namanya bukan `origin`.
+- Tool MCP menerima path Windows dengan garis miring mana pun dan huruf besar-kecil apa pun.
+- KlikVibe Remote: terminal yang ukurannya diubah di komputer tampil dengan ukuran barunya di HP (sebelumnya layarnya berantakan sampai terminal dibuka lagi).
+
+## 0.7.9
+
+Tidak ada lagi "Dev server sedang berjalan" untuk alamat milik agen sendiri.
+
+- Diperbaiki: terminal yang menjalankan agen (Claude Code, Codex, ...) menawarkan preview untuk alamat lokal apa pun yang dicetak agen, seperti server milik sebuah plugin (http://localhost:37777 milik claude-mem), setiap kali project dibuka. Kini hanya alamat yang dicetak di luar agen yang menawarkannya, seperti dev server yang dijalankan dari terminal atau menu Scripts.
+
+## 0.7.8
+
+Salin dan tempel di terminal, tanpa bunyi bip.
+
+- Diperbaiki: di macOS, ⌘C di terminal menyalin tetapi membunyikan suara "tidak bisa" dari sistem. Kini menyalin tanpa suara.
+- Windows dan Linux, seperti di Windows Terminal: Ctrl+C menyalin saat ada teks terpilih di terminal (dan menginterupsi seperti biasa saat tidak ada), Ctrl+Shift+C selalu menyalin, dan Ctrl+Shift+V menempel (Ctrl+V juga di Windows). Sebelumnya tombol-tombol ini hanya diteruskan ke shell.
+
+## 0.7.7
+
+KlikVibe Remote: langsung kembali ke relay.
+
+- Diperbaiki: setelah sebuah komputer dihapus dari akun lalu ditambahkan lagi, HP yang jauh dari Wi-Fi-nya tidak bisa menjangkaunya sampai 5 menit (tampil online, tetapi "tidak terjangkau"). Relay kini tersambung lagi begitu komputer ditambahkan kembali.
+
+## 0.7.6
+
+KlikVibe Remote: pemasangan lebih aman, dan relay yang tidak menyerah.
+
+- Mengizinkan sebuah HP menampilkan kode enam digit, dan HP menampilkan kodenya sendiri setelah scan. Izinkan hanya kalau keduanya sama: orang yang melihat kode QR-mu tidak bisa lagi menyamar sebagai HP-mu.
+- Kunci di kode QR hanya berlaku sekali: saat HP terhubung, ia mendapat kunci baru dan kunci di kode QR berhenti berfungsi.
+- HP yang ditambahkan lagi dengan kunci baru mengakhiri koneksi yang masih memakai kunci lama.
+- Di Wi-Fi, Remote hanya menerima koneksi dari alamat lokal, beberapa saja sekaligus dari tiap alamat, dan menutup yang menganggur, jadi perangkat lain di jaringan tidak bisa membuatnya sibuk terus.
+- Kalau koneksi relay gagal karena bug, panel Remote memberi tahu, error-nya dilaporkan, dan dicoba lagi semenit kemudian (sebelumnya berhenti sampai KlikVibe dijalankan ulang).
+
+## 0.7.5
+
+KlikVibe Remote: dari mana saja lagi.
+
+- Diperbaiki: dengan Pro, HP yang jauh dari Wi-Fi komputer (misalnya memakai data seluler) tidak bisa menjangkaunya ("tidak terjangkau"). Sambungan komputer ke relay gagal pada percobaan pertama dan tidak pernah kembali; kini tersambung dan tetap tersambung.
+
+## 0.7.4
+
+KlikVibe Remote: notifikasi push menyebut apa yang terjadi.
+
+- Notifikasi push (Pro) menyebut apa yang terjadi, dalam bahasa HP: "Menunggu jawaban, atau selesai", "Membutuhkanmu" (notifikasi dari agen sendiri) atau "Meminta perhatianmu" (bel), beserta nama komputernya. Tetap tidak pernah berisi apa yang dikatakan agen.
+
+## 0.7.3
+
+KlikVibe Remote: seluruh riwayat di HP.
+
+- HP yang membuka sebuah terminal mendapat riwayatnya seperti yang tampil di jendela (sampai 3000 baris, berwarna), bukan hanya keluaran mentah terakhir, yang cepat habis oleh gambar ulang agen. Kamu bisa menggulir ke atas sejauh di komputer.
+
+## 0.7.2
+
+KlikVibe Remote: tutup terminal dari HP.
+
+- Tutup terminal dari HP (setelah ditanya): tab-nya tertutup di komputer, dan yang berjalan di dalamnya berhenti, seperti saat ditutup di sana.
+- Klik kanan path di atas editor (project, folder, atau file-nya): Tampilkan di Finder (Tampilkan di Explorer), tampilkan di pohon file, salin path atau path relatifnya.
+
+## 0.7.1
+
+KlikVibe Remote: jalankan agen dan kirim gambar dari HP.
+
+- Mulai terminal baru dari HP di project mana pun yang terbuka, dengan salah satu agenmu (Claude Code, Codex, Gemini, ...) atau shell biasa. HP hanya bisa memilih agen yang dikenal KlikVibe, tidak pernah mengirim perintahnya sendiri.
+- Kirim gambar dari HP ke komputer dan serahkan path-nya ke agen. Gambar disimpan secara privat di folder sementara (`klikvibe-remote`) dan dihapus setelah seminggu.
+- Notifikasi push (Pro) kini menyebut terminal mana yang membutuhkanmu, jadi mengetuknya membuka terminal itu, dan tombol Ya/Tidak menjawab agen. Push tetap tidak pernah membawa apa yang dikatakan agen.
+- Butuh KlikVibe Remote 1.0.1 di HP; HP dengan versi lama tetap berfungsi seperti sebelumnya.
+
 ## 0.7.0
 
 KlikVibe Remote: agen AI-mu, dari HP.
