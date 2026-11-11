@@ -26,7 +26,7 @@ Serangkaian perbaikan: panel Git di project yang berupa subfolder, daftar Git ya
 
 Pembaruan yang tidak bisa menghilangkan project-mu, dan KlikVibe Remote yang lebih stabil.
 
-- Memasang pembaruan kini mengunduhnya dulu, dengan project-mu masih terbuka, dan menanyakan suntingan yang belum disimpan di setiap project sebelum ada yang ditutup. Sebelumnya, unduhan yang gagal (internet lambat atau mati) meninggalkan KlikVibe tanpa project terbuka dan tanpa yang bisa dipulihkan, mempertahankan suntingan di satu project tetap menutup yang lain, dan percobaan kedua selalu gagal dengan "Tidak ada pembaruan untuk dipasang".
+- Memasang pembaruan kini mengunduhnya dulu, dengan project-mu masih terbuka, dan menanyakan suntingan yang belum disimpan di setiap project sebelum ada yang ditutup. Sebelumnya, unduhan yang gagal (internet lambat atau mati) meninggalkan KlikVibe tanpa project terbuka dan tanpa yang bisa dipulihkan, mempertahankan suntingan di satu project tetap menutup yang lain, dan percobaan kedua selalu gagal dengan "No update to install".
 - Di pencarian file, ↑ dan ↓ menggulir hasil project tempatmu berada (dengan pencarian project lain terbuka, yang tergulir malah yang itu).
 - KlikVibe Remote:
   - Setelah Mac bangun dari tidur, relay tersambung lagi dalam hitungan detik (sebelumnya bisa 90 detik sambil tetap tampil terhubung).
@@ -39,22 +39,22 @@ Pembaruan yang tidak bisa menghilangkan project-mu, dan KlikVibe Remote yang leb
 
 ## 0.7.10
 
-Suntingan yang belum disimpan kini aman, dan perbaikan untuk file Windows, worktree, dan Publish.
+Suntingan yang belum disimpan kini aman, dan perbaikan untuk file Windows, worktree, dan Publikasikan.
 
 - Keluar (⌘Q) atau menutup jendela dengan suntingan yang belum disimpan kini bertanya dulu. Sebelumnya KlikVibe langsung tertutup dan suntingannya hilang.
 - File dengan akhir baris Windows (CRLF) mempertahankannya saat disimpan. Sebelumnya, menyimpan mengubah semua akhir baris jadi LF (sehingga Git menampilkan seluruh file sebagai berubah), dan suntingan agen pada file seperti itu menandai tab-nya belum disimpan.
 - "File ini berubah di disk" hanya muncul kalau teks file benar-benar berubah: tidak lagi setelah kamu sendiri menyimpan sambil terus mengetik, atau setelah `npm install` atau build menyentuh banyak file. Ketikan saat file sedang disimpan tidak lagi dianggap sudah tersimpan.
 - Menghapus file yang dikecualikan .gitignore (seperti `.env`) mengatakan bahwa itu tidak bisa dibatalkan: checkpoint tidak menyimpan file tersebut. Menghapus folder mengatakan bahwa file gitignore di dalamnya tidak akan kembali.
 - Di worktree sebuah tugas (agen paralel), panel Git mengikuti commit yang dibuat di sana, jadi Merge tidak lagi meminta commit dulu.
-- Publish melakukan push ke remote repositori walau namanya bukan `origin`.
+- Publikasikan melakukan push ke remote repositori walau namanya bukan `origin`.
 - Tool MCP menerima path Windows dengan garis miring mana pun dan huruf besar-kecil apa pun.
 - KlikVibe Remote: terminal yang ukurannya diubah di komputer tampil dengan ukuran barunya di HP (sebelumnya layarnya berantakan sampai terminal dibuka lagi).
 
 ## 0.7.9
 
-Tidak ada lagi "Dev server sedang berjalan" untuk alamat milik agen sendiri.
+Tidak ada lagi "Dev server berjalan" untuk alamat milik agen sendiri.
 
-- Diperbaiki: terminal yang menjalankan agen (Claude Code, Codex, ...) menawarkan preview untuk alamat lokal apa pun yang dicetak agen, seperti server milik sebuah plugin (http://localhost:37777 milik claude-mem), setiap kali project dibuka. Kini hanya alamat yang dicetak di luar agen yang menawarkannya, seperti dev server yang dijalankan dari terminal atau menu Scripts.
+- Diperbaiki: terminal yang menjalankan agen (Claude Code, Codex, ...) menawarkan preview untuk alamat lokal apa pun yang dicetak agen, seperti server milik sebuah plugin (http://localhost:37777 milik claude-mem), setiap kali project dibuka. Kini hanya alamat yang dicetak di luar agen yang menawarkannya, seperti dev server yang dijalankan dari terminal atau menu Script.
 
 ## 0.7.8
 
@@ -89,7 +89,7 @@ KlikVibe Remote: dari mana saja lagi.
 
 KlikVibe Remote: notifikasi push menyebut apa yang terjadi.
 
-- Notifikasi push (Pro) menyebut apa yang terjadi, dalam bahasa HP: "Menunggu jawaban, atau selesai", "Membutuhkanmu" (notifikasi dari agen sendiri) atau "Meminta perhatianmu" (bel), beserta nama komputernya. Tetap tidak pernah berisi apa yang dikatakan agen.
+- Notifikasi push (Pro) menyebut apa yang terjadi, dalam bahasa HP: "Menunggu jawaban, atau sudah selesai", "Butuh kamu" (notifikasi dari agen sendiri) atau "Meminta perhatianmu" (bel), beserta nama komputernya. Tetap tidak pernah berisi apa yang dikatakan agen.
 
 ## 0.7.3
 
@@ -102,7 +102,7 @@ KlikVibe Remote: seluruh riwayat di HP.
 KlikVibe Remote: tutup terminal dari HP.
 
 - Tutup terminal dari HP (setelah ditanya): tab-nya tertutup di komputer, dan yang berjalan di dalamnya berhenti, seperti saat ditutup di sana.
-- Klik kanan path di atas editor (project, folder, atau file-nya): Tampilkan di Finder (Tampilkan di Explorer), tampilkan di pohon file, salin path atau path relatifnya.
+- Klik kanan path di atas editor (project, folder, atau file-nya): Tampilkan di Finder (Tampilkan di Explorer), tampilkan di Files, salin path atau path relatifnya.
 
 ## 0.7.1
 
