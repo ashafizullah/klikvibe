@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.12
+
+A round of fixes: the Git panel in a sub-folder project, long Git lists, renames and links in the file tree, and a steadier KlikVibe Remote.
+
+- Git panel:
+  - A project that is a sub-folder of a repository shows and changes only its own files, with the right paths. Before, paths were counted from the top of the repository, so opening, staging or discarding a file could fail, and "Commit all" took in files outside the project.
+  - Long lists (many changed files, a long history) are read whole. Before, a list cut off in the middle could show a broken last entry.
+  - An open diff follows the file: it reloads after a commit or a discard, and keeps its tab when the file is renamed. A file with no changes shows an empty diff instead of an error.
+  - Merge commits show their diff (a combined diff was shown as plain text).
+  - Files with unusual characters in their names (`*`, `[`, `:`) are diffed as that file, not as a pattern.
+- Checkpoints: a folder that is a Git repository of its own (a submodule, or a clone inside the project) no longer makes the checkpoint fail. It is left out, the Checkpoints tab lists such folders, and deleting them says it can't be undone.
+- File tree: renaming a file only by letter case (`readme.md` to `README.md`) works on Mac and Windows. Renaming or deleting a link acts on the link, not on what it points to. A search that is cleared no longer shows late results.
+- Terminal: pasting a large text into a busy terminal no longer freezes the window.
+- Updates: with automatic updates off, a downloaded update is not installed on quit. Edits typed while an update downloads are asked about before projects close.
+- Preview: a tab follows an address that is sent to it again.
+- KlikVibe Remote:
+  - Changing the pairing key while a phone is connected can no longer leave the computer and the phone with different keys.
+  - The last messages to a phone (such as "access removed") arrive before the connection closes.
+  - A phone waiting for approval when Remote is turned off, or when another phone asks, is declined instead of left waiting.
+  - Settings changed at the same moment no longer overwrite each other.
+  - The Remote and MCP switches show the real state after a change fails.
+
 ## 0.7.11
 
 Updates that can't lose your projects, and a steadier KlikVibe Remote.

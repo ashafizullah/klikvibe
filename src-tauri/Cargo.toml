@@ -1,6 +1,6 @@
 [package]
 name = "klikvibe"
-version = "0.7.11"
+version = "0.7.12"
 description = "Free, open-source, lightweight code editor for vibe coding"
 authors = ["Adam Suchi Hafizullah"]
 edition = "2024"
@@ -10,7 +10,9 @@ repository = "https://github.com/ashafizullah/klikvibe"
 [lib]
 # The `_lib` suffix keeps the lib name distinct from the bin name (a Windows issue).
 name = "klikvibe_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+# Desktop only: the static and dynamic libraries are for Android and iOS builds,
+# and building them on every debug run grew the build folder to tens of gigabytes.
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
