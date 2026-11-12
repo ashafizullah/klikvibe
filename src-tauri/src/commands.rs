@@ -579,6 +579,12 @@ pub fn remote_agents(remote: State<'_, Remote>, agents: Vec<remote::hub::AgentMe
     remote.hub.set_agents(agents);
 }
 
+/// The terminal's Prompts menu, sent at startup and whenever it changes: a phone offers them.
+#[tauri::command]
+pub fn remote_prompts(remote: State<'_, Remote>, prompts: Vec<String>) {
+    remote.hub.set_prompts(prompts);
+}
+
 /// The window opened (or could not open) the terminal a phone asked for (`remote-term-new`).
 #[tauri::command]
 pub fn remote_term_created(remote: State<'_, Remote>, nonce: String, id: Option<String>, error: Option<String>) {

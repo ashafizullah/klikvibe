@@ -252,6 +252,7 @@ export const ipc = {
   remoteAttention: (root: string, term: string, title: string, body: string, kind: string) =>
     invoke<void>("remote_attention", { root, term, title, body, kind }),
   remoteAgents: (agents: { id: string; label: string }[]) => invoke<void>("remote_agents", { agents }),
+  remotePrompts: (prompts: string[]) => invoke<void>("remote_prompts", { prompts }),
   remoteTermCreated: (nonce: string, id: string | null, error: string | null) => invoke<void>("remote_term_created", { nonce, id, error }),
   remoteTermSnapshot: (nonce: string, data: string | null, offset: number) => invoke<void>("remote_term_snapshot", { nonce, data, offset }),
   mcpLink: () => invoke<McpLink>("mcp_link"),

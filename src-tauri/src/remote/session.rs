@@ -15,7 +15,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub const VERSION: u32 = 1;
 /// What this desktop can do beyond the first version, in `hello`: a phone offers only these.
-const FEATURES: [&str; 3] = ["term.new", "term.kill", "file.put"];
+const FEATURES: [&str; 4] = ["term.new", "term.kill", "file.put", "prompts"];
 /// How long the window has to open a terminal for `term.new`.
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
 /// How long a phone opening a terminal waits for the window's view of it.
@@ -180,6 +180,7 @@ impl Session {
                 self.resize_at = Some(tokio::time::Instant::now() + RESIZE_SETTLE);
                 true
             }
+            Event::Prompts => self.send(json!({ "t": "prompts", "prompts": self.hub.prompts() })).await,
             Event::Attention { root, term, title, body } => {
                 self.send(json!({ "t": "attention", "root": root, "term": term, "title": title, "body": body })).await
             }
@@ -372,6 +373,7 @@ pub async fn serve(hub: Arc<Hub>, host: Arc<dyn Host>, mut rx: mpsc::Receiver<Ve
     hello["v"] = json!(VERSION);
     hello["features"] = json!(FEATURES);
     hello["agents"] = json!(s.hub.agents());
+    hello["prompts"] = json!(s.hub.prompts());
     if !s.send(hello).await || !s.projects().await {
         return;
     }
@@ -579,8 +581,9 @@ mod tests {
         say(json!({ "t": "hello", "v": 1, "name": "iPhone" })).await.unwrap();
         let h = next(&mut from_desktop).await;
         assert_eq!((h["t"].as_str(), h["name"].as_str(), h["v"].as_u64()), (Some("hello"), Some("Mac"), Some(1)));
-        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put"]));
+        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put", "prompts"]));
         assert_eq!(h["agents"], json!([]));
+        assert_eq!(h["prompts"], json!([]));
         let p = next(&mut from_desktop).await;
         assert_eq!(p["projects"][0]["terminals"][0]["id"], "t1");
 

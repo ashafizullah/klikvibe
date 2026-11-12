@@ -87,7 +87,13 @@ pub enum Event {
     Resize {
         id: String,
     },
+    /// The terminal's Prompts menu changed.
+    Prompts,
 }
+
+/// The prompts a phone gets: not more than these, nor more text in all (they go in one message).
+const MAX_PROMPTS: usize = 100;
+const MAX_PROMPT_BYTES: usize = 24 * 1024;
 
 struct Term {
     buf: VecDeque<u8>,
@@ -121,6 +127,8 @@ struct State {
     projects: Vec<ProjectMeta>,
     /// Reported once by the window at startup; empty until then.
     agents: Vec<AgentMeta>,
+    /// The terminal's Prompts menu, as the window last reported it.
+    prompts: Vec<String>,
     terms: HashMap<String, Term>,
     /// The last statuses sent, to tell when one changes.
     sent: Vec<ProjectView>,
@@ -227,6 +235,29 @@ impl Hub {
 
     pub fn set_agents(&self, agents: Vec<AgentMeta>) {
         self.state.lock().unwrap().agents = agents;
+    }
+
+    /// The Prompts menu, for the phone to offer: the first ones that fit in one message.
+    pub fn set_prompts(&self, prompts: Vec<String>) {
+        let mut total = 0;
+        let fit: Vec<String> = prompts
+            .into_iter()
+            .filter(|p| !p.trim().is_empty())
+            .take(MAX_PROMPTS)
+            .take_while(|p| {
+                total += p.len();
+                total <= MAX_PROMPT_BYTES
+            })
+            .collect();
+        let mut st = self.state.lock().unwrap();
+        if st.prompts != fit {
+            st.prompts = fit;
+            let _ = self.tx.send(Event::Prompts);
+        }
+    }
+
+    pub fn prompts(&self) -> Vec<String> {
+        self.state.lock().unwrap().prompts.clone()
     }
 
     pub fn attention(&self, root: &str, term: &str, title: &str, body: &str) {
@@ -364,6 +395,21 @@ mod tests {
         assert_eq!(t.status(true, t0 + Duration::from_secs(11)), "waiting");
         t.exited = Some(Some(0));
         assert_eq!(t.status(true, t0), "exited");
+    }
+
+    #[tokio::test]
+    async fn prompts_are_told_when_they_change_and_cut_to_fit() {
+        let hub = Hub::default();
+        let mut rx = hub.subscribe();
+        hub.set_prompts(vec!["Run the tests".into(), "  ".into(), "Explain this".into()]);
+        assert!(matches!(rx.recv().await.unwrap(), Event::Prompts));
+        assert_eq!(hub.prompts(), vec!["Run the tests", "Explain this"]);
+        // The same list again sends nothing.
+        hub.set_prompts(vec!["Run the tests".into(), "Explain this".into()]);
+        assert!(rx.try_recv().is_err());
+        // Not more text than one message holds: the first ones that fit.
+        hub.set_prompts(vec!["a".repeat(20 * 1024), "b".repeat(8 * 1024), "c".into()]);
+        assert_eq!(hub.prompts(), vec!["a".repeat(20 * 1024)]);
     }
 
     #[tokio::test]

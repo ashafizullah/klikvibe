@@ -20,6 +20,7 @@
 - Git: membuang satu bagian perubahan file bisa diurungkan, lewat tombol Urungkan di pemberitahuannya selama beberapa detik.
 - Tema terang: di halaman Daftar proyek, di atas pilihan bahasa, pilih Gelap, Terang, atau Ikuti komputer (juga lewat palet perintah). Editor, diff, dan terminal ikut berubah.
 - Tab terminal bisa diseret ke samping untuk mengubah urutannya, sama seperti tab proyek dan tab file.
+- KlikVibe Remote: HP menerima menu Prompt terminal sesuai yang kamu atur di sini, dan menampilkannya di samping tombol-tombol keyboard: prompt yang dipilih masuk ke kotak ketik, siap dikirim. Ikut berubah saat kamu mengeditnya. Butuh versi app HP yang sudah mendukungnya.
 
 ## 0.7.12
 

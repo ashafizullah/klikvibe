@@ -20,6 +20,7 @@
 - Git: discarding one part of a file's changes can be undone: the notice has an Undo button for a few seconds.
 - Light theme: on the Projects page, beside the language, choose Dark, Light or Same as the computer (also in the command palette). The editor, diffs and the terminal follow.
 - Terminal tabs can be dragged sideways into another order, as the project and file tabs can.
+- KlikVibe Remote: the phone gets the terminal's Prompts menu as you set it here, and offers it beside the keys: a prompt picked there goes in the box, ready to send. It follows your edits. Needs a phone app that knows it.
 
 ## 0.7.12
 

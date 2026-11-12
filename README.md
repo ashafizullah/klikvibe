@@ -25,7 +25,8 @@
 
 ## What it does
 
-- **Terminal first.** Shells open in the project folder, as many as you need (the agent in one, the dev server in another). *Start agent* types the command of your agent (Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI or Aider) for you; you press Enter.
+- **Terminal first, any agent.** Shells open in the project folder, as many as you need (the agent in one, the dev server in another), two side by side if you like. Run any agent that works in a terminal (Claude Code, Codex, Gemini CLI, OpenCode, Aider…). Find in the output (`⌘F`), drag a file from the tree to type its path, and send the prompts you use often from the Prompts menu, which you can edit.
+- **Keyboard first.** The command palette (`⌘⇧P` / `Ctrl+Shift+P`) finds any action: show a panel, push, send a prompt, switch project. `⌘+` / `⌘−` change the text size. A dark or a light theme, or the one your computer uses.
 - **Several projects at once,** each in its own tab with its own files, Git panel and terminals, so an agent keeps working in one while you look at another.
 - **Your agent sees what you see (MCP).** Turn on the local MCP server and add it to your agent with one command: it can then read the file and the code you have selected, see unsaved edits and your other terminals' output (dev server errors, failing tests), open files, diffs and commits in KlikVibe for you to review, and take checkpoints before risky changes.
 - **Knows when the agent needs you.** When an agent has been working and goes quiet (waiting for an answer, or done), KlikVibe shows a notification, so you can do something else meanwhile. Paths in its output open the file at that line with a click.
@@ -35,7 +36,7 @@
 - **Live view of the agent's work.** The file tree, open files and the Git panel follow the disk as files change. Files touched in the last moments pulse in the tree, and open files reload by themselves unless you have unsaved edits there.
 - **Code when you want it.** CodeMirror 6 with syntax highlighting for the common languages, search, and editing with save (`⌘S` / `Ctrl+S`). Images, video, audio and PDFs open as a preview; other binary files and very large files are not opened.
 - **Git without leaving.**
-  - Changes, each with a diff.
+  - Changes, each with a diff; stage or discard one part of a file's changes (with Undo).
   - Commit all with a message (`⌘↵`).
   - Pull (fast-forward only), push, or publish a new branch.
   - History, with unpushed commits marked; click a commit to see its patch.

@@ -25,7 +25,8 @@
 
 ## Fitur
 
-- **Terminal lebih dulu.** Shell terbuka di folder proyek, sebanyak yang Anda perlukan (agen di satu terminal, dev server di terminal lain). Tombol *Jalankan agen* mengetikkan perintah agen Anda (Claude Code, Codex, Gemini CLI, OpenCode, Oh My Pi, Command Code, Amp, Qwen Code, Kimi CLI, Droid, Copilot CLI, Crush, Cursor CLI, atau Aider); Anda tinggal menekan Enter.
+- **Terminal lebih dulu, agen apa saja.** Shell terbuka di folder proyek, sebanyak yang Anda perlukan (agen di satu terminal, dev server di terminal lain), dua di antaranya bisa berdampingan. Jalankan agen apa pun yang bekerja di terminal (Claude Code, Codex, Gemini CLI, OpenCode, Aider…). Cari di output (`⌘F`), seret file dari pohon file untuk mengetik path-nya, dan kirim prompt yang sering dipakai dari menu Prompt, yang bisa Anda ubah.
+- **Semua dari keyboard.** Palet perintah (`⌘⇧P` / `Ctrl+Shift+P`) menemukan aksi apa pun: menampilkan panel, push, mengirim prompt, pindah proyek. `⌘+` / `⌘−` mengubah ukuran teks. Tema gelap, terang, atau mengikuti komputer.
 - **Beberapa proyek sekaligus,** masing-masing di tab sendiri dengan file, panel Git, dan terminalnya sendiri, jadi agen tetap bekerja di satu proyek saat Anda melihat proyek lain.
 - **Agen melihat apa yang Anda lihat (MCP).** Aktifkan server MCP lokal dan tambahkan ke agen Anda dengan satu perintah: agen bisa membaca file dan kode yang sedang Anda pilih, melihat editan yang belum disimpan dan output terminal lain (error dev server, test yang gagal), membuka file, diff, dan commit di KlikVibe untuk Anda periksa, serta membuat checkpoint sebelum perubahan berisiko.
 - **Tahu saat agen butuh Anda.** Saat agen selesai bekerja lalu diam (menunggu jawaban, atau sudah selesai), KlikVibe menampilkan notifikasi, jadi Anda bisa mengerjakan hal lain sambil menunggu. Path di output-nya bisa diklik untuk membuka file di baris itu.
@@ -35,7 +36,7 @@
 - **Pekerjaan agen terlihat langsung.** Pohon file, file yang terbuka, dan panel Git mengikuti isi disk saat file berubah. File yang baru disentuh berkedip di pohon file, dan file yang terbuka dimuat ulang sendiri, kecuali ada editan yang belum Anda simpan di sana.
 - **Kode saat Anda butuh.** CodeMirror 6 dengan pewarnaan sintaks untuk bahasa-bahasa umum, pencarian, dan edit lalu simpan (`⌘S` / `Ctrl+S`). Gambar, video, audio, dan PDF tampil sebagai pratinjau; file biner lain dan file yang sangat besar tidak dibuka.
 - **Git tanpa pindah aplikasi.**
-  - Daftar perubahan, masing-masing dengan diff.
+  - Daftar perubahan, masing-masing dengan diff; stage atau buang satu bagian perubahan file (bisa diurungkan).
   - Commit semua dengan pesan (`⌘↵`).
   - Pull (hanya fast-forward), push, atau publikasikan branch baru.
   - Riwayat, dengan tanda pada commit yang belum di-push; klik commit untuk melihat patch-nya.

@@ -94,7 +94,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 
 | `t` | Fields | |
 |---|---|---|
-| `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "term.kill", "file.put"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts |
+| `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents`, `prompts` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "term.kill", "file.put", "prompts"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts. `prompts`: the terminal's Prompts menu as the user set it on the computer (strings, in its order), for the phone to offer as ready answers; at most 100 and 24 KiB of text in all. Only with the `prompts` feature |
 | `projects` | `projects: [Project]` | Also sent unasked whenever something changes |
 | `term.reset` | `id`, `cols`, `rows` | Clear the screen; the desktop's size (the phone never resizes the terminal). Also sent again, with the output so far, when the terminal is resized on the computer |
 | `term.data` | `id`, `data` (base64) | Raw output bytes, at most 32 KiB per message |
@@ -105,6 +105,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 | `term.new` | `req`, `id` | The new terminal's id: it is in the project list already (a `projects` message follows), and can be opened with `term.open` |
 | `term.kill` | `req`, `id` | The terminal is closed (a `term.exit` and a `projects` message follow) |
 | `file.put` | `req`, `ok: true`, `path?` | A chunk was written. After the last one, `path`: where the image is on the computer (absolute) |
+| `prompts` | `prompts` | Sent unasked when the Prompts menu changes on the computer: the whole list again, as in `hello`. Only with the `prompts` feature |
 | `pong` | | |
 | `error` | `req?`, `id?`, `message` | The answer to a failed request (`req`), or about one terminal (`id`: it can't be opened or typed into). Also the answer to a request whose reply would not fit one message |
 

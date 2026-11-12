@@ -4,6 +4,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { errorText, ipc, type RemoteProject, type RemoteStatus } from "./ipc";
 import { AGENTS } from "./agents";
+import { promptList } from "./prompts.svelte";
 import { workspace } from "./project.svelte";
 import { phoneAttention } from "./attention.svelte";
 import { ui } from "./ui.svelte";
@@ -116,6 +117,12 @@ export function initRemote() {
   refreshRemote();
   // The agents a phone may start in a new terminal (by id: never a command from the phone).
   ipc.remoteAgents(AGENTS.map(({ id, label }) => ({ id, label }))).catch(() => {});
+  // The Prompts menu, for the phone's own (again whenever it is edited, or the language changes).
+  $effect.root(() => {
+    $effect(() => {
+      ipc.remotePrompts(promptList().filter((p) => p.trim())).catch(() => {});
+    });
+  });
   listen("remote-changed", () => refreshRemote());
   listen<{ root: string; agent: string | null; nonce: string }>("remote-term-new", (e) => termNew(e.payload));
   listen<{ root: string; id: string; nonce: string }>("remote-term-kill", (e) => termKill(e.payload));
