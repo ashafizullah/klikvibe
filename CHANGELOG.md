@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Tabs: when the project tabs, terminal tabs or file tabs don't all fit, ‹ and › buttons beside them scroll the rest into view. The + button for a new project or terminal stays in sight.
+- Terminal: one "Start agent" button replaces the agent list next to it. Its ⌄ arrow lists every agent with its command; choosing one starts it, and "Start agent" starts that one from then on.
+- The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
+
 ## 0.7.12
 
 A round of fixes: the Git panel in a sub-folder project, long Git lists, renames and links in the file tree, and a steadier KlikVibe Remote.

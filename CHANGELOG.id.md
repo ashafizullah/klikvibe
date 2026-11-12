@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Tab: saat tab project, tab terminal, atau tab file tidak muat semuanya, tombol ‹ dan › di sampingnya menggeser sisanya agar terlihat. Tombol + untuk project atau terminal baru tetap terlihat.
+- Terminal: satu tombol "Jalankan agen" menggantikan daftar agen di sebelahnya. Panah ⌄-nya menampilkan semua agen beserta perintahnya; memilih salah satu langsung menjalankannya, dan "Jalankan agen" selanjutnya menjalankan agen itu.
+- Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
+
 ## 0.7.12
 
 Serangkaian perbaikan: panel Git di project yang berupa subfolder, daftar Git yang panjang, ganti nama dan link di pohon file, dan KlikVibe Remote yang lebih stabil.
