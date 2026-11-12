@@ -96,7 +96,7 @@
             <button tabindex="-1" onclick={() => run(c)} onmousemove={() => (selected = i)}>
               <Icon name={c.icon} size={14} />
               <span class="group">{c.group}</span>
-              <span class="label ellipsis">{c.label}</span>
+              <span class="name ellipsis">{c.label}</span>
               {#if c.keys}<span class="kbd">{c.keys}</span>{/if}
             </button>
           </li>
@@ -185,7 +185,8 @@
     color: var(--muted);
     font-size: 12px;
   }
-  .label {
+  /* Not .label: that is the small upper-case heading style (lists.css). */
+  .name {
     flex: 1;
     min-width: 0;
   }
