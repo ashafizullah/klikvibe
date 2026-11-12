@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.7.14
+
+Perbaikan untuk palet perintah.
+
+- Palet perintah: nama perintah tampil dengan huruf biasa lagi. Di 0.7.13 nama perintah tampil dalam huruf kapital kecil sehingga sulit dibaca.
+
 ## 0.7.13
 
 Palet perintah, tema terang, dua terminal berdampingan, dan stage satu bagian file. Lewat KlikVibe Remote, kini kamu bisa commit dan push dari HP.

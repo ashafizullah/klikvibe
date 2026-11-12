@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.14
+
+A fix for the command palette.
+
+- Command palette: the commands show in normal letters again. In 0.7.13 they were in small capitals, which made them hard to read.
+
 ## 0.7.13
 
 A command palette, a light theme, two terminals side by side, and staging one part of a file. With KlikVibe Remote you can now commit and push from your phone.
