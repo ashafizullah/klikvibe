@@ -86,6 +86,18 @@ export function commands(recent: RecentProject[]): Command[] {
         p.newTerminal?.(null).catch(() => {});
       },
     });
+    const split = p.splitTerminal;
+    if (split)
+      add({
+        id: "terminal.split",
+        group: g.terminal,
+        label: split.on() ? t("terminal.unsplit") : t("terminal.split"),
+        icon: "columns-2",
+        run: () => {
+          showTerminal();
+          split.toggle();
+        },
+      });
     if (p.findInTerminal) add({ id: "terminal.find", group: g.terminal, label: t("terminal.find"), icon: "search", keys: isMac ? "⌘F" : "Ctrl+Shift+F", run: () => p.findInTerminal?.() });
 
     for (const text of promptList().filter((x) => x.trim()))

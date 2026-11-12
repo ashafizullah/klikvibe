@@ -56,8 +56,8 @@
   /** Lines of output kept per terminal. */
   const HISTORY_LINES = 300;
 
-  function restored(): { shells: Shell[]; active: number } | null {
-    let saved: { shells: SavedShell[]; active: number } | null = null;
+  function restored(): { shells: Shell[]; active: number; pair: [number, number] | null } | null {
+    let saved: { shells: SavedShell[]; active: number; split?: [number, number] | null } | null = null;
     try {
       saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
     } catch {}
@@ -73,21 +73,53 @@
       else if (a) s.prefill = a.command;
       return s;
     });
-    return { shells: list, active: list[Math.min(Math.max(0, saved.active), list.length - 1)].id };
+    const [l, r] = saved.split ?? [];
+    const pair: [number, number] | null = list[l!] && list[r!] && l !== r ? [list[l!].id, list[r!].id] : null;
+    const active = list[Math.min(Math.max(0, saved.active), list.length - 1)].id;
+    return { shells: list, active: pair && !pair.includes(active) ? pair[0] : active, pair };
   }
 
   const start = restored();
   let shells = $state<Shell[]>(start?.shells ?? [shell()]);
   let active = $state(start?.active ?? 1);
+  /** Two terminals side by side: the one on the left and the one on the right; `active` (the one with the keyboard) is one of them. */
+  let pair = $state<[number, number] | null>(start?.pair ?? null);
   strip.follow(() => [active, shells.length]);
+
+  /** Opens a terminal; side by side, in the place of the one that has the keyboard. */
+  function show(id: number) {
+    if (pair && !pair.includes(id)) pair = pair[0] === active ? [id, pair[1]] : [pair[0], id];
+    active = id;
+  }
+
+  /** Two terminals side by side, or one again: the next terminal beside this one (a new one if there is no other). */
+  function toggleSplit() {
+    if (pair) {
+      pair = null;
+      return;
+    }
+    const left = active;
+    const i = shells.findIndex((x) => x.id === left);
+    const right = shells.length > 1 ? shells[(i + 1) % shells.length].id : add().id;
+    pair = [left, right];
+    active = left;
+  }
+
+  /** On screen: the open terminal, or both side by side. */
+  const onScreen = (s: Shell) => (pair ? pair.includes(s.id) : s.id === active) && settings.showTerminal && shown;
+
+  /** `id` beside the open terminal. */
+  function beside(id: number) {
+    if (id !== active) pair = [active, id];
+  }
 
   /** Looking at a terminal clears its dot; while the window is in the background, only once it is back. */
   function looked() {
-    const s = shells.find((x) => x.id === active);
-    if (s?.waiting && shown && settings.showTerminal && document.hasFocus()) s.waiting = false;
+    if (!shown || !settings.showTerminal || !document.hasFocus()) return;
+    for (const s of shells) if (s.waiting && (s.id === active || pair?.includes(s.id))) s.waiting = false;
   }
   $effect(() => {
-    void [active, shown, settings.showTerminal];
+    void [active, pair, shown, settings.showTerminal];
     looked();
   });
   const waiting = $derived(shells.some((s) => s.waiting));
@@ -98,7 +130,7 @@
     const s = shell(run);
     s.auto = auto;
     shells.push(s);
-    active = s.id;
+    show(s.id);
     return s;
   }
 
@@ -129,6 +161,8 @@
       { label: t("terminal.rename"), run: () => rename(s, i) },
       { label: t("terminal.resetName"), disabled: s.name === null, run: () => (s.name = null) },
       "sep",
+      { label: t("terminal.beside"), disabled: s.id === active || (!!pair?.includes(s.id) && pair.includes(active)), run: () => beside(s.id) },
+      "sep",
       { label: t("terminal.new"), run: () => add() },
       { label: t("terminal.close"), run: () => close(s.id) },
     ]);
@@ -138,7 +172,10 @@
     const i = shells.findIndex((s) => s.id === id);
     shells.splice(i, 1);
     delete refs[id];
-    if (!shells.length) add();
+    if (pair?.includes(id)) {
+      active = pair[0] === id ? pair[1] : pair[0];
+      pair = null;
+    } else if (!shells.length) add();
     else if (active === id) active = shells[Math.max(0, i - 1)].id;
   }
 
@@ -148,7 +185,7 @@
   function askAgent(text: string) {
     const target = shells.find((s) => s.id === active && isAgent(s)) ?? shells.find(isAgent) ?? shells.find((s) => s.id === active);
     if (!target) return;
-    active = target.id;
+    show(target.id);
     if (!settings.showTerminal) {
       settings.showTerminal = true;
       persist();
@@ -198,6 +235,8 @@
     tick().then(() => refs[active]?.openFind());
   }
   project.findInTerminal = findInTerminal;
+  const split = { on: () => pair !== null, toggle: toggleSplit };
+  project.splitTerminal = split;
 
   /** A terminal the phone closed (`term.kill`): like closing its tab here. */
   function closeTerminal(session: string): boolean {
@@ -220,6 +259,7 @@
   function save() {
     const state = {
       active: shells.findIndex((s) => s.id === active),
+      split: pair ? (pair.map((id) => shells.findIndex((s) => s.id === id)) as [number, number]) : null,
       shells: shells.map((s): SavedShell => ({
         name: s.name,
         agent: isAgent(s) ? (AGENTS.find((a) => a.label === s.auto)?.id ?? null) : null,
@@ -244,6 +284,7 @@
     if (project.terminals === terminals) project.terminals = null;
     if (project.newTerminal === newTerminal) project.newTerminal = null;
     if (project.findInTerminal === findInTerminal) project.findInTerminal = null;
+    if (project.splitTerminal === split) project.splitTerminal = null;
     if (project.closeTerminal === closeTerminal) project.closeTerminal = null;
     if (project.terminalSnapshot === snapshot) project.terminalSnapshot = null;
     // The project was closed: its terminals don't come back next time. (An update keeps them.)
@@ -335,7 +376,7 @@
       {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}
       <div class="shells" bind:this={strip.el}>
         {#each shells as s, i (s.id)}
-          <div class="shell" class:on={s.id === active} class:exited={s.exited}>
+          <div class="shell" class:on={s.id === active} class:beside={s.id !== active && !!pair?.includes(s.id)} class:exited={s.exited}>
             {#if renaming === s.id}
               <input
                 class="shell-name"
@@ -349,7 +390,7 @@
             {:else}
               <button
                 class="shell-main ellipsis"
-                onclick={() => (active = s.id)}
+                onclick={() => show(s.id)}
                 ondblclick={() => rename(s, i)}
                 oncontextmenu={(e) => shellMenu(e, s, i)}
                 title={`${label(s, i)} · ${t("terminal.renameHint")}`}
@@ -376,6 +417,16 @@
         <Icon name="message-square-text" size={13} />{t("prompts.title")}
       </button>
     </div>
+    <button
+      class="icon-btn"
+      class:on={pair !== null}
+      onclick={toggleSplit}
+      title={pair ? t("terminal.unsplit") : t("terminal.split")}
+      aria-label={pair ? t("terminal.unsplit") : t("terminal.split")}
+      aria-pressed={pair !== null}
+    >
+      <Icon name="columns-2" size={14} />
+    </button>
     <button class="icon-btn" onclick={() => refs[active]?.openFind()} title={`${t("terminal.find")} (${isMac ? "⌘F" : "Ctrl+Shift+F"})`} aria-label={t("terminal.find")}>
       <Icon name="search" size={14} />
     </button>
@@ -396,7 +447,18 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} onwaiting={() => (s.waiting = true)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
+        <div
+          class="pane"
+          class:left={pair?.[0] === s.id}
+          class:right={pair?.[1] === s.id}
+          class:focus={!!pair && s.id === active}
+          class:off={!onScreen(s)}
+          role="presentation"
+          onfocusin={() => pair?.includes(s.id) && (active = s.id)}
+          onpointerdown={() => pair?.includes(s.id) && (active = s.id)}
+        >
+          <TerminalSession bind:this={refs[s.id]} focused={s.id === active} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} onwaiting={() => (s.waiting = true)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={onScreen(s)} onexit={() => (s.exited = true)} />
+        </div>
       {/each}
     {/if}
   </div>
@@ -487,6 +549,10 @@
     background: var(--panel-2);
     color: var(--accent);
   }
+  .shell.beside {
+    background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+    color: var(--text);
+  }
   .shell.exited {
     opacity: 0.55;
   }
@@ -563,5 +629,31 @@
     position: relative;
     flex: 1;
     min-height: 0;
+  }
+  .pane {
+    position: absolute;
+    inset: 0;
+  }
+  /* Not on screen: nor in the way of the pointer. */
+  .pane.off {
+    visibility: hidden;
+  }
+  .pane.left {
+    right: 50%;
+  }
+  .pane.right {
+    left: 50%;
+    border-left: 1px solid var(--line);
+  }
+  /* Side by side: a line over the one that has the keyboard. */
+  .pane.focus::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.7;
   }
 </style>

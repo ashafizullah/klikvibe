@@ -184,6 +184,7 @@ pub fn run() {
             commands::git_discard,
             commands::git_staged_hunks,
             commands::git_hunk,
+            commands::git_hunk_restore,
             commands::git_ignore,
             commands::terminal_open,
             commands::terminal_write,

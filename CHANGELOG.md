@@ -16,6 +16,8 @@
 - Git: a file's diff shows Stage (or Unstage) and Discard on each part of the changes, to commit or throw away only that part. Parts already staged are marked.
 - Command palette: ⌘⇧P (Ctrl+Shift+P on Windows and Linux) opens a list of what KlikVibe can do, from showing a panel to Push or sending a prompt to the agent. Type a few letters to find one, Enter runs it. Commands used last come first.
 - Terminal: a terminal tab whose agent is waiting for you shows a bell until you open it, so you can tell which of several terminals needs you.
+- Terminal: two terminals side by side, such as the agent beside a dev server. The new button in the terminal's header (or "Show beside the open terminal" on a tab's right-click menu) puts the next terminal beside the open one; clicking a tab shows it in the half you last clicked. The layout is kept for next time.
+- Git: discarding one part of a file's changes can be undone: the notice has an Undo button for a few seconds.
 
 ## 0.7.12
 

@@ -16,6 +16,8 @@
 - Git: diff sebuah file menampilkan tombol Stage (atau Unstage) dan Buang di tiap bagian perubahan, untuk meng-commit atau membuang bagian itu saja. Bagian yang sudah di-stage diberi tanda.
 - Palet perintah: ⌘⇧P (Ctrl+Shift+P di Windows dan Linux) membuka daftar semua yang bisa dilakukan KlikVibe, dari menampilkan panel sampai Push atau mengirim prompt ke agen. Ketik beberapa huruf untuk mencarinya, lalu Enter untuk menjalankan. Perintah yang terakhir dipakai muncul paling atas.
 - Terminal: tab terminal yang agennya sedang menunggumu menampilkan ikon lonceng sampai tab itu dibuka, jadi kelihatan terminal mana yang butuh kamu.
+- Terminal: dua terminal bisa tampil berdampingan, misalnya agen di samping dev server. Tombol baru di kepala terminal (atau "Tampilkan di samping terminal yang terbuka" di menu klik kanan tab) menaruh terminal berikutnya di samping terminal yang terbuka. Mengklik tab menampilkannya di sisi yang terakhir diklik. Tata letaknya diingat untuk berikutnya.
+- Git: membuang satu bagian perubahan file bisa diurungkan, lewat tombol Urungkan di pemberitahuannya selama beberapa detik.
 
 ## 0.7.12
 

@@ -120,6 +120,8 @@ export class ProjectState {
   newTerminal: ((agent: AgentDef | null) => Promise<string>) | null = null;
   /** Opens the find bar of the open terminal (the command palette); set by TerminalPanel. */
   findInTerminal: (() => void) | null = null;
+  /** Two terminals side by side or one (the command palette); set by TerminalPanel. */
+  splitTerminal: { on: () => boolean; toggle: () => void } | null = null;
   /** Closes the terminal with this session id (KlikVibe Remote's `term.kill`); false if it isn't here. */
   closeTerminal: ((session: string) => boolean) | null = null;
   /** A terminal's scrollback as shown (ANSI) and the output bytes it covers, for KlikVibe Remote. */
@@ -822,13 +824,25 @@ export class ProjectState {
     this.refreshGit();
   }
 
+  /** Undo of a hunk's discard: the change is back in the file (unstaged). */
+  private async restoreHunk(tab: Tab, rel: string, patch: string) {
+    try {
+      await ipc.gitHunkRestore(this.root, patch);
+      toast(t("diff.hunkRestored"), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    }
+    if (this.tabs.includes(tab)) await this.loadDiff(tab, rel);
+    this.refreshGit();
+  }
+
   /** Stages, unstages or throws away one hunk shown in a diff tab, then shows the diff again. */
   async hunk(tab: Tab, hunk: string, action: HunkAction) {
     const rel = relative(this.root, tab.path);
     if (rel === null) return;
     try {
-      await ipc.gitHunk(this.root, rel, hunk, action);
-      if (action === "discard") toast(t("diff.hunkDiscarded"), "ok");
+      const patch = await ipc.gitHunk(this.root, rel, hunk, action);
+      if (action === "discard") toast(t("diff.hunkDiscarded"), "ok", { label: t("diff.undo"), run: () => this.restoreHunk(tab, rel, patch) }, 12_000);
     } catch (e) {
       toast(errorText(e), "error");
     }

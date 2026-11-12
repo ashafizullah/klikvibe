@@ -22,6 +22,7 @@
   let {
     cwd,
     visible,
+    focused = true,
     onexit,
     onname,
     onurl,
@@ -32,6 +33,8 @@
   }: {
     cwd: string;
     visible: boolean;
+    /** The one that takes the keyboard when shown (of two side by side, the one last chosen). */
+    focused?: boolean;
     onexit: (code: number | null) => void;
     onname: (name: string | null) => void;
     /** A dev server's address showed up in the output. */
@@ -488,9 +491,10 @@
 
   $effect(() => {
     if (!visible) return;
+    const focus = focused;
     requestAnimationFrame(() => {
       fit?.fit();
-      term?.focus();
+      if (focus) term?.focus();
     });
   });
 

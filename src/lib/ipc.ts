@@ -219,7 +219,9 @@ export const ipc = {
   /** For each hunk of a file's changes (against the last commit), whether it is staged. */
   gitStagedHunks: (root: string, path: string) => invoke<boolean[]>("git_staged_hunks", { root, path }),
   /** Stages, unstages or throws away one hunk, given as shown. */
-  gitHunk: (root: string, path: string, hunk: string, action: HunkAction) => invoke<void>("git_hunk", { root, path, hunk, action }),
+  /** The patch it applied; for a discard, `gitHunkRestore` puts it back. */
+  gitHunk: (root: string, path: string, hunk: string, action: HunkAction) => invoke<string>("git_hunk", { root, path, hunk, action }),
+  gitHunkRestore: (root: string, patch: string) => invoke<void>("git_hunk_restore", { root, patch }),
   gitIgnore: (root: string, path: string, dir: boolean) => invoke<void>("git_ignore", { root, path, dir }),
 
   terminalOpen(cwd: string, cols: number, rows: number, onEvent: (e: TerminalEvent) => void) {

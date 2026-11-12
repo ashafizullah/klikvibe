@@ -568,7 +568,8 @@ pub fn staged_hunks(root: &Path, path: &str) -> AppResult<Vec<bool>> {
 
 /// Stages, unstages or throws away one hunk of `path`'s changes against the last commit.
 /// `hunk` is the hunk as shown; when the file has changed since, nothing is done.
-pub fn hunk(root: &Path, path: &str, hunk: &str, action: &str) -> AppResult<()> {
+/// Returns the patch it applied, so a discard can be undone (`restore_hunk`).
+pub fn hunk(root: &Path, path: &str, hunk: &str, action: &str) -> AppResult<String> {
     let (header, hunks) = hunks(root, path)?;
     let Some(h) = hunks.iter().find(|h| h.trim_end() == hunk.trim_end()) else {
         return Err(AppError::msg("The file changed since its diff was shown. Look again and retry."));
@@ -576,17 +577,30 @@ pub fn hunk(root: &Path, path: &str, hunk: &str, action: &str) -> AppResult<()> 
     let patch = format!("{header}{h}");
     let top = top(root)?;
     match action {
-        "stage" => apply(root, &top, &["--cached"], &patch),
-        "unstage" => apply(root, &top, &["--cached", "-R"], &patch),
+        "stage" => apply(root, &top, &["--cached"], &patch)?,
+        "unstage" => apply(root, &top, &["--cached", "-R"], &patch)?,
         "discard" => {
             // The file first (the check changes nothing), so a failure leaves both as they were.
             apply(root, &top, &["-R", "--check"], &patch)?;
             // Staged too: out of the next commit as well. Not staged: nothing to undo there.
             let _ = apply(root, &top, &["--cached", "-R"], &patch);
-            apply(root, &top, &["-R"], &patch)
+            apply(root, &top, &["-R"], &patch)?
         }
-        _ => Err(AppError::msg("Unknown action")),
+        _ => return Err(AppError::msg("Unknown action")),
     }
+    Ok(patch)
+}
+
+/// Undoes a hunk's discard: puts the change `hunk` threw away (its `patch`) back in the file, unstaged.
+pub fn restore_hunk(root: &Path, patch: &str) -> AppResult<()> {
+    // One file's patch, as `hunk` gives it.
+    if !patch.starts_with("diff --git ") || patch.contains("\ndiff --git ") {
+        return Err(AppError::msg("Not a patch from a discard"));
+    }
+    let top = top(root)?;
+    apply(root, &top, &["--check"], patch)
+        .map_err(|_| AppError::msg("The file changed since, so the discarded part can't be put back."))?;
+    apply(root, &top, &[], patch)
 }
 
 /// `rel` as a .gitignore line that matches only it, from the project root.
@@ -1212,9 +1226,15 @@ mod tests {
         hunk(&sub, "a.txt", &hs[1], "stage").unwrap();
         hunk(&sub, "a.txt", &hs[1], "discard").unwrap();
         assert_eq!(hunks(&sub, "a.txt").unwrap().1, vec![hs[0].clone()]);
-        hunk(&sub, "a.txt", &hs[0], "discard").unwrap();
+        let patch = hunk(&sub, "a.txt", &hs[0], "discard").unwrap();
         assert_eq!(std::fs::read_to_string(sub.join("a.txt")).unwrap(), lines.join("\n") + "\n");
         assert!(run(&dir, &["status", "--porcelain"]).unwrap().is_empty());
+        // Undone: the change is back, unstaged; a second time it no longer fits.
+        restore_hunk(&sub, &patch).unwrap();
+        assert_eq!(hunks(&sub, "a.txt").unwrap().1, vec![hs[0].clone()]);
+        assert!(restore_hunk(&sub, &patch).is_err());
+        assert!(restore_hunk(&sub, "@@ -1 +1 @@\n-x\n+y\n").is_err());
+        hunk(&sub, "a.txt", &hs[0], "discard").unwrap();
         // A hunk that is no longer there is refused.
         assert!(hunk(&sub, "a.txt", "@@ -1 +1 @@\n-x\n+y\n", "stage").is_err());
         std::fs::remove_dir_all(dir).unwrap();

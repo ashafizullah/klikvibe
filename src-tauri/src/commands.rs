@@ -349,10 +349,18 @@ pub async fn git_staged_hunks(projects: State<'_, Projects>, root: String, path:
 
 /// Stages ("stage"), unstages ("unstage") or throws away ("discard") one hunk of a file's changes.
 #[tauri::command]
-pub async fn git_hunk(projects: State<'_, Projects>, root: String, path: String, hunk: String, action: String) -> AppResult<()> {
+/// Returns the patch it applied: given back to `git_hunk_restore`, it undoes a discard.
+pub async fn git_hunk(projects: State<'_, Projects>, root: String, path: String, hunk: String, action: String) -> AppResult<String> {
     let root = root_of(&projects, &root)?;
     let path = relative(&path)?.to_string();
     blocking(move || git::hunk(&root, &path, &hunk, &action)).await
+}
+
+/// Undoes a hunk's discard (Undo on its notice): `patch` is what `git_hunk` returned.
+#[tauri::command]
+pub async fn git_hunk_restore(projects: State<'_, Projects>, root: String, patch: String) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    blocking(move || git::restore_hunk(&root, &patch)).await
 }
 
 #[tauri::command]
