@@ -6,6 +6,7 @@
 - Terminal: tombol "Jalankan agen" dan daftar agennya dihapus. Jalankan agen dengan mengetik perintahnya di terminal.
 - Prompt: setiap prompt di menu Prompt bisa diubah atau dihapus, termasuk prompt bawaan ("Atur prompt…"). "Kembalikan prompt bawaan" memunculkan lagi yang sudah dihapus.
 - Files: tombol di sebelah Muat ulang menutup semua folder kalau ada yang terbuka, dan membuka semuanya kalau semua tertutup (kecuali yang diabaikan .gitignore, seperti node_modules). "Folder ini kosong." kini ada di tengah panel.
+- Klik dua kali tepi pohon file, panel Git, kolom terminal, atau terminal mengembalikannya ke ukuran bawaan.
 - Tab terminal menampilkan tombol × saat di-hover dan di tab yang terbuka, sama seperti tab project dan tab file. Terminal terakhir juga bisa ditutup: terminal baru langsung menggantikannya.
 - Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
 

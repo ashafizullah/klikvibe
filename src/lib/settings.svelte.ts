@@ -51,8 +51,9 @@ const KEY = "klikvibe.settings";
 /** Settings were saved before this run (so this isn't a fresh install). */
 export let hadSettings = false;
 
-function load(): Stored {
-  const fallback: Stored = {
+/** The settings of a fresh install (a new object each time). */
+export function defaults(): Stored {
+  return {
     layout: "classic",
     showTree: true,
     showTreeColumns: false,
@@ -77,6 +78,10 @@ function load(): Stored {
     checkpointLimit: 100,
     lastVersion: "",
   };
+}
+
+function load(): Stored {
+  const fallback = defaults();
   try {
     const raw = localStorage.getItem(KEY);
     hadSettings = !!raw;

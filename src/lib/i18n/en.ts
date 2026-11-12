@@ -54,6 +54,7 @@ const en = {
   "tree.refresh": "Refresh",
   "tree.collapse": "Collapse all",
   "tree.expand": "Expand all",
+  "layout.resizeHint": "Drag to resize; double-click for the default size",
   "tree.empty": "This folder is empty.",
 
   "search.title": "Search files",

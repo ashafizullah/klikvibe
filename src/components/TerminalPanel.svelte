@@ -1,7 +1,7 @@
 <script lang="ts">
   // Shells in the project folder: one for the agent, more for a dev server or tests.
   import { useProject } from "../lib/project.svelte";
-  import { persist, settings } from "../lib/settings.svelte";
+  import { defaults, persist, settings } from "../lib/settings.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, type AgentDef } from "../lib/agents";
   import { sessionHeld } from "../lib/session.svelte";
@@ -292,7 +292,16 @@
 {/if}
 
 <section class="terminal" class:hidden={!settings.showTerminal} class:fill style:height={fill ? null : `${settings.terminalHeight}px`} aria-label={t("terminal.title")}>
-  {#if !fill}<div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>{/if}
+  {#if !fill}
+    <div
+      class="grip"
+      role="separator"
+      aria-orientation="horizontal"
+      title={t("layout.resizeHint")}
+      onpointerdown={startDrag}
+      ondblclick={() => ((settings.terminalHeight = defaults().terminalHeight), persist())}
+    ></div>
+  {/if}
   <div class="head">
     <div class="tabs">
       {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}

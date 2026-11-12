@@ -6,6 +6,7 @@
 - Terminal: the "Start agent" button and its agent list are gone. Start an agent by typing its command in the terminal.
 - Prompts: every prompt in the Prompts menu can be changed or removed, the built-in ones too ("Edit prompts…"). "Restore the built-in prompts" brings back the ones removed.
 - Files: the button beside Refresh closes every folder when some are open, and opens them all when none are (leaving out what .gitignore leaves out, such as node_modules). "This folder is empty." sits in the middle of the panel.
+- Double-clicking the edge of the file tree, the Git panel, the terminal column or the terminal brings it back to its default size.
 - Terminal tabs show their × on hover and on the open tab, as the project and file tabs do. The last terminal can be closed too: a fresh one takes its place.
 - The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
 

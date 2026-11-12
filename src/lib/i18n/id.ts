@@ -56,6 +56,7 @@ const id: Record<Key, string> = {
   "tree.refresh": "Muat ulang",
   "tree.collapse": "Tutup semua folder",
   "tree.expand": "Buka semua folder",
+  "layout.resizeHint": "Seret untuk mengubah ukuran; klik dua kali untuk ukuran bawaan",
   "tree.empty": "Folder ini kosong.",
 
   "search.title": "Cari file",

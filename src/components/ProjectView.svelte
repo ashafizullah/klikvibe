@@ -4,7 +4,8 @@
   // another project is in front. The panels sit in one CSS grid (grid.ts),
   // so changing the layout or hiding a panel moves it without remounting.
   import { provideProject, type ProjectState } from "../lib/project.svelte";
-  import { persist, settings } from "../lib/settings.svelte";
+  import { defaults, persist, settings } from "../lib/settings.svelte";
+  import { t } from "../lib/i18n/index.svelte";
   import { grid } from "../lib/grid";
   import FileTree from "./FileTree.svelte";
   import Editor from "./Editor.svelte";
@@ -35,15 +36,21 @@
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   }
+
+  /** Double-click on an edge: the column goes back to its first width. */
+  function resetWidth(key: "treeWidth" | "gitWidth" | "terminalWidth") {
+    settings[key] = defaults()[key];
+    persist();
+  }
 </script>
 
 <div class="main" class:hidden={!shown} class:columns style:grid-template-columns={g.columns} style:grid-template-rows={g.rows} style:grid-template-areas={g.areas}>
   <div class="area tree" class:off={!g.placed.has("tree")}><FileTree /></div>
-  <div class="resizer" style:grid-area="rztree" class:off={!g.placed.has("rztree")} role="separator" aria-orientation="vertical" onpointerdown={(e) => resize(e, "treeWidth", 1)}></div>
+  <div class="resizer" style:grid-area="rztree" class:off={!g.placed.has("rztree")} role="separator" aria-orientation="vertical" title={t("layout.resizeHint")} onpointerdown={(e) => resize(e, "treeWidth", 1)} ondblclick={() => resetWidth("treeWidth")}></div>
   <div class="area editor" class:off={!g.placed.has("editor")}><Editor /></div>
   <div class="area term" class:off={!g.placed.has("term")}><TerminalPanel {shown} fill={g.terminalFills} /></div>
-  <div class="resizer" style:grid-area="rzterm" class:off={!g.placed.has("rzterm")} role="separator" aria-orientation="vertical" onpointerdown={(e) => resize(e, "terminalWidth", 1)}></div>
-  <div class="resizer" style:grid-area="rzgit" class:off={!g.placed.has("rzgit")} role="separator" aria-orientation="vertical" onpointerdown={(e) => resize(e, "gitWidth", -1)}></div>
+  <div class="resizer" style:grid-area="rzterm" class:off={!g.placed.has("rzterm")} role="separator" aria-orientation="vertical" title={t("layout.resizeHint")} onpointerdown={(e) => resize(e, "terminalWidth", 1)} ondblclick={() => resetWidth("terminalWidth")}></div>
+  <div class="resizer" style:grid-area="rzgit" class:off={!g.placed.has("rzgit")} role="separator" aria-orientation="vertical" title={t("layout.resizeHint")} onpointerdown={(e) => resize(e, "gitWidth", -1)} ondblclick={() => resetWidth("gitWidth")}></div>
   <div class="area git" class:off={!g.placed.has("git")}><GitPanel /></div>
 </div>
 
