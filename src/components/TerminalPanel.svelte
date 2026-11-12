@@ -6,7 +6,7 @@
   import { AGENTS, type AgentDef } from "../lib/agents";
   import { sessionHeld } from "../lib/session.svelte";
   import { t } from "../lib/i18n/index.svelte";
-  import { openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
+  import { isMac, openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
   import { CARGO_SCRIPTS, packageManager, packageScripts, type Script } from "../lib/scripts";
   import { ipc } from "../lib/ipc";
   import { join } from "../lib/paths";
@@ -77,6 +77,7 @@
   const start = restored();
   let shells = $state<Shell[]>(start?.shells ?? [shell()]);
   let active = $state(start?.active ?? 1);
+  strip.follow(() => [active, shells.length]);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
   /** `auto`: its name until one is read from what runs in it. */
@@ -348,6 +349,9 @@
         <Icon name="message-square-text" size={13} />{t("prompts.title")}
       </button>
     </div>
+    <button class="icon-btn" onclick={() => refs[active]?.openFind()} title={`${t("terminal.find")} (${isMac ? "⌘F" : "Ctrl+Shift+F"})`} aria-label={t("terminal.find")}>
+      <Icon name="search" size={14} />
+    </button>
     <button
       class="icon-btn"
       class:on={settings.notifyAgents}

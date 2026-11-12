@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { parseDiff, splitDiff, stats, type Half } from "../lib/diff";
+  import { hunkTexts, parseDiff, splitDiff, stats, type Half } from "../lib/diff";
+  import { ipc, type HunkAction } from "../lib/ipc";
   import { persist, settings } from "../lib/settings.svelte";
   import { copyText, mod, openMenu, reveal, revealLabel, type MenuItem } from "../lib/ui.svelte";
   import { relative } from "../lib/paths";
@@ -19,6 +20,35 @@
   function setView(view: "split" | "unified") {
     settings.diffView = view;
     persist();
+  }
+
+  // ---- one hunk at a time (a working-tree diff of a tracked file) ----
+
+  const hunks = $derived(tab.kind === "diff" && !tab.loading ? hunkTexts(tab.text) : null);
+  /** Which hunks are staged, as Git says after each load. */
+  let staged = $state<boolean[]>([]);
+  let busy = $state(false);
+  $effect(() => {
+    const list = hunks;
+    void tab.revision;
+    const rel = relative(project.root, tab.path);
+    if (!list?.length || rel === null) return void (staged = []);
+    let current = true;
+    ipc.gitStagedHunks(project.root, rel).then(
+      (s) => current && (staged = s),
+      () => current && (staged = []),
+    );
+    return () => (current = false);
+  });
+
+  async function act(i: number, action: HunkAction) {
+    if (!hunks?.[i] || busy) return;
+    busy = true;
+    try {
+      await project.hunk(tab, hunks[i], action);
+    } finally {
+      busy = false;
+    }
   }
 
   const SIGN = { add: "+", del: "−", ctx: " " } as const;
@@ -66,6 +96,23 @@
     openMenu(e, items);
   }
 </script>
+
+{#snippet hunkRow(text: string, i: number | undefined)}
+  <div class="hunk">
+    <span class="hunk-text">{text}</span>
+    {#if hunks && i !== undefined && hunks[i]}
+      <span class="hunk-actions">
+        {#if staged[i]}<span class="staged" title={t("diff.hunkStagedHint")}>{t("diff.hunkStaged")}</span>{/if}
+        <button class="hunk-btn" disabled={busy} onclick={() => act(i, staged[i] ? "unstage" : "stage")} title={staged[i] ? t("diff.unstageHunkHint") : t("diff.stageHunkHint")}>
+          <Icon name={staged[i] ? "minus" : "plus"} size={11} />{staged[i] ? t("diff.unstageHunk") : t("diff.stageHunk")}
+        </button>
+        <button class="hunk-btn discard" disabled={busy} onclick={() => act(i, "discard")} title={t("diff.discardHunkHint")}>
+          <Icon name="rotate-ccw" size={11} />{t("diff.discardHunk")}
+        </button>
+      </span>
+    {/if}
+  </div>
+{/snippet}
 
 {#snippet half(h: Half | undefined)}
   {#if h}
@@ -116,7 +163,7 @@
         {:else if row.kind === "meta"}
           <div class="meta">{row.text}</div>
         {:else if row.kind === "hunk"}
-          <div class="hunk">{row.text}</div>
+          {@render hunkRow(row.text, row.hunk)}
         {:else if row.kind === "pair"}
           <div class="pair">
             {@render half(row.left)}
@@ -131,7 +178,7 @@
       {:else if row.kind === "meta"}
         <div class="meta">{row.text}</div>
       {:else if row.kind === "hunk"}
-        <div class="hunk">{row.text}</div>
+        {@render hunkRow(row.text, row.hunk)}
       {:else}
         <div class="line {row.kind}">
           <span class="no">{row.old ?? ""}</span>
@@ -209,11 +256,59 @@
     white-space: pre-wrap;
   }
   .hunk {
-    padding: 2px 14px;
+    position: sticky;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 22px;
+    padding: 2px 8px 2px 14px;
     margin-top: 6px;
     color: #8b7fb8;
     background: color-mix(in srgb, #7c3aed 8%, transparent);
     white-space: pre;
+  }
+  .hunk-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hunk-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    font-family: var(--sans);
+  }
+  .staged {
+    padding: 0 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ok) 15%, transparent);
+    color: var(--ok);
+    font-size: 10.5px;
+  }
+  .hunk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 11px;
+  }
+  .hunk-btn:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .hunk-btn.discard:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--danger) 60%, transparent);
+    color: var(--danger);
+  }
+  .hunk-btn:disabled {
+    opacity: 0.5;
   }
   .line {
     display: flex;

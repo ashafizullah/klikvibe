@@ -339,6 +339,22 @@ pub async fn git_discard(
     blocking(move || git::discard(&root, &path, from.as_deref(), untracked)).await
 }
 
+/// Whether each hunk of a file's changes is staged (see git::staged_hunks).
+#[tauri::command]
+pub async fn git_staged_hunks(projects: State<'_, Projects>, root: String, path: String) -> AppResult<Vec<bool>> {
+    let root = root_of(&projects, &root)?;
+    let path = relative(&path)?.to_string();
+    blocking(move || git::staged_hunks(&root, &path)).await
+}
+
+/// Stages ("stage"), unstages ("unstage") or throws away ("discard") one hunk of a file's changes.
+#[tauri::command]
+pub async fn git_hunk(projects: State<'_, Projects>, root: String, path: String, hunk: String, action: String) -> AppResult<()> {
+    let root = root_of(&projects, &root)?;
+    let path = relative(&path)?.to_string();
+    blocking(move || git::hunk(&root, &path, &hunk, &action)).await
+}
+
 #[tauri::command]
 pub async fn git_ignore(projects: State<'_, Projects>, root: String, path: String, dir: bool) -> AppResult<()> {
     let root = root_of(&projects, &root)?;

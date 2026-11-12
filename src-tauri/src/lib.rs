@@ -182,6 +182,8 @@ pub fn run() {
             commands::checkpoint_size,
             commands::checkpoint_skipped,
             commands::git_discard,
+            commands::git_staged_hunks,
+            commands::git_hunk,
             commands::git_ignore,
             commands::terminal_open,
             commands::terminal_write,

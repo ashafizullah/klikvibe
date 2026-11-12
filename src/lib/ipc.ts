@@ -8,6 +8,8 @@ export interface Project {
 export interface RecentProject extends Project {
   exists: boolean;
 }
+export type HunkAction = "stage" | "unstage" | "discard";
+
 export interface Entry {
   name: string;
   path: string;
@@ -214,6 +216,10 @@ export const ipc = {
   checkpointRestore: (root: string, hash: string) => invoke<void>("checkpoint_restore", { root, hash }),
   checkpointClear: (root: string) => invoke<void>("checkpoint_clear", { root }),
   gitDiscard: (root: string, path: string, from: string | null, untracked: boolean) => invoke<void>("git_discard", { root, path, from, untracked }),
+  /** For each hunk of a file's changes (against the last commit), whether it is staged. */
+  gitStagedHunks: (root: string, path: string) => invoke<boolean[]>("git_staged_hunks", { root, path }),
+  /** Stages, unstages or throws away one hunk, given as shown. */
+  gitHunk: (root: string, path: string, hunk: string, action: HunkAction) => invoke<void>("git_hunk", { root, path, hunk, action }),
   gitIgnore: (root: string, path: string, dir: boolean) => invoke<void>("git_ignore", { root, path, dir }),
 
   terminalOpen(cwd: string, cols: number, rows: number, onEvent: (e: TerminalEvent) => void) {

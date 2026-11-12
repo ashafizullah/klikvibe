@@ -4,7 +4,7 @@
   import { mediaKind } from "../lib/media";
   import { fileIcon } from "../lib/fileIcons";
   import { errorText, ipc } from "../lib/ipc";
-  import { dirName, relative } from "../lib/paths";
+  import { dirName, relative, TREE_DRAG } from "../lib/paths";
   import { copyText, openMenu, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -85,6 +85,13 @@
   onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path))}
   oncontextmenu={menu}
   title={entry.path}
+  draggable="true"
+  ondragstart={(e) => {
+    // Dropped on a terminal, the path is typed there (TerminalSession).
+    e.dataTransfer?.setData(TREE_DRAG, entry.path);
+    e.dataTransfer?.setData("text/plain", entry.path);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
+  }}
 >
   {#if entry.dir}
     <Icon name={open ? "down" : "right"} size={12} class="chev" />

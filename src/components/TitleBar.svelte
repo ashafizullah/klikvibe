@@ -17,6 +17,7 @@
 
   const project = $derived(currentProject());
   const strip = new StripScroll();
+  strip.follow(() => [workspace.active, workspace.projects.length]);
 
   // macOS hides the window buttons in full screen, so the bar needn't leave room for them.
   let fullscreen = $state(false);

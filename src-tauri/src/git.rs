@@ -505,6 +505,90 @@ pub fn discard(root: &Path, path: &str, from: Option<&str>, untracked: bool) -> 
     Ok(())
 }
 
+// ---- one part (hunk) of a file's changes ----
+
+/// A tracked file's changes against the last commit, as its patch header and its hunks
+/// (each from its "@@" line). Read in full: a hunk is applied, not only shown.
+fn hunks(root: &Path, path: &str) -> AppResult<(String, Vec<String>)> {
+    let text = run(root, &["--literal-pathspecs", "diff", "HEAD", "--no-color", "--", path])?;
+    let mut header = String::new();
+    let mut hunks: Vec<String> = Vec::new();
+    for line in text.split_inclusive('\n') {
+        if line.starts_with("@@") {
+            hunks.push(line.to_string());
+        } else if let Some(h) = hunks.last_mut() {
+            h.push_str(line);
+        } else {
+            header.push_str(line);
+        }
+    }
+    Ok((header, hunks))
+}
+
+/// Feeds `patch` to `git apply` at the repository's top, where its paths start.
+fn apply(root: &Path, top: &str, flags: &[&str], patch: &str) -> AppResult<()> {
+    use std::io::Write;
+    use std::process::Stdio;
+    let mut child = git(root)
+        .args(["-C", top, "apply", "--whitespace=nowarn"])
+        .args(flags)
+        .arg("-")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(patch.as_bytes())?;
+    }
+    let out = child.wait_with_output()?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(AppError::msg(if err.is_empty() { "git apply failed".to_string() } else { err }))
+    }
+}
+
+fn top(root: &Path) -> AppResult<String> {
+    Ok(run(root, &["rev-parse", "--show-toplevel"])?.trim().to_string())
+}
+
+/// Hunks checked for being staged at most (each check runs git).
+const MAX_HUNKS: usize = 200;
+
+/// For each hunk of `path`'s changes, whether it is staged (in the next commit) as it is.
+pub fn staged_hunks(root: &Path, path: &str) -> AppResult<Vec<bool>> {
+    let (header, hunks) = hunks(root, path)?;
+    if hunks.is_empty() || hunks.len() > MAX_HUNKS {
+        return Ok(vec![false; hunks.len()]);
+    }
+    let top = top(root)?;
+    Ok(hunks.iter().map(|h| apply(root, &top, &["--cached", "-R", "--check"], &format!("{header}{h}")).is_ok()).collect())
+}
+
+/// Stages, unstages or throws away one hunk of `path`'s changes against the last commit.
+/// `hunk` is the hunk as shown; when the file has changed since, nothing is done.
+pub fn hunk(root: &Path, path: &str, hunk: &str, action: &str) -> AppResult<()> {
+    let (header, hunks) = hunks(root, path)?;
+    let Some(h) = hunks.iter().find(|h| h.trim_end() == hunk.trim_end()) else {
+        return Err(AppError::msg("The file changed since its diff was shown. Look again and retry."));
+    };
+    let patch = format!("{header}{h}");
+    let top = top(root)?;
+    match action {
+        "stage" => apply(root, &top, &["--cached"], &patch),
+        "unstage" => apply(root, &top, &["--cached", "-R"], &patch),
+        "discard" => {
+            // The file first (the check changes nothing), so a failure leaves both as they were.
+            apply(root, &top, &["-R", "--check"], &patch)?;
+            // Staged too: out of the next commit as well. Not staged: nothing to undo there.
+            let _ = apply(root, &top, &["--cached", "-R"], &patch);
+            apply(root, &top, &["-R"], &patch)
+        }
+        _ => Err(AppError::msg("Unknown action")),
+    }
+}
+
 /// `rel` as a .gitignore line that matches only it, from the project root.
 pub fn ignore_line(rel: &str, dir: bool) -> String {
     let mut line = String::from("/");
@@ -1094,6 +1178,45 @@ mod tests {
         assert_eq!(left.len(), 1);
         assert_eq!((left[0].path.as_str(), left[0].staged, left[0].unstaged), ("a.txt", false, true));
         assert!(commit(&dir, "Nothing staged", false).is_err());
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn stages_unstages_and_discards_one_hunk() {
+        let dir = std::env::temp_dir().join(format!("klikvibe-hunk-{}", uuid::Uuid::new_v4()));
+        let sub = dir.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        init(&dir).unwrap();
+        run(&dir, &["config", "user.email", "test@example.com"]).unwrap();
+        run(&dir, &["config", "user.name", "Test"]).unwrap();
+        let lines: Vec<String> = (1..=30).map(|i| format!("line {i}")).collect();
+        std::fs::write(sub.join("a.txt"), lines.join("\n") + "\n").unwrap();
+        commit(&dir, "First", true).unwrap();
+        // Two changes far apart: two hunks. From the sub-folder, as a project there.
+        let mut changed = lines.clone();
+        changed[1] = "TWO".into();
+        changed[27] = "TWENTY-EIGHT".into();
+        std::fs::write(sub.join("a.txt"), changed.join("\n") + "\n").unwrap();
+        let (_, hs) = hunks(&sub, "a.txt").unwrap();
+        assert_eq!(hs.len(), 2);
+        assert_eq!(staged_hunks(&sub, "a.txt").unwrap(), vec![false, false]);
+
+        hunk(&sub, "a.txt", &hs[1], "stage").unwrap();
+        assert_eq!(staged_hunks(&sub, "a.txt").unwrap(), vec![false, true]);
+        let cached = run(&dir, &["diff", "--cached", "--no-color"]).unwrap();
+        assert!(cached.contains("+TWENTY-EIGHT") && !cached.contains("+TWO"));
+        hunk(&sub, "a.txt", &hs[1], "unstage").unwrap();
+        assert_eq!(staged_hunks(&sub, "a.txt").unwrap(), vec![false, false]);
+
+        // Thrown away, staged or not: the other change stays.
+        hunk(&sub, "a.txt", &hs[1], "stage").unwrap();
+        hunk(&sub, "a.txt", &hs[1], "discard").unwrap();
+        assert_eq!(hunks(&sub, "a.txt").unwrap().1, vec![hs[0].clone()]);
+        hunk(&sub, "a.txt", &hs[0], "discard").unwrap();
+        assert_eq!(std::fs::read_to_string(sub.join("a.txt")).unwrap(), lines.join("\n") + "\n");
+        assert!(run(&dir, &["status", "--porcelain"]).unwrap().is_empty());
+        // A hunk that is no longer there is refused.
+        assert!(hunk(&sub, "a.txt", "@@ -1 +1 @@\n-x\n+y\n", "stage").is_err());
         std::fs::remove_dir_all(dir).unwrap();
     }
 

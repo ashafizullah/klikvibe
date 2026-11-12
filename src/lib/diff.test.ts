@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
-import { parseDiff, splitDiff, stats } from "./diff";
+import { describe, expect, test } from "bun:test";
+import { hunkTexts, parseDiff, splitDiff, stats } from "./diff";
 import { join, relative, baseName } from "./paths";
 import { languageName } from "./languages";
 
@@ -86,4 +86,19 @@ index 4dc8328,2339517..3e42aa1
     ["ctx", "three", 3, 3],
   ]);
   expect(stats(rows)).toEqual({ added: 1, removed: 2 });
+});
+
+describe("hunkTexts", () => {
+  const head = "diff --git a/x.ts b/x.ts\nindex 1..2 100644\n--- a/x.ts\n+++ b/x.ts\n";
+  test("each hunk as Git printed it, numbered in the rows", () => {
+    const text = `${head}@@ -1,2 +1,2 @@\n-a\n+b\n c\n@@ -9 +9 @@\n-y\n+z\n`;
+    expect(hunkTexts(text)).toEqual(["@@ -1,2 +1,2 @@\n-a\n+b\n c\n", "@@ -9 +9 @@\n-y\n+z\n"]);
+    expect(parseDiff(text).filter((r) => r.kind === "hunk").map((r) => r.hunk)).toEqual([0, 1]);
+  });
+  test("none for a new, deleted or cut-off file", () => {
+    expect(hunkTexts("diff --git a/n b/n\nnew file mode 100644\n--- /dev/null\n+++ b/n\n@@ -0,0 +1 @@\n+x\n")).toBeNull();
+    expect(hunkTexts("diff --git a/n b/n\ndeleted file mode 100644\n--- a/n\n+++ /dev/null\n@@ -1 +0,0 @@\n-x\n")).toBeNull();
+    expect(hunkTexts(`${head}@@ -1 +1 @@\n-a\n+b\n… (cut off)\n`)).toBeNull();
+    expect(hunkTexts("")).toBeNull();
+  });
 });

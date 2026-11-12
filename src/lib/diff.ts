@@ -5,6 +5,8 @@ export type RowKind = "add" | "del" | "ctx" | "hunk" | "file" | "meta";
 export interface Row {
   kind: RowKind;
   text: string;
+  /** A hunk's place among the diff's hunks (its "@@" row). */
+  hunk?: number;
   /** Line numbers in the old and new file, where they apply. */
   old?: number;
   new?: number;
@@ -25,6 +27,7 @@ export function parseDiff(text: string): Row[] {
   // The columns of +, - or space before each line: one, or one per parent in a merge's
   // combined diff ("@@@ -1,3 -1,3 +1,5 @@@", after "diff --cc").
   let cols = 1;
+  let hunks = 0;
   for (const line of text.replace(/\n$/, "").split("\n")) {
     const hunk = /^(@@+) -(\d+)(?:,\d+)? (?:-\d+(?:,\d+)? )*\+(\d+)(?:,\d+)? \1/.exec(line);
     const file = /^diff --(?:git a\/(.*) b\/.*|(?:cc|combined) (.*))$/.exec(line);
@@ -33,7 +36,7 @@ export function parseDiff(text: string): Row[] {
       oldNo = Number(hunk[2]);
       newNo = Number(hunk[3]);
       inHunk = true;
-      rows.push({ kind: "hunk", text: line });
+      rows.push({ kind: "hunk", text: line, hunk: hunks++ });
     } else if (file) {
       inHunk = false;
       rows.push({ kind: "file", text: file[1] ?? file[2] });
@@ -52,6 +55,21 @@ export function parseDiff(text: string): Row[] {
     }
   }
   return rows;
+}
+
+/**
+ * The hunks of a one-file diff as Git printed them (each from its "@@" line), to hand
+ * one back to Git (git::hunk); null when they can't be: a new, binary or cut-off file.
+ */
+export function hunkTexts(text: string): string[] | null {
+  if (!text.trim() || /^(new file mode|deleted file mode|Binary files|--- \/dev\/null|\+\+\+ \/dev\/null)/m.test(text) || text.includes("\n… (cut off)\n")) return null;
+  if ((text.match(/^diff --git /gm) ?? []).length !== 1) return null;
+  const hunks: string[] = [];
+  for (const line of text.split(/(?<=\n)/)) {
+    if (line.startsWith("@@")) hunks.push(line);
+    else if (hunks.length) hunks[hunks.length - 1] += line;
+  }
+  return hunks;
 }
 
 export function stats(rows: Row[]): DiffStats {
@@ -73,7 +91,7 @@ export interface Half {
   changed?: [number, number];
 }
 
-export type SplitRow = { kind: "file" | "meta" | "hunk"; text: string } | { kind: "pair"; left?: Half; right?: Half };
+export type SplitRow = { kind: "file" | "meta" | "hunk"; text: string; hunk?: number } | { kind: "pair"; left?: Half; right?: Half };
 
 /** The part of `a` that differs from `b`, after their common start and before their common end. */
 function changedPart(a: string, b: string): [number, number] {
@@ -113,7 +131,7 @@ export function splitDiff(rows: Row[]): SplitRow[] {
     else {
       flush();
       if (r.kind === "ctx") out.push({ kind: "pair", left: { kind: "ctx", no: r.old!, text: r.text }, right: { kind: "ctx", no: r.new!, text: r.text } });
-      else out.push({ kind: r.kind, text: r.text });
+      else out.push({ kind: r.kind, text: r.text, hunk: r.hunk });
     }
   }
   flush();

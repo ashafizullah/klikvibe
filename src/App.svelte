@@ -4,7 +4,7 @@
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { errorText, ipc, type Project } from "./lib/ipc";
   import { confirmQuit, currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
-  import { persist, settings } from "./lib/settings.svelte";
+  import { persist, settings, zoom } from "./lib/settings.svelte";
   import { isMac, toast, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
   import { initUpdates } from "./lib/updates.svelte";
@@ -107,6 +107,10 @@
         e.preventDefault();
         showProject(p.root);
       }
+    } else if (mod && !e.altKey && (key === "=" || key === "+" || key === "-" || key === "0")) {
+      // Text size, in the terminal too.
+      e.preventDefault();
+      zoom(key === "0" ? 0 : key === "-" ? -1 : 1);
     } else if (inTerminal && !e.shiftKey) {
       return;
     } else if (mod && !e.shiftKey && key === "o") {

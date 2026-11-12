@@ -22,6 +22,7 @@
 
   const project = useProject();
   const strip = new StripScroll();
+  strip.follow(() => [project.active, project.tabs.length]);
   const tab = $derived(project.activeTab());
   const rel = $derived(tab ? relative(project.root, tab.path) : null);
   const ICON = { file: "code", diff: "diff", commit: "commit", commitFile: "diff", preview: "globe" } as const;

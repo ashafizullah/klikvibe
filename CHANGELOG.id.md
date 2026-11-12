@@ -9,6 +9,11 @@
 - Klik dua kali tepi pohon file, panel Git, kolom terminal, atau terminal mengembalikannya ke ukuran bawaan.
 - Tab terminal menampilkan tombol × saat di-hover dan di tab yang terbuka, sama seperti tab project dan tab file. Terminal terakhir juga bisa ditutup: terminal baru langsung menggantikannya.
 - Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
+- Terminal: cari di output dengan ⌘F (Ctrl+Shift+F di Windows dan Linux) atau tombol cari: hasilnya disorot, Enter dan Shift+Enter pindah ke hasil berikutnya dan sebelumnya.
+- Ukuran teks: ⌘+ dan ⌘− (Ctrl di Windows dan Linux) memperbesar atau memperkecil teks editor dan terminal, ⌘0 kembali ke ukuran bawaan.
+- Tab yang terbuka (project, terminal, atau file) otomatis tergeser agar terlihat.
+- Menyeret file atau folder dari pohon file ke terminal mengetikkan path-nya di sana (dari folder project, diberi tanda kutip bila perlu).
+- Git: diff sebuah file menampilkan tombol Stage (atau Unstage) dan Buang di tiap bagian perubahan, untuk meng-commit atau membuang bagian itu saja. Bagian yang sudah di-stage diberi tanda.
 
 ## 0.7.12
 

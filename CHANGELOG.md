@@ -9,6 +9,11 @@
 - Double-clicking the edge of the file tree, the Git panel, the terminal column or the terminal brings it back to its default size.
 - Terminal tabs show their × on hover and on the open tab, as the project and file tabs do. The last terminal can be closed too: a fresh one takes its place.
 - The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
+- Terminal: find in the output with ⌘F (Ctrl+Shift+F on Windows and Linux) or the search button: matches are highlighted, Enter and Shift+Enter go to the next and previous one.
+- Text size: ⌘+ and ⌘− (Ctrl on Windows and Linux) make the editor and the terminal bigger or smaller, ⌘0 goes back to the default.
+- The open tab (project, terminal or file) scrolls into view when it is out of sight.
+- Dragging a file or folder from the file tree onto a terminal types its path there (from the project folder, quoted when needed).
+- Git: a file's diff shows Stage (or Unstage) and Discard on each part of the changes, to commit or throw away only that part. Parts already staged are marked.
 
 ## 0.7.12
 

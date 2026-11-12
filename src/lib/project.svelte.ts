@@ -6,7 +6,7 @@ import { getContext, setContext, tick } from "svelte";
 import { listen } from "@tauri-apps/api/event";
 import { SvelteMap, SvelteSet } from "svelte/reactivity";
 import type { EditorView } from "@codemirror/view";
-import { errorText, ipc, type Change, type Checkpoint, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type Project } from "./ipc";
+import { errorText, ipc, type Change, type Checkpoint, type Commit, type CommitFile, type Entry, type FsChanged, type GitStatus, type HunkAction, type Project } from "./ipc";
 import { baseName, dirName, join, relative } from "./paths";
 import { mediaKind, type MediaKind } from "./media";
 import { forgeName, isMergeRequest, newRequestUrl, parseRemote, type Remote } from "./forge";
@@ -817,6 +817,20 @@ export class ProjectState {
 
   async unstage(paths: string[]) {
     await ipc.gitUnstage(this.root, paths).catch((e) => toast(errorText(e), "error"));
+    this.refreshGit();
+  }
+
+  /** Stages, unstages or throws away one hunk shown in a diff tab, then shows the diff again. */
+  async hunk(tab: Tab, hunk: string, action: HunkAction) {
+    const rel = relative(this.root, tab.path);
+    if (rel === null) return;
+    try {
+      await ipc.gitHunk(this.root, rel, hunk, action);
+      if (action === "discard") toast(t("diff.hunkDiscarded"), "ok");
+    } catch (e) {
+      toast(errorText(e), "error");
+    }
+    await this.loadDiff(tab, rel);
     this.refreshGit();
   }
 

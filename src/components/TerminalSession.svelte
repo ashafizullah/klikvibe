@@ -4,6 +4,7 @@
   import { Terminal, type ILink } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import { SerializeAddon } from "@xterm/addon-serialize";
+  import { SearchAddon, type ISearchOptions } from "@xterm/addon-search";
   import "@xterm/xterm/css/xterm.css";
   import { errorText, ipc } from "../lib/ipc";
   import { openUrl } from "@tauri-apps/plugin-opener";
@@ -12,9 +13,11 @@
   import { needsYou, type AttentionKind } from "../lib/attention.svelte";
   import { agentIn, terminalName } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
-  import { join } from "../lib/paths";
+  import { join, relative, shellQuote, TREE_DRAG } from "../lib/paths";
   import { isMac, isWindows, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
+  import { settings } from "../lib/settings.svelte";
+  import Icon from "./Icon.svelte";
 
   let {
     cwd,
@@ -269,6 +272,7 @@
   let fit: FitAddon | null = null;
   let session: string | null = null;
   let serializer: SerializeAddon | null = null;
+  let search: SearchAddon | null = null;
   /** Bytes of shell output written so far: the same count remote/hub.rs keeps for this terminal. */
   let received = 0;
   let exited = $state(false);
@@ -277,7 +281,7 @@
   onMount(() => {
     const xterm = new Terminal({
       fontFamily: '"IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace',
-      fontSize: 12.5,
+      fontSize: settings.terminalFontSize,
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 5000,
@@ -287,9 +291,25 @@
     xterm.loadAddon(fitAddon);
     serializer = new SerializeAddon();
     xterm.loadAddon(serializer);
+    search = new SearchAddon();
+    xterm.loadAddon(search);
+    const results = search.onDidChangeResults((r) => (found = r.resultCount ? { index: r.resultIndex, count: r.resultCount } : { index: -1, count: 0 }));
     xterm.open(host);
     // Let the app shortcuts (Ctrl+`, Ctrl+Tab, Mod+1..9) through instead of sending them to the shell.
     xterm.attachCustomKeyEventHandler((e) => {
+      const key = e.key.toLowerCase();
+      // Find in the output: ⌘F, or Ctrl+Shift+F as in Windows Terminal (Ctrl+F is the shell's).
+      if (key === "f" && !e.altKey && (isMac ? e.metaKey && !e.shiftKey : e.ctrlKey && e.shiftKey)) {
+        if (e.type === "keydown") {
+          e.preventDefault();
+          // Not also the app's Mod+Shift+F (search the project).
+          e.stopPropagation();
+          openFind();
+        }
+        return false;
+      }
+      // Text size (App.svelte): not ^_ or ^0 for the shell.
+      if ((isMac ? e.metaKey : e.ctrlKey) && !e.altKey && (key === "=" || key === "+" || key === "-" || key === "0")) return false;
       // ⌘C on macOS: copy the selection here. Left to the Edit menu, its Copy finds no page selection
       // (xterm draws its own) and macOS beeps, although xterm's copy handler still fills the clipboard.
       if (isMac && e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === "c") {
@@ -366,6 +386,7 @@
       observer.disconnect();
       input.dispose();
       linkProvider.dispose();
+      results.dispose();
       waiting();
       resize.dispose();
       if (session) ipc.terminalClose(session);
@@ -375,6 +396,90 @@
   });
 
   onDestroy(() => cleanup?.());
+
+  // The size follows Mod+= / Mod+- (settings.zoom).
+  $effect(() => {
+    const size = settings.terminalFontSize;
+    if (!term || term.options.fontSize === size) return;
+    term.options.fontSize = size;
+    if (host.offsetParent) fit?.fit();
+  });
+
+  // ---- a file dragged from the file tree ----
+
+  let dropping = $state(false);
+  function dragOver(e: DragEvent) {
+    if (!e.dataTransfer?.types.includes(TREE_DRAG)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    dropping = true;
+  }
+  /** Types the path (from the project folder, as the shell and the agent see it), without Enter. */
+  function drop(e: DragEvent) {
+    dropping = false;
+    const path = e.dataTransfer?.getData(TREE_DRAG);
+    if (!path) return;
+    e.preventDefault();
+    const rel = relative(project.root, path);
+    paste(`${shellQuote(rel === null ? path : rel || ".", isWindows)} `);
+  }
+
+  // ---- find in the output ----
+
+  let finding = $state(false);
+  let needle = $state("");
+  let found = $state<{ index: number; count: number } | null>(null);
+  let findInput = $state<HTMLInputElement>();
+  const FIND: ISearchOptions = {
+    decorations: {
+      matchBackground: "#5a4520",
+      matchOverviewRuler: "#f0a83a",
+      activeMatchBackground: "#b07418",
+      activeMatchColorOverviewRuler: "#f0a83a",
+    },
+  };
+
+  /** Opens the find bar, with the selected text as what to look for. */
+  export function openFind() {
+    const selected = term?.getSelection().trim();
+    if (selected && !selected.includes("\n")) needle = selected;
+    finding = true;
+    requestAnimationFrame(() => {
+      findInput?.focus();
+      findInput?.select();
+      if (needle) find(1, true);
+    });
+  }
+
+  /** The next (1) or previous (-1) match; `typing`: the text changed, so the match under the cursor counts. */
+  function find(dir: 1 | -1, typing = false) {
+    if (!search) return;
+    if (!needle) {
+      search.clearDecorations();
+      found = null;
+      return;
+    }
+    const opts = { ...FIND, incremental: typing };
+    if (dir > 0) search.findNext(needle, opts);
+    else search.findPrevious(needle, opts);
+  }
+
+  function closeFind() {
+    finding = false;
+    found = null;
+    search?.clearDecorations();
+    term?.focus();
+  }
+
+  function findKey(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      find(e.shiftKey ? -1 : 1);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeFind();
+    }
+  }
 
   $effect(() => {
     if (!visible) return;
@@ -437,8 +542,20 @@
   }
 </script>
 
-<div class="session" class:hidden={!visible}>
+<div class="session" class:hidden={!visible} class:dropping role="presentation" ondragover={dragOver} ondragleave={(e) => !(e.currentTarget as Node).contains(e.relatedTarget as Node | null) && (dropping = false)} ondrop={drop}>
   <div class="host" bind:this={host}></div>
+  {#if finding}
+    <div class="find" role="search">
+      <Icon name="search" size={12} />
+      <input bind:this={findInput} bind:value={needle} oninput={() => find(1, true)} onkeydown={findKey} placeholder={t("terminal.find")} aria-label={t("terminal.find")} spellcheck="false" autocomplete="off" />
+      {#if needle && found}
+        <span class="count" class:none={!found.count}>{found.count ? (found.index >= 0 ? `${found.index + 1}/${found.count}` : `${found.count}+`) : t("terminal.noMatches")}</span>
+      {/if}
+      <button class="icon-btn" onclick={() => find(-1)} disabled={!found?.count} title={t("terminal.findPrevious")} aria-label={t("terminal.findPrevious")}><Icon name="up" size={13} /></button>
+      <button class="icon-btn" onclick={() => find(1)} disabled={!found?.count} title={t("terminal.findNext")} aria-label={t("terminal.findNext")}><Icon name="down" size={13} /></button>
+      <button class="icon-btn" onclick={closeFind} title={t("terminal.findClose")} aria-label={t("terminal.findClose")}><Icon name="close" size={12} /></button>
+    </div>
+  {/if}
   {#if exited}
     <div class="exited">{t("terminal.exited")}</div>
   {/if}
@@ -449,6 +566,11 @@
     position: absolute;
     inset: 4px 8px 0;
   }
+  .session.dropping {
+    outline: 2px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: -2px;
+    border-radius: 6px;
+  }
   .session.hidden {
     visibility: hidden;
   }
@@ -457,6 +579,45 @@
     height: 100%;
     -webkit-user-select: text;
     user-select: text;
+  }
+  .find {
+    position: absolute;
+    top: 4px;
+    right: 14px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 4px 3px 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+    color: var(--muted);
+  }
+  .find input {
+    width: 180px;
+    height: 24px;
+    margin-left: 4px;
+    border: none;
+    outline: none;
+    background: none;
+    color: var(--text);
+    font: 12px var(--mono);
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .find .icon-btn {
+    width: 24px;
+    height: 24px;
+  }
+  .count {
+    padding: 0 4px;
+    font: 11px var(--mono);
+    white-space: nowrap;
+  }
+  .count.none {
+    color: var(--danger);
   }
   .exited {
     position: absolute;

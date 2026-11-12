@@ -25,7 +25,9 @@ interface Stored {
   agent: string;
   /** Run the local MCP server for the user's agent. */
   mcpEnabled: boolean;
+  /** The editor's font size; Mod+= / Mod+- / Mod+0 change it with the terminal's. */
   fontSize: number;
+  terminalFontSize: number;
   wrap: boolean;
   updateMode: UpdateMode;
   /** Take checkpoints of the files as they change (see checkpoints in git.rs). */
@@ -67,6 +69,7 @@ export function defaults(): Stored {
     agent: "claude",
     mcpEnabled: false,
     fontSize: 13,
+    terminalFontSize: 12.5,
     wrap: false,
     updateMode: "auto",
     historyAll: false,
@@ -91,6 +94,15 @@ function load(): Stored {
 }
 
 export const settings = $state<Stored>(load());
+
+/** Mod+= (1), Mod+- (-1) and Mod+0 (0): bigger or smaller text in the editor and the terminal, or back to the default. */
+export function zoom(step: -1 | 0 | 1) {
+  const d = defaults();
+  const clamp = (n: number) => Math.min(28, Math.max(8, n));
+  settings.fontSize = step ? clamp(settings.fontSize + step) : d.fontSize;
+  settings.terminalFontSize = step ? clamp(settings.terminalFontSize + step) : d.terminalFontSize;
+  persist();
+}
 
 export function persist() {
   try {

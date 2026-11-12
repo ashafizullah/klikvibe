@@ -35,6 +35,26 @@ export class StripScroll {
     });
   }
 
+  /**
+   * Keeps the open tab (`.on`) in view: call while a component starts, with what
+   * says which tab is open, read so the effect runs again when it changes.
+   */
+  follow(active: () => unknown) {
+    $effect(() => {
+      active();
+      // After the DOM shows the new tab as open.
+      const frame = requestAnimationFrame(() => {
+        const el = this.el;
+        const tab = el?.querySelector<HTMLElement>(":scope > .on");
+        if (!el || !tab) return;
+        const left = tab.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+        if (left < el.scrollLeft) el.scrollTo({ left, behavior: "smooth" });
+        else if (left + tab.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollTo({ left: left + tab.offsetWidth - el.clientWidth, behavior: "smooth" });
+      });
+      return () => cancelAnimationFrame(frame);
+    });
+  }
+
   /** Moves most of a strip's width to the left (-1) or right (1). */
   by(dir: -1 | 1) {
     const el = this.el;
