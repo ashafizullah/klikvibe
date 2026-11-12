@@ -18,6 +18,8 @@
 - Terminal: tab terminal yang agennya sedang menunggumu menampilkan ikon lonceng sampai tab itu dibuka, jadi kelihatan terminal mana yang butuh kamu.
 - Terminal: dua terminal bisa tampil berdampingan, misalnya agen di samping dev server. Tombol baru di kepala terminal (atau "Tampilkan di samping terminal yang terbuka" di menu klik kanan tab) menaruh terminal berikutnya di samping terminal yang terbuka. Mengklik tab menampilkannya di sisi yang terakhir diklik. Tata letaknya diingat untuk berikutnya.
 - Git: membuang satu bagian perubahan file bisa diurungkan, lewat tombol Urungkan di pemberitahuannya selama beberapa detik.
+- Tema terang: di halaman Daftar proyek, di atas pilihan bahasa, pilih Gelap, Terang, atau Ikuti komputer (juga lewat palet perintah). Editor, diff, dan terminal ikut berubah.
+- Tab terminal bisa diseret ke samping untuk mengubah urutannya, sama seperti tab proyek dan tab file.
 
 ## 0.7.12
 

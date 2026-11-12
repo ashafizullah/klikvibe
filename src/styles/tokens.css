@@ -20,5 +20,62 @@
   --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --serif: "Fraunces Variable", Georgia, "Times New Roman", serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --scroll: #3a342a;
+  --scroll-hover: #4a4236;
+  /* Line numbers. */
+  --gutter: #5d5547;
+  --error-bg: #2a1512;
+  /* A diff's @@ lines. */
+  --hunk: #8b7fb8;
+  --hunk-bg: color-mix(in srgb, #7c3aed 8%, transparent);
+  /* Code. */
+  --syn-keyword: #f0a83a;
+  --syn-string: #a9bd74;
+  --syn-number: #e27b57;
+  --syn-comment: #7a705f;
+  --syn-function: #f2d29b;
+  --syn-type: #c4b5fd;
+  --syn-property: #e3c48f;
+  --syn-tag: #e78a6a;
+  --syn-punctuation: #b0a690;
+  --syn-variable: #ede6d8;
+  --syn-meta: #9a917f;
   color-scheme: dark;
+}
+
+/* Light: the same warm palette on paper, the amber deeper so it reads on white. */
+:root[data-theme="light"] {
+  --bg: #f6f2e9;
+  --canvas: #fbf8f2;
+  --panel: #eee8dc;
+  --panel-2: #e3dbcb;
+  --line: #d6ccb9;
+  --muted: #6f6656;
+  --text: #2a251d;
+  --accent: #b36a06;
+  --accent-2: #c0502b;
+  --danger: #c4323a;
+  --ok: #5a7a24;
+  --ink: #fffaf0;
+  --selection: color-mix(in srgb, var(--accent) 14%, transparent);
+  --shadow: 0 14px 30px -12px rgb(60 45 20 / 0.28), 0 1px 2px rgb(60 45 20 / 0.12);
+  --shadow-lg: 0 24px 60px -12px rgb(60 45 20 / 0.3);
+  --scroll: #cfc4ae;
+  --scroll-hover: #b9ad94;
+  --gutter: #a89d88;
+  --error-bg: #fbe9e6;
+  --hunk: #6a5aa8;
+  --hunk-bg: color-mix(in srgb, #7c3aed 7%, transparent);
+  --syn-keyword: #a8580a;
+  --syn-string: #4f7a1f;
+  --syn-number: #b8452a;
+  --syn-comment: #8f8572;
+  --syn-function: #7a4e0c;
+  --syn-type: #6a4fc4;
+  --syn-property: #8a5a14;
+  --syn-tag: #b4482a;
+  --syn-punctuation: #6f6656;
+  --syn-variable: #2a251d;
+  --syn-meta: #6f6656;
+  color-scheme: light;
 }

@@ -17,6 +17,7 @@
   import { isMac, isWindows, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { settings } from "../lib/settings.svelte";
+  import { findColors, terminalTheme } from "../lib/theme.svelte";
   import Icon from "./Icon.svelte";
 
   let {
@@ -291,7 +292,7 @@
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 5000,
-      theme: { background: "#15130f", foreground: "#ede6d8", cursor: "#f0a83a", cursorAccent: "#15130f", selectionBackground: "#f0a83a44" },
+      theme: terminalTheme(),
     });
     const fitAddon = new FitAddon();
     xterm.loadAddon(fitAddon);
@@ -413,6 +414,12 @@
     if (host.offsetParent) fit?.fit();
   });
 
+  // Dark or light (theme.svelte.ts).
+  $effect(() => {
+    const theme = terminalTheme();
+    if (term) term.options.theme = theme;
+  });
+
   // ---- a file dragged from the file tree ----
 
   let dropping = $state(false);
@@ -438,14 +445,10 @@
   let needle = $state("");
   let found = $state<{ index: number; count: number } | null>(null);
   let findInput = $state<HTMLInputElement>();
-  const FIND: ISearchOptions = {
-    decorations: {
-      matchBackground: "#5a4520",
-      matchOverviewRuler: "#f0a83a",
-      activeMatchBackground: "#b07418",
-      activeMatchColorOverviewRuler: "#f0a83a",
-    },
-  };
+  /** The highlight follows the theme (read at each find). */
+  const findOptions = (): ISearchOptions => ({
+    decorations: { ...findColors(), matchOverviewRuler: "#f0a83a", activeMatchColorOverviewRuler: "#f0a83a" },
+  });
 
   /** Opens the find bar, with the selected text as what to look for. */
   export function openFind() {
@@ -467,7 +470,7 @@
       found = null;
       return;
     }
-    const opts = { ...FIND, incremental: typing };
+    const opts = { ...findOptions(), incremental: typing };
     if (dir > 0) search.findNext(needle, opts);
     else search.findPrevious(needle, opts);
   }

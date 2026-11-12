@@ -1,5 +1,5 @@
 // Dragging tabs sideways to put them in another order: the project tabs in
-// the title bar and the file tabs above the editor. `use:reorder` goes on the
+// the title bar, the terminal tabs and the file tabs above the editor. `use:reorder` goes on the
 // strip, `data-reorder` on each tab (its direct children), and
 // `data-no-reorder` on parts that only click (a close button).
 

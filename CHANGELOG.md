@@ -18,6 +18,8 @@
 - Terminal: a terminal tab whose agent is waiting for you shows a bell until you open it, so you can tell which of several terminals needs you.
 - Terminal: two terminals side by side, such as the agent beside a dev server. The new button in the terminal's header (or "Show beside the open terminal" on a tab's right-click menu) puts the next terminal beside the open one; clicking a tab shows it in the half you last clicked. The layout is kept for next time.
 - Git: discarding one part of a file's changes can be undone: the notice has an Undo button for a few seconds.
+- Light theme: on the Projects page, beside the language, choose Dark, Light or Same as the computer (also in the command palette). The editor, diffs and the terminal follow.
+- Terminal tabs can be dragged sideways into another order, as the project and file tabs can.
 
 ## 0.7.12
 

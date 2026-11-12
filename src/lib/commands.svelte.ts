@@ -7,6 +7,7 @@ import { treeKey } from "./grid";
 import { promptList } from "./prompts.svelte";
 import { checkForUpdates } from "./updates.svelte";
 import { i18n, setLocale, t } from "./i18n/index.svelte";
+import { setTheme } from "./theme.svelte";
 import { isMac, mod, toast, ui } from "./ui.svelte";
 
 export interface Command {
@@ -157,6 +158,8 @@ export function commands(recent: RecentProject[]): Command[] {
     icon: settings.notifyAgents ? "bell-off" : "bell",
     run: () => ((settings.notifyAgents = !settings.notifyAgents), persist()),
   });
+  for (const [choice, icon] of [["dark", "moon"], ["light", "sun"], ["system", "monitor"]] as const)
+    if (settings.theme !== choice) add({ id: `app.theme.${choice}`, group: g.app, label: `${t("theme.label")}: ${t(`theme.${choice}`)}`, icon, run: () => setTheme(choice) });
   add({ id: "app.language", group: g.app, label: t("palette.language"), icon: "globe", run: () => setLocale(i18n.locale === "en" ? "id" : "en") });
   add({ id: "app.mcp", group: g.app, label: t("mcp.title"), icon: "plug", run: () => (ui.dialog = "mcp") });
   add({ id: "app.remote", group: g.app, label: t("remote.title"), icon: "phone", run: () => (ui.dialog = "remote") });

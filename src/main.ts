@@ -10,5 +10,9 @@ import "./styles/controls.css";
 import "./styles/lists.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
+import { initTheme } from "./lib/theme.svelte";
+
+// Before the first paint, so a light theme doesn't start dark.
+initTheme();
 
 mount(App, { target: document.body });

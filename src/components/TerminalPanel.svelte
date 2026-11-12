@@ -16,6 +16,7 @@
   import { promptList } from "../lib/prompts.svelte";
   import ScrollButton from "./ScrollButton.svelte";
   import { StripScroll } from "../lib/stripScroll.svelte";
+  import { moveItem, reorder } from "../lib/reorder";
 
   /** `fill`: the terminal takes its whole area (a column) instead of a resizable height under the code. */
   let { shown, fill }: { shown: boolean; fill: boolean } = $props();
@@ -374,11 +375,12 @@
   <div class="head">
     <div class="tabs">
       {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}
-      <div class="shells" bind:this={strip.el}>
+      <div class="shells" bind:this={strip.el} use:reorder={(from, to) => moveItem(shells, from, to)}>
         {#each shells as s, i (s.id)}
-          <div class="shell" class:on={s.id === active} class:beside={s.id !== active && !!pair?.includes(s.id)} class:exited={s.exited}>
+          <div class="shell" class:on={s.id === active} class:beside={s.id !== active && !!pair?.includes(s.id)} class:exited={s.exited} data-reorder>
             {#if renaming === s.id}
               <input
+                data-no-reorder
                 class="shell-name"
                 bind:this={field}
                 bind:value={draft}
@@ -399,9 +401,9 @@
               </button>
             {/if}
             {#if s.url}
-              <button class="shell-web" onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
+              <button class="shell-web" data-no-reorder onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
             {/if}
-            <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
+            <button class="shell-close" data-no-reorder onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
           </div>
         {/each}
       </div>
@@ -544,6 +546,11 @@
     height: 22px;
     border-radius: 5px;
     color: var(--muted);
+  }
+  .shell:global(.dragging) {
+    position: relative;
+    z-index: 2;
+    opacity: 0.85;
   }
   .shell.on {
     background: var(--panel-2);

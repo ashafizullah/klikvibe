@@ -8,6 +8,7 @@
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
   import LanguageToggle from "./LanguageToggle.svelte";
+  import ThemeToggle from "./ThemeToggle.svelte";
 
   let version = $state("");
   let recent = $state<RecentProject[]>([]);
@@ -97,7 +98,10 @@
           <Icon name="refresh" size={10} class={updates.checking ? "spin" : ""} />{updates.checking ? t("update.checking") : t("update.check")}
         </button>
       </div>
-      <LanguageToggle />
+      <div class="prefs">
+        <ThemeToggle />
+        <LanguageToggle />
+      </div>
     </div>
   </aside>
 
@@ -236,6 +240,12 @@
     gap: 8px;
     padding: 6px 12px;
     border-top: 1px solid var(--line);
+  }
+  .prefs {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
   }
   .version {
     display: flex;

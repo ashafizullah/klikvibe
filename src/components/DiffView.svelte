@@ -264,8 +264,8 @@
     min-height: 22px;
     padding: 2px 8px 2px 14px;
     margin-top: 6px;
-    color: #8b7fb8;
-    background: color-mix(in srgb, #7c3aed 8%, transparent);
+    color: var(--hunk);
+    background: var(--hunk-bg);
     white-space: pre;
   }
   .hunk-text {
@@ -326,7 +326,7 @@
     flex: none;
     padding-right: 8px;
     text-align: right;
-    color: #5d5547;
+    color: var(--gutter);
   }
   .sign {
     width: 16px;

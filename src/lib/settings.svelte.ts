@@ -7,8 +7,12 @@ export type UpdateMode = "auto" | "notify" | "off";
 /** classic: the terminal under the code; columns: Terminal | Code | Git side by side. */
 export type Layout = "classic" | "columns";
 
+/** The colours: dark, light, or as the computer is set (see theme.svelte.ts). */
+export type ThemeChoice = "dark" | "light" | "system";
+
 interface Stored {
   layout: Layout;
+  theme: ThemeChoice;
   showTree: boolean;
   /** The file tree in the columns layout: off by default, the editor's tabs are enough there. */
   showTreeColumns: boolean;
@@ -57,6 +61,7 @@ export let hadSettings = false;
 export function defaults(): Stored {
   return {
     layout: "classic",
+    theme: "dark",
     showTree: true,
     showTreeColumns: false,
     showCode: true,
