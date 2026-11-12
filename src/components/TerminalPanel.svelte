@@ -37,6 +37,8 @@
     prefill?: string;
     /** Its output from before KlikVibe was closed. */
     history?: string;
+    /** It needs the user (an agent waits) and they haven't looked yet: its tab has a dot. */
+    waiting?: boolean;
   }
 
   let nextId = 1;
@@ -78,6 +80,17 @@
   let shells = $state<Shell[]>(start?.shells ?? [shell()]);
   let active = $state(start?.active ?? 1);
   strip.follow(() => [active, shells.length]);
+
+  /** Looking at a terminal clears its dot; while the window is in the background, only once it is back. */
+  function looked() {
+    const s = shells.find((x) => x.id === active);
+    if (s?.waiting && shown && settings.showTerminal && document.hasFocus()) s.waiting = false;
+  }
+  $effect(() => {
+    void [active, shown, settings.showTerminal];
+    looked();
+  });
+  const waiting = $derived(shells.some((s) => s.waiting));
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
   /** `auto`: its name until one is read from what runs in it. */
@@ -176,6 +189,16 @@
   }
   project.newTerminal = newTerminal;
 
+  /** The open terminal's find bar (the command palette), the panel shown first. */
+  function findInTerminal() {
+    if (!settings.showTerminal) {
+      settings.showTerminal = true;
+      persist();
+    }
+    tick().then(() => refs[active]?.openFind());
+  }
+  project.findInTerminal = findInTerminal;
+
   /** A terminal the phone closed (`term.kill`): like closing its tab here. */
   function closeTerminal(session: string): boolean {
     const s = shells.find((x) => refs[x.id]?.sessionId() === session);
@@ -220,6 +243,7 @@
     if (project.askAgent === askAgent) project.askAgent = null;
     if (project.terminals === terminals) project.terminals = null;
     if (project.newTerminal === newTerminal) project.newTerminal = null;
+    if (project.findInTerminal === findInTerminal) project.findInTerminal = null;
     if (project.closeTerminal === closeTerminal) project.closeTerminal = null;
     if (project.terminalSnapshot === snapshot) project.terminalSnapshot = null;
     // The project was closed: its terminals don't come back next time. (An update keeps them.)
@@ -280,12 +304,15 @@
   }
 </script>
 
+<svelte:window onfocus={looked} />
+
 {#if !settings.showTerminal && !fill}
   <!-- Hidden terminals keep running; this strip brings them back. -->
   <button class="collapsed" onclick={() => ((settings.showTerminal = true), persist())} title={`${t("terminal.show")} (Ctrl+\`)`}>
     <Icon name="terminal" size={13} />
     <span>{t("terminal.title")}</span>
     {#if shells.length > 1}<span class="count-badge">{shells.length}</span>{/if}
+    {#if waiting}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
     <span class="spacer"></span>
     <span class="kbd">Ctrl+`</span>
     <Icon name="up" size={13} />
@@ -327,7 +354,7 @@
                 oncontextmenu={(e) => shellMenu(e, s, i)}
                 title={`${label(s, i)} · ${t("terminal.renameHint")}`}
               >
-                {label(s, i)}
+                {#if s.waiting}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={10} /></span>{/if}{label(s, i)}
               </button>
             {/if}
             {#if s.url}
@@ -369,7 +396,7 @@
   <div class="body">
     {#if cwd}
       {#each shells as s (s.id)}
-        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
+        <TerminalSession bind:this={refs[s.id]} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} onwaiting={() => (s.waiting = true)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={s.id === active && settings.showTerminal && shown} onexit={() => (s.exited = true)} />
       {/each}
     {/if}
   </div>
@@ -470,6 +497,12 @@
     font: 11px var(--mono);
     padding: 0 7px;
     height: 100%;
+  }
+  .waiting {
+    display: inline-flex;
+    margin-right: 4px;
+    color: var(--accent);
+    vertical-align: -1px;
   }
   .shell-name {
     width: 130px;

@@ -14,6 +14,8 @@
 - Tab yang terbuka (project, terminal, atau file) otomatis tergeser agar terlihat.
 - Menyeret file atau folder dari pohon file ke terminal mengetikkan path-nya di sana (dari folder project, diberi tanda kutip bila perlu).
 - Git: diff sebuah file menampilkan tombol Stage (atau Unstage) dan Buang di tiap bagian perubahan, untuk meng-commit atau membuang bagian itu saja. Bagian yang sudah di-stage diberi tanda.
+- Palet perintah: ⌘⇧P (Ctrl+Shift+P di Windows dan Linux) membuka daftar semua yang bisa dilakukan KlikVibe, dari menampilkan panel sampai Push atau mengirim prompt ke agen. Ketik beberapa huruf untuk mencarinya, lalu Enter untuk menjalankan. Perintah yang terakhir dipakai muncul paling atas.
+- Terminal: tab terminal yang agennya sedang menunggumu menampilkan ikon lonceng sampai tab itu dibuka, jadi kelihatan terminal mana yang butuh kamu.
 
 ## 0.7.12
 

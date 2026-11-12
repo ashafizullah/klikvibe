@@ -2,10 +2,10 @@
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import { errorText, ipc, type Project } from "./lib/ipc";
+  import { ipc, type Project } from "./lib/ipc";
   import { confirmQuit, currentProject, cycleProject, isDirty, openProject, showProject, workspace } from "./lib/project.svelte";
-  import { persist, settings, zoom } from "./lib/settings.svelte";
-  import { isMac, toast, ui } from "./lib/ui.svelte";
+  import { settings, zoom } from "./lib/settings.svelte";
+  import { isMac, ui } from "./lib/ui.svelte";
   import { i18n } from "./lib/i18n/index.svelte";
   import { initUpdates } from "./lib/updates.svelte";
   import Home from "./components/Home.svelte";
@@ -24,7 +24,8 @@
   import { togglePanel } from "./lib/layout";
   import { seen } from "./lib/attention.svelte";
   import { restoreSession, saveSession } from "./lib/session.svelte";
-  import { treeKey } from "./lib/grid";
+  import { openSearch, pickFolder } from "./lib/commands.svelte";
+  import CommandPalette from "./components/CommandPalette.svelte";
 
   const project = $derived(currentProject());
 
@@ -71,23 +72,6 @@
     getCurrentWindow().setTitle(title).catch(() => {});
   });
 
-  async function pick() {
-    try {
-      const p = await ipc.pickProject();
-      if (p) await openProject(p);
-    } catch (e) {
-      toast(errorText(e), "error");
-    }
-  }
-
-  /** Shows the file tree and puts the cursor in its search (names or contents). */
-  function openSearch(mode: "names" | "text") {
-    settings.showCode = true;
-    settings[treeKey(settings)] = true;
-    persist();
-    window.dispatchEvent(new CustomEvent("klikvibe:search", { detail: mode }));
-  }
-
   function onKeydown(e: KeyboardEvent) {
     // ⌘ on macOS, Ctrl elsewhere: on a Mac, Ctrl+W or Ctrl+B belong to the shell.
     const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -111,11 +95,15 @@
       // Text size, in the terminal too.
       e.preventDefault();
       zoom(key === "0" ? 0 : key === "-" ? -1 : 1);
+    } else if (mod && e.shiftKey && !e.altKey && key === "p") {
+      // The command palette, from anywhere (the terminal too); again to close it.
+      e.preventDefault();
+      if (!ui.alert) ui.dialog = ui.dialog === "palette" ? null : "palette";
     } else if (inTerminal && !e.shiftKey) {
       return;
     } else if (mod && !e.shiftKey && key === "o") {
       e.preventDefault();
-      pick();
+      pickFolder();
     } else if (mod && !e.shiftKey && key === "t") {
       e.preventDefault();
       showProject(null);
@@ -171,6 +159,8 @@
     <PromptsDialog />
   {:else if ui.dialog === "remote"}
     <RemoteDialog />
+  {:else if ui.dialog === "palette"}
+    <CommandPalette />
   {/if}
   <AlertDialog />
   <Toasts />

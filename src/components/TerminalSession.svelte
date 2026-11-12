@@ -25,6 +25,7 @@
     onexit,
     onname,
     onurl,
+    onwaiting,
     run,
     prefill,
     history,
@@ -35,6 +36,8 @@
     onname: (name: string | null) => void;
     /** A dev server's address showed up in the output. */
     onurl: (url: string) => void;
+    /** It needs the user (an agent waits, the bell, an agent's own notification) and they were told. */
+    onwaiting?: () => void;
     /** A command to run once the shell has started (a script from the Scripts menu). */
     run?: string;
     /** Typed at the prompt once the shell has started, without Enter. */
@@ -95,7 +98,7 @@
   /** `kind` says what happened, for the phone's push (which never carries `message`). */
   async function tell(agent: string | null, message: string, kind: AttentionKind) {
     const name = agent ?? agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null) ?? t("terminal.title");
-    needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind);
+    if (await needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind)) onwaiting?.();
   }
 
   /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
@@ -310,6 +313,8 @@
       }
       // Text size (App.svelte): not ^_ or ^0 for the shell.
       if ((isMac ? e.metaKey : e.ctrlKey) && !e.altKey && (key === "=" || key === "+" || key === "-" || key === "0")) return false;
+      // The command palette (App.svelte), not ^P for the shell.
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.shiftKey && !e.altKey && key === "p") return false;
       // ⌘C on macOS: copy the selection here. Left to the Edit menu, its Copy finds no page selection
       // (xterm draws its own) and macOS beeps, although xterm's copy handler still fills the clipboard.
       if (isMac && e.metaKey && !e.ctrlKey && !e.altKey && e.key.toLowerCase() === "c") {

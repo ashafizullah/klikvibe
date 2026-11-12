@@ -14,6 +14,8 @@
 - The open tab (project, terminal or file) scrolls into view when it is out of sight.
 - Dragging a file or folder from the file tree onto a terminal types its path there (from the project folder, quoted when needed).
 - Git: a file's diff shows Stage (or Unstage) and Discard on each part of the changes, to commit or throw away only that part. Parts already staged are marked.
+- Command palette: ⌘⇧P (Ctrl+Shift+P on Windows and Linux) opens a list of what KlikVibe can do, from showing a panel to Push or sending a prompt to the agent. Type a few letters to find one, Enter runs it. Commands used last come first.
+- Terminal: a terminal tab whose agent is waiting for you shows a bell until you open it, so you can tell which of several terminals needs you.
 
 ## 0.7.12
 

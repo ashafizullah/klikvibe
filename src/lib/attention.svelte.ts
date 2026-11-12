@@ -1,7 +1,7 @@
 // "An agent needs you": a terminal rang its bell, an agent sent a
 // notification (OSC 9 / OSC 777), or an agent that was busy has gone quiet,
 // most likely waiting for an answer or done. While you are looking at that
-// terminal nothing happens; otherwise its project tab gets a dot, the Dock
+// terminal nothing happens; otherwise its project tab and its terminal tab get a dot, the Dock
 // icon bounces once, and macOS shows a notification.
 import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
 import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
@@ -33,6 +33,7 @@ function allowed(): Promise<boolean> {
  * A terminal (`key`, unique per shell) in project `root` needs the user.
  * `seen`: the user is looking at it right now, so nothing is shown.
  * `session`: its session id, so a phone on KlikVibe Remote can open it.
+ * True when the user is told here (so the terminal's tab gets its dot too).
  */
 export async function needsYou(
   key: string,
@@ -42,20 +43,21 @@ export async function needsYou(
   seen: boolean,
   session: string | null = null,
   kind: AttentionKind = "message",
-) {
-  if (seen) return;
+): Promise<boolean> {
+  if (seen) return false;
   const now = Date.now();
-  if (now - (last.get(key) ?? 0) < QUIET_BETWEEN) return;
+  if (now - (last.get(key) ?? 0) < QUIET_BETWEEN) return false;
   last.set(key, now);
   // The phone too (and a push with Pro), even with desktop notifications off; nothing happens while Remote is off.
   if (session) ipc.remoteAttention(root, session, title, body, kind).catch(() => {});
   phoneAttention.add(root);
-  if (!settings.notifyAgents) return;
+  if (!settings.notifyAgents) return false;
   attention.add(root);
   getCurrentWindow()
     .requestUserAttention(UserAttentionType.Informational)
     .catch(() => {});
-  if (await allowed()) sendNotification({ title, body });
+  allowed().then((ok) => ok && sendNotification({ title, body }));
+  return true;
 }
 
 /** The user looked: the project's dot goes away. */

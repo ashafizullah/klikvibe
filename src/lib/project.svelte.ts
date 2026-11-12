@@ -118,6 +118,8 @@ export class ProjectState {
   remoteTerminals: (() => { id: string; name: string; agent: string | null }[]) | null = null;
   /** Opens a terminal tab running `agent` (else a plain shell) for the phone; its session id once started. Set by TerminalPanel. */
   newTerminal: ((agent: AgentDef | null) => Promise<string>) | null = null;
+  /** Opens the find bar of the open terminal (the command palette); set by TerminalPanel. */
+  findInTerminal: (() => void) | null = null;
   /** Closes the terminal with this session id (KlikVibe Remote's `term.kill`); false if it isn't here. */
   closeTerminal: ((session: string) => boolean) | null = null;
   /** A terminal's scrollback as shown (ANSI) and the output bytes it covers, for KlikVibe Remote. */
