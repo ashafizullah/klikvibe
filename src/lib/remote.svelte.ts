@@ -127,5 +127,7 @@ export function initRemote() {
   listen<{ root: string; agent: string | null; nonce: string }>("remote-term-new", (e) => termNew(e.payload));
   listen<{ root: string; id: string; nonce: string }>("remote-term-kill", (e) => termKill(e.payload));
   listen<{ id: string; lines: number; nonce: string }>("remote-term-snapshot", (e) => termSnapshot(e.payload));
+  // A phone staged, committed or pushed: the Git panel shows it at once.
+  listen<{ root: string }>("remote-git-changed", (e) => workspace.projects.find((p) => p.root === e.payload.root)?.refreshGit(true));
   setInterval(report, 1500);
 }

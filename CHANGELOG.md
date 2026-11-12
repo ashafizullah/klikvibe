@@ -21,6 +21,7 @@
 - Light theme: on the Projects page, beside the language, choose Dark, Light or Same as the computer (also in the command palette). The editor, diffs and the terminal follow.
 - Terminal tabs can be dragged sideways into another order, as the project and file tabs can.
 - KlikVibe Remote: the phone gets the terminal's Prompts menu as you set it here, and offers it beside the keys: a prompt picked there goes in the box, ready to send. It follows your edits. Needs a phone app that knows it.
+- KlikVibe Remote: from the phone's Changes screen you can stage files, commit (what is staged, or everything) and push. Nothing there throws changes away. Needs a phone app that knows it.
 
 ## 0.7.12
 

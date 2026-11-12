@@ -295,6 +295,9 @@ pub mod tests {
         fn git_diff(&self, _: &str, _: &str) -> Result<String, String> {
             Ok(String::new())
         }
+        fn git_act(&self, _: &str, _: session::GitAct) -> Result<(), String> {
+            Err("Not here".into())
+        }
         fn term_new(&self, _: &str, _: Option<&str>) -> Result<tokio::sync::oneshot::Receiver<Result<String, String>>, String> {
             Err("Not here".into())
         }

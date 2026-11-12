@@ -43,6 +43,8 @@ pub const TERM_NEW: &str = "remote-term-new";
 pub const TERM_KILL: &str = "remote-term-kill";
 /// The window sends a terminal's history (scrollback as shown) for a phone opening it: `remote_term_snapshot`.
 pub const TERM_SNAPSHOT: &str = "remote-term-snapshot";
+/// A phone staged, committed or pushed in a project: the window refreshes its Git panel.
+pub const GIT_CHANGED: &str = "remote-git-changed";
 /// Where the window's view of a terminal goes: its text and the output bytes it covers.
 type SnapshotWait = tokio::sync::oneshot::Sender<Option<(String, u64)>>;
 /// Scrollback lines a phone gets when it opens a terminal.
@@ -187,6 +189,28 @@ impl session::Host for AppHost {
     fn git_status(&self, root: &str) -> Result<Value, String> {
         let root = self.0.state::<Projects>().root(root).map_err(|e| e.to_string())?;
         serde_json::to_value(git::status(&root).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    }
+
+    fn git_act(&self, root_str: &str, act: session::GitAct) -> Result<(), String> {
+        use session::GitAct;
+        let root = self.0.state::<Projects>().root(root_str).map_err(|e| e.to_string())?;
+        let status = git::status(&root).map_err(|e| e.to_string())?;
+        // Only files Git lists as changed: never a path the phone made up.
+        let listed = |paths: &[String]| {
+            if paths.iter().all(|p| status.changes.iter().any(|c| &c.path == p)) { Ok(()) } else { Err("Not a changed file".to_string()) }
+        };
+        let r = match act {
+            GitAct::Stage(paths) => listed(&paths).and_then(|_| git::stage(&root, &paths).map_err(|e| e.to_string())),
+            GitAct::Unstage(paths) => listed(&paths).and_then(|_| git::unstage(&root, &paths).map_err(|e| e.to_string())),
+            GitAct::Commit(message) => {
+                let all = !status.changes.iter().any(|c| c.staged);
+                git::commit(&root, &message, all).map(|_| ()).map_err(|e| e.to_string())
+            }
+            GitAct::Push => git::push(&root).map(|_| ()).map_err(|e| e.to_string()),
+        };
+        // The window's Git panel shows it at once.
+        let _ = self.0.emit(GIT_CHANGED, json!({ "root": root_str }));
+        r
     }
 
     fn git_diff(&self, root: &str, path: &str) -> Result<String, String> {

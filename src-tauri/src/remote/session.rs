@@ -15,7 +15,19 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub const VERSION: u32 = 1;
 /// What this desktop can do beyond the first version, in `hello`: a phone offers only these.
-const FEATURES: [&str; 4] = ["term.new", "term.kill", "file.put", "prompts"];
+const FEATURES: [&str; 5] = ["term.new", "term.kill", "file.put", "prompts", "git.write"];
+/// The longest commit message a phone may send.
+const MAX_COMMIT_MESSAGE: usize = 10_000;
+
+/// A change to a project's Git that a phone asks for (`git.stage` and the others, PROTOCOL.md).
+#[derive(Debug, Clone, PartialEq)]
+pub enum GitAct {
+    Stage(Vec<String>),
+    Unstage(Vec<String>),
+    /// Commits what is staged, or every change when nothing is (as Commit all on the computer).
+    Commit(String),
+    Push,
+}
 /// How long the window has to open a terminal for `term.new`.
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
 /// How long a phone opening a terminal waits for the window's view of it.
@@ -41,6 +53,8 @@ pub trait Host: Send + Sync + 'static {
     fn git_status(&self, root: &str) -> Result<Value, String>;
     /// The working tree's diff of a changed file.
     fn git_diff(&self, root: &str, path: &str) -> Result<String, String>;
+    /// Stages, unstages, commits or pushes (never throws changes away). Runs Git, so slow.
+    fn git_act(&self, root: &str, act: GitAct) -> Result<(), String>;
     /// Asks the window for a new terminal tab in an open project, running `agent` (an id the
     /// window reported, see `Hub::agents`) or a plain shell. The new terminal's id comes later.
     fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String>;
@@ -245,6 +259,54 @@ impl Session {
                     Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
                 }
             }
+            t @ ("git.stage" | "git.unstage" | "git.commit" | "git.push") => {
+                let t = t.to_string();
+                let root = s("root");
+                let paths = || -> Result<Vec<String>, String> {
+                    let list: Vec<String> = m
+                        .get("paths")
+                        .and_then(Value::as_array)
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Value::as_str)
+                        .map(String::from)
+                        .collect();
+                    if list.is_empty() || list.len() > MAX_CHANGES { Err("No files given".into()) } else { Ok(list) }
+                };
+                let act = match t.as_str() {
+                    "git.stage" => paths().map(GitAct::Stage),
+                    "git.unstage" => paths().map(GitAct::Unstage),
+                    "git.commit" => {
+                        let message = s("message");
+                        if message.trim().is_empty() {
+                            Err("Write a commit message first".to_string())
+                        } else if message.len() > MAX_COMMIT_MESSAGE {
+                            Err("The commit message is too long".to_string())
+                        } else {
+                            Ok(GitAct::Commit(message))
+                        }
+                    }
+                    _ => Ok(GitAct::Push),
+                };
+                let act = act.and_then(|a| if self.hub.has_project(&root) { Ok(a) } else { Err("Project not open".into()) });
+                match act {
+                    Ok(act) => {
+                        // Answered from its own task: a push can take a while, and the terminals keep streaming.
+                        let (tx, host) = (self.tx.clone(), self.host.clone());
+                        tokio::spawn(async move {
+                            let r =
+                                tokio::task::spawn_blocking(move || host.git_act(&root, act)).await.unwrap_or_else(|e| Err(e.to_string()));
+                            let reply = match r {
+                                Ok(()) => json!({ "t": t, "req": req, "ok": true }),
+                                Err(e) => json!({ "t": "error", "req": req, "message": e }),
+                            };
+                            let _ = tx.send(reply.to_string().into_bytes()).await;
+                        });
+                        true
+                    }
+                    Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
+                }
+            }
             "term.new" => {
                 let root = s("root");
                 match self.term_new(&root, m.get("agent")) {
@@ -424,6 +486,7 @@ mod tests {
 
     struct Fake {
         typed: Mutex<Vec<(String, String)>>,
+        acts: Mutex<Vec<(String, GitAct)>>,
         /// Where this test's uploads go.
         dir: PathBuf,
         /// The window's view of a terminal, when the test gives one.
@@ -434,6 +497,7 @@ mod tests {
         fn default() -> Self {
             Self {
                 typed: Mutex::default(),
+                acts: Mutex::default(),
                 view: Mutex::default(),
                 dir: std::env::temp_dir().join(format!("klikvibe-remote-test-{}", uuid::Uuid::new_v4())),
             }
@@ -459,6 +523,13 @@ mod tests {
         }
         fn git_diff(&self, _root: &str, path: &str) -> Result<String, String> {
             Ok(if path == "big" { "é".repeat(MAX_DIFF) } else { format!("diff {path}") })
+        }
+        fn git_act(&self, root: &str, act: GitAct) -> Result<(), String> {
+            if act == GitAct::Push {
+                return Err("No remote".into());
+            }
+            self.acts.lock().unwrap().push((root.into(), act));
+            Ok(())
         }
         fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String> {
             let (tx, rx) = oneshot::channel();
@@ -581,7 +652,7 @@ mod tests {
         say(json!({ "t": "hello", "v": 1, "name": "iPhone" })).await.unwrap();
         let h = next(&mut from_desktop).await;
         assert_eq!((h["t"].as_str(), h["name"].as_str(), h["v"].as_u64()), (Some("hello"), Some("Mac"), Some(1)));
-        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put", "prompts"]));
+        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put", "prompts", "git.write"]));
         assert_eq!(h["agents"], json!([]));
         assert_eq!(h["prompts"], json!([]));
         let p = next(&mut from_desktop).await;
@@ -689,6 +760,36 @@ mod tests {
         assert_eq!(next(&mut from).await["t"], "error");
         say(json!({ "t": "term.new", "req": 4, "root": "/etc", "agent": null })).await.unwrap();
         assert_eq!(next(&mut from).await["t"], "error");
+        drop(to);
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn git_changes_from_the_phone() {
+        let host = Arc::new(Fake::default());
+        let (to, mut from, task) = connected(app_hub(), host.clone()).await;
+        let say = |v: Value| to.send(v.to_string().into_bytes());
+        say(json!({ "t": "git.stage", "req": 1, "root": "/app", "paths": ["a.ts", 7] })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "git.stage", "req": 1, "ok": true }));
+        say(json!({ "t": "git.commit", "req": 2, "root": "/app", "message": "Notes on the cart" })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "git.commit", "req": 2, "ok": true }));
+        // Refused before Git runs: no files, no message, a project that isn't open.
+        say(json!({ "t": "git.unstage", "req": 3, "root": "/app", "paths": [] })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        say(json!({ "t": "git.commit", "req": 4, "root": "/app", "message": "  " })).await.unwrap();
+        assert_eq!(next(&mut from).await["message"], "Write a commit message first");
+        say(json!({ "t": "git.stage", "req": 5, "root": "/etc", "paths": ["passwd"] })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
+        // Git's own failure comes back as the answer.
+        say(json!({ "t": "git.push", "req": 6, "root": "/app" })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "error", "req": 6, "message": "No remote" }));
+        assert_eq!(
+            *host.acts.lock().unwrap(),
+            vec![
+                ("/app".to_string(), GitAct::Stage(vec!["a.ts".into()])),
+                ("/app".to_string(), GitAct::Commit("Notes on the cart".into()))
+            ]
+        );
         drop(to);
         task.await.unwrap();
     }
