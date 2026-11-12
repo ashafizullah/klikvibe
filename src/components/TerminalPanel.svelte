@@ -117,7 +117,7 @@
       { label: t("terminal.resetName"), disabled: s.name === null, run: () => (s.name = null) },
       "sep",
       { label: t("terminal.new"), run: () => add() },
-      { label: t("terminal.close"), disabled: shells.length < 2, run: () => close(s.id) },
+      { label: t("terminal.close"), run: () => close(s.id) },
     ]);
   }
 
@@ -349,9 +349,7 @@
             {#if s.url}
               <button class="shell-web" onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
             {/if}
-            {#if shells.length > 1}
-              <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
-            {/if}
+            <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
           </div>
         {/each}
       </div>
@@ -515,12 +513,22 @@
     background: none;
     color: var(--accent);
   }
+  /* On the tab under the pointer and the open one, as on the project and file tabs. */
   .shell-close {
     border: none;
     background: none;
     padding: 0 4px 0 0;
     color: var(--muted);
     display: flex;
+    opacity: 0;
+  }
+  .shell:hover .shell-close,
+  .shell.on .shell-close,
+  .shell-close:focus-visible {
+    opacity: 1;
+  }
+  .shell-close:hover {
+    color: var(--text);
   }
   .add {
     width: 22px;

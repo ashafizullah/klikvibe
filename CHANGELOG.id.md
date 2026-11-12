@@ -4,6 +4,7 @@
 
 - Tab: saat tab project, tab terminal, atau tab file tidak muat semuanya, tombol ‹ dan › di sampingnya menggeser sisanya agar terlihat. Tombol + untuk project atau terminal baru tetap terlihat.
 - Terminal: satu tombol "Jalankan agen" menggantikan daftar agen di sebelahnya. Panah ⌄-nya menampilkan semua agen beserta perintahnya; memilih salah satu langsung menjalankannya, dan "Jalankan agen" selanjutnya menjalankan agen itu.
+- Tab terminal menampilkan tombol × saat di-hover dan di tab yang terbuka, sama seperti tab project dan tab file. Terminal terakhir juga bisa ditutup: terminal baru langsung menggantikannya.
 - Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
 
 ## 0.7.12

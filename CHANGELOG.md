@@ -4,6 +4,7 @@
 
 - Tabs: when the project tabs, terminal tabs or file tabs don't all fit, ‹ and › buttons beside them scroll the rest into view. The + button for a new project or terminal stays in sight.
 - Terminal: one "Start agent" button replaces the agent list next to it. Its ⌄ arrow lists every agent with its command; choosing one starts it, and "Start agent" starts that one from then on.
+- Terminal tabs show their × on hover and on the open tab, as the project and file tabs do. The last terminal can be closed too: a fresh one takes its place.
 - The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
 
 ## 0.7.12
