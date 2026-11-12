@@ -1,30 +1,27 @@
 # Changelog
 
-## Unreleased
+## 0.7.13
 
-- Tabs: when the project tabs, terminal tabs or file tabs don't all fit, ‹ and › buttons beside them scroll the rest into view. The + button for a new project or terminal stays in sight.
-- Terminal: the "Start agent" button and its agent list are gone. Start an agent by typing its command in the terminal.
-- Prompts: every prompt in the Prompts menu can be changed or removed, the built-in ones too ("Edit prompts…"). "Restore the built-in prompts" brings back the ones removed.
-- Files: the button beside Refresh closes every folder when some are open, and opens them all when none are (leaving out what .gitignore leaves out, such as node_modules). "This folder is empty." sits in the middle of the panel.
-- Double-clicking the edge of the file tree, the Git panel, the terminal column or the terminal brings it back to its default size.
-- Terminal tabs show their × on hover and on the open tab, as the project and file tabs do. The last terminal can be closed too: a fresh one takes its place.
-- The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
-- Terminal: find in the output with ⌘F (Ctrl+Shift+F on Windows and Linux) or the search button: matches are highlighted, Enter and Shift+Enter go to the next and previous one.
+A command palette, a light theme, two terminals side by side, and staging one part of a file. With KlikVibe Remote you can now commit and push from your phone.
+
+- Command palette: ⌘⇧P (Ctrl+Shift+P on Windows and Linux) finds anything KlikVibe can do, from showing a panel to Push or sending a prompt to the agent. Type a few letters and press Enter; the commands used last come first.
+- Light theme: choose Dark, Light or Same as the computer on the Projects page (beside the language) or in the command palette. The editor, diffs and the terminal follow.
 - Text size: ⌘+ and ⌘− (Ctrl on Windows and Linux) make the editor and the terminal bigger or smaller, ⌘0 goes back to the default.
-- The open tab (project, terminal or file) scrolls into view when it is out of sight.
-- Dragging a file or folder from the file tree onto a terminal types its path there (from the project folder, quoted when needed).
-- Git: a file's diff shows Stage (or Unstage) and Discard on each part of the changes, to commit or throw away only that part. Parts already staged are marked.
-- Command palette: ⌘⇧P (Ctrl+Shift+P on Windows and Linux) opens a list of what KlikVibe can do, from showing a panel to Push or sending a prompt to the agent. Type a few letters to find one, Enter runs it. Commands used last come first.
-- Terminal: a terminal tab whose agent is waiting for you shows a bell until you open it, so you can tell which of several terminals needs you.
-- Terminal: two terminals side by side, such as the agent beside a dev server. The new button in the terminal's header (or "Show beside the open terminal" on a tab's right-click menu) puts the next terminal beside the open one; clicking a tab shows it in the half you last clicked. The layout is kept for next time.
-- Git: discarding one part of a file's changes can be undone: the notice has an Undo button for a few seconds.
-- Light theme: on the Projects page, beside the language, choose Dark, Light or Same as the computer (also in the command palette). The editor, diffs and the terminal follow.
-- Terminal tabs can be dragged sideways into another order, as the project and file tabs can.
-- KlikVibe Remote: the phone gets the terminal's Prompts menu as you set it here, and offers it beside the keys: a prompt picked there goes in the box, ready to send. It follows your edits. Needs a phone app that knows it.
-- KlikVibe Remote: from the phone's Changes screen you can stage files, commit (what is staged, or everything) and push. Nothing there throws changes away. Needs a phone app that knows it.
-- Terminal: drag the line between two terminals side by side to give one more room; double-click it for half and half.
-- Clicking an agent's notification brings its terminal to the front: its project, the terminal panel and its tab.
-- KlikVibe Remote: the phone's diff can stage, unstage or discard one part of a file's changes, with Undo after a discard. Needs a phone app that knows it.
+- Terminal:
+  - Two terminals side by side, such as the agent beside a dev server: the new button in the terminal's header, or "Show beside the open terminal" on a tab's right-click menu. Drag the line between them to give one more room; double-click it for half and half.
+  - Find in the output with ⌘F (Ctrl+Shift+F on Windows and Linux) or the search button: matches are highlighted, Enter and Shift+Enter go to the next and previous one.
+  - A tab whose agent is waiting for you shows a bell until you open it. Clicking an agent's notification brings its terminal to the front.
+  - Drag a file or folder from the file tree onto a terminal to type its path there (from the project folder, quoted when needed).
+  - Tabs can be dragged into another order and show their × on hover and on the open tab. The last terminal can be closed too: a fresh one takes its place.
+  - The "Start agent" button and its agent list are gone: start an agent by typing its command.
+- Prompts: every prompt in the Prompts menu can be changed or removed, the built-in ones too ("Edit prompts…"). "Restore the built-in prompts" brings back the ones removed.
+- Git: a file's diff has Stage (or Unstage) and Discard on each part of the changes, to commit or throw away only that part, with Undo after a discard. Parts already staged are marked.
+- Tabs: ‹ and › buttons scroll the project, terminal and file tabs that don't fit, and the open tab scrolls into view.
+- Files: the button beside Refresh closes every folder, or opens them all when none are open (leaving out what .gitignore leaves out, such as node_modules). Double-clicking the edge of the file tree, the Git panel or the terminal brings back its default size.
+- The Projects page no longer lists the agents KlikVibe works with: it works with every agent that runs in a terminal.
+- KlikVibe Remote (with KlikVibe Remote 1.0.3 on the phone):
+  - The Changes screen can stage files, commit and push, and a file's diff can stage or discard one part of the changes (with Undo).
+  - The phone gets the terminal's Prompts menu as you set it here, and offers it beside the keys.
 
 ## 0.7.12
 

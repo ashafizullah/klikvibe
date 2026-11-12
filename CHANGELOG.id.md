@@ -1,30 +1,27 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.13
 
-- Tab: saat tab project, tab terminal, atau tab file tidak muat semuanya, tombol ‹ dan › di sampingnya menggeser sisanya agar terlihat. Tombol + untuk project atau terminal baru tetap terlihat.
-- Terminal: tombol "Jalankan agen" dan daftar agennya dihapus. Jalankan agen dengan mengetik perintahnya di terminal.
-- Prompt: setiap prompt di menu Prompt bisa diubah atau dihapus, termasuk prompt bawaan ("Atur prompt…"). "Kembalikan prompt bawaan" memunculkan lagi yang sudah dihapus.
-- Files: tombol di sebelah Muat ulang menutup semua folder kalau ada yang terbuka, dan membuka semuanya kalau semua tertutup (kecuali yang diabaikan .gitignore, seperti node_modules). "Folder ini kosong." kini ada di tengah panel.
-- Klik dua kali tepi pohon file, panel Git, kolom terminal, atau terminal mengembalikannya ke ukuran bawaan.
-- Tab terminal menampilkan tombol × saat di-hover dan di tab yang terbuka, sama seperti tab project dan tab file. Terminal terakhir juga bisa ditutup: terminal baru langsung menggantikannya.
-- Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
-- Terminal: cari di output dengan ⌘F (Ctrl+Shift+F di Windows dan Linux) atau tombol cari: hasilnya disorot, Enter dan Shift+Enter pindah ke hasil berikutnya dan sebelumnya.
+Palet perintah, tema terang, dua terminal berdampingan, dan stage satu bagian file. Lewat KlikVibe Remote, kini kamu bisa commit dan push dari HP.
+
+- Palet perintah: ⌘⇧P (Ctrl+Shift+P di Windows dan Linux) menemukan apa saja yang bisa dilakukan KlikVibe, dari menampilkan panel sampai Push atau mengirim prompt ke agen. Ketik beberapa huruf lalu tekan Enter; perintah yang terakhir dipakai muncul paling atas.
+- Tema terang: pilih Gelap, Terang, atau Ikuti komputer di halaman Daftar proyek (di atas pilihan bahasa) atau lewat palet perintah. Editor, diff, dan terminal ikut berubah.
 - Ukuran teks: ⌘+ dan ⌘− (Ctrl di Windows dan Linux) memperbesar atau memperkecil teks editor dan terminal, ⌘0 kembali ke ukuran bawaan.
-- Tab yang terbuka (project, terminal, atau file) otomatis tergeser agar terlihat.
-- Menyeret file atau folder dari pohon file ke terminal mengetikkan path-nya di sana (dari folder project, diberi tanda kutip bila perlu).
-- Git: diff sebuah file menampilkan tombol Stage (atau Unstage) dan Buang di tiap bagian perubahan, untuk meng-commit atau membuang bagian itu saja. Bagian yang sudah di-stage diberi tanda.
-- Palet perintah: ⌘⇧P (Ctrl+Shift+P di Windows dan Linux) membuka daftar semua yang bisa dilakukan KlikVibe, dari menampilkan panel sampai Push atau mengirim prompt ke agen. Ketik beberapa huruf untuk mencarinya, lalu Enter untuk menjalankan. Perintah yang terakhir dipakai muncul paling atas.
-- Terminal: tab terminal yang agennya sedang menunggumu menampilkan ikon lonceng sampai tab itu dibuka, jadi kelihatan terminal mana yang butuh kamu.
-- Terminal: dua terminal bisa tampil berdampingan, misalnya agen di samping dev server. Tombol baru di kepala terminal (atau "Tampilkan di samping terminal yang terbuka" di menu klik kanan tab) menaruh terminal berikutnya di samping terminal yang terbuka. Mengklik tab menampilkannya di sisi yang terakhir diklik. Tata letaknya diingat untuk berikutnya.
-- Git: membuang satu bagian perubahan file bisa diurungkan, lewat tombol Urungkan di pemberitahuannya selama beberapa detik.
-- Tema terang: di halaman Daftar proyek, di atas pilihan bahasa, pilih Gelap, Terang, atau Ikuti komputer (juga lewat palet perintah). Editor, diff, dan terminal ikut berubah.
-- Tab terminal bisa diseret ke samping untuk mengubah urutannya, sama seperti tab proyek dan tab file.
-- KlikVibe Remote: HP menerima menu Prompt terminal sesuai yang kamu atur di sini, dan menampilkannya di samping tombol-tombol keyboard: prompt yang dipilih masuk ke kotak ketik, siap dikirim. Ikut berubah saat kamu mengeditnya. Butuh versi app HP yang sudah mendukungnya.
-- KlikVibe Remote: dari layar Perubahan di HP kamu bisa stage file, commit (yang di-stage, atau semuanya), lalu push. Tidak ada yang bisa membuang perubahan dari sana. Butuh versi app HP yang sudah mendukungnya.
-- Terminal: seret garis di antara dua terminal yang berdampingan untuk memberi salah satunya ruang lebih; klik dua kali untuk kembali setengah-setengah.
-- Mengklik notifikasi agen membuka terminalnya: proyeknya, panel terminal, dan tab terminal itu.
-- KlikVibe Remote: diff di HP bisa stage, unstage, atau membuang satu bagian perubahan file, dengan Urungkan setelah membuang. Butuh versi app HP yang sudah mendukungnya.
+- Terminal:
+  - Dua terminal berdampingan, misalnya agen di samping dev server: tombol baru di kepala terminal, atau "Tampilkan di samping terminal yang terbuka" di menu klik kanan tab. Seret garis di antaranya untuk memberi salah satunya ruang lebih; klik dua kali untuk kembali setengah-setengah.
+  - Cari di output dengan ⌘F (Ctrl+Shift+F di Windows dan Linux) atau tombol cari: hasilnya disorot, Enter dan Shift+Enter pindah ke hasil berikutnya dan sebelumnya.
+  - Tab yang agennya sedang menunggumu menampilkan ikon lonceng sampai tab itu dibuka. Mengklik notifikasi agen membuka terminalnya.
+  - Seret file atau folder dari pohon file ke terminal untuk mengetikkan path-nya di sana (dari folder project, diberi tanda kutip bila perlu).
+  - Tab bisa diseret untuk mengubah urutannya, dan menampilkan tombol × saat di-hover dan di tab yang terbuka. Terminal terakhir juga bisa ditutup: terminal baru langsung menggantikannya.
+  - Tombol "Jalankan agen" dan daftar agennya dihapus: jalankan agen dengan mengetik perintahnya.
+- Prompt: setiap prompt di menu Prompt bisa diubah atau dihapus, termasuk prompt bawaan ("Atur prompt…"). "Kembalikan prompt bawaan" memunculkan lagi yang sudah dihapus.
+- Git: diff sebuah file punya tombol Stage (atau Unstage) dan Buang di tiap bagian perubahan, untuk meng-commit atau membuang bagian itu saja, dengan Urungkan setelah membuang. Bagian yang sudah di-stage diberi tanda.
+- Tab: tombol ‹ dan › menggeser tab project, terminal, dan file yang tidak muat, dan tab yang terbuka otomatis tergeser agar terlihat.
+- Files: tombol di sebelah Muat ulang menutup semua folder, atau membuka semuanya kalau semua tertutup (kecuali yang diabaikan .gitignore, seperti node_modules). Klik dua kali tepi pohon file, panel Git, atau terminal mengembalikannya ke ukuran bawaan.
+- Halaman Daftar proyek tidak lagi menampilkan daftar agen yang didukung KlikVibe: semua agen yang berjalan di terminal bisa dipakai.
+- KlikVibe Remote (dengan KlikVibe Remote 1.0.3 di HP):
+  - Layar Perubahan bisa stage file, commit, dan push, dan diff sebuah file bisa stage atau membuang satu bagian perubahan (dengan Urungkan).
+  - HP menerima menu Prompt terminal sesuai yang kamu atur di sini, dan menampilkannya di samping tombol-tombol keyboard.
 
 ## 0.7.12
 
