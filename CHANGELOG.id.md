@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Belum dirilis
+
+- Seret file dari Finder atau Explorer ke jendela untuk membukanya di editor, siap diedit dan disimpan, termasuk file di luar proyek. Seret folder untuk membukanya sebagai proyek. Kalau dijatuhkan di terminal, path-nya diketik di sana.
+
 ## 0.7.14
 
 Perbaikan untuk palet perintah.

@@ -95,6 +95,7 @@ const id: Record<Key, string> = {
   "tabs.keepMine": "Pertahankan editan saya",
   "tabs.binary": "File ini bukan teks, jadi tidak bisa ditampilkan di sini.",
   "tabs.tooLarge": "File ini terlalu besar untuk dibuka di sini (lebih dari 5 MB).",
+  "drop.openProjectFirst": "Buka proyek dulu, lalu drop file-nya ke sana.",
 
   "editor.welcomeTitle": "Siap kapan pun agen Anda siap",
   "editor.welcomeText": "Belum ada yang dibuka. Anda tidak perlu membaca setiap baris, tapi semuanya cukup satu klik.",

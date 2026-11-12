@@ -21,6 +21,7 @@
   import PromptsDialog from "./components/PromptsDialog.svelte";
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
+  import { startFileDrop } from "./lib/fileDrop";
   import { togglePanel } from "./lib/layout";
   import { openNotified, seen } from "./lib/attention.svelte";
   import { restoreSession, saveSession } from "./lib/session.svelte";
@@ -33,6 +34,7 @@
     document.documentElement.lang = i18n.locale;
     const off = listen<Project>("open-project", (e) => openProject(e.payload));
     // Quit (⌘Q) or the close button with unsaved edits: ask, then quit.
+    const offDrop = startFileDrop();
     const offQuit = listen("quit-asked", async () => {
       if (await confirmQuit()) ipc.quitApp().catch(() => {});
     });
@@ -46,6 +48,7 @@
     return () => {
       off.then((f) => f());
       offQuit.then((f) => f());
+      offDrop.then((f) => f());
     };
   });
 

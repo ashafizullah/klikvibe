@@ -3,13 +3,17 @@
 //! arguments (`klikvibe .`), or reopens one of those from the recent list,
 //! which is kept here, not in the webview. Every file and Git command checks
 //! its path against these roots, symlinks resolved, so content shown in the
-//! window can't reach the rest of the disk.
+//! window can't reach the rest of the disk. Files and folders the user drags
+//! onto the window from Finder or Explorer count as chosen too (only those
+//! exact files; a dropped folder opens as a project).
 use crate::error::{AppError, AppResult};
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 const MAX_RECENT: usize = 16;
+/** Dropped paths remembered in one run; the oldest go first. */
+const MAX_DROPPED: usize = 256;
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +42,18 @@ pub struct Projects {
     file: PathBuf,
     /// A folder from the launch arguments, until the window takes it.
     pub launch: Mutex<Option<Project>>,
+    /// Canonical files and folders dropped on the window in this run (see lib.rs).
+    dropped: Mutex<Vec<PathBuf>>,
+}
+
+/// What a dropped path turned out to be.
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum Dropped {
+    /// A file, opened by its path (inside or outside the open projects).
+    File { path: String },
+    /// A folder, now an open project.
+    Folder { project: Project },
 }
 
 fn name_of(root: &Path) -> String {
@@ -48,7 +64,13 @@ impl Projects {
     pub fn new(data_dir: PathBuf) -> Self {
         let file = data_dir.join("recent.json");
         let stored: Stored = std::fs::read(&file).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
-        Self { open: Mutex::new(Vec::new()), recent: Mutex::new(stored.recent), file, launch: Mutex::new(None) }
+        Self {
+            open: Mutex::new(Vec::new()),
+            recent: Mutex::new(stored.recent),
+            file,
+            launch: Mutex::new(None),
+            dropped: Mutex::new(Vec::new()),
+        }
     }
 
     fn save(&self, recent: &[String]) {
@@ -77,6 +99,38 @@ impl Projects {
         recent.truncate(MAX_RECENT);
         self.save(&recent);
         Ok(Project { name: name_of(&root), root: shown })
+    }
+
+    /// Remembers paths the user dropped on the window (called from the native
+    /// drop event, never from the webview).
+    pub fn allow_dropped(&self, paths: &[PathBuf]) {
+        let mut dropped = self.dropped.lock().unwrap();
+        for p in paths {
+            if let Ok(real) = p.canonicalize().map(dunce)
+                && !dropped.contains(&real)
+            {
+                dropped.push(real);
+            }
+        }
+        let over = dropped.len().saturating_sub(MAX_DROPPED);
+        dropped.drain(..over);
+    }
+
+    /// A dropped path, for the window to open: a file by its path, a folder as a project.
+    pub fn open_dropped(&self, path: &str) -> AppResult<Dropped> {
+        let real = dunce(Path::new(path).canonicalize().map_err(|_| AppError::msg(format!("Not found: {path}")))?);
+        if !self.dropped.lock().unwrap().contains(&real) {
+            return Err(AppError::msg("Drop the file on the window to open it"));
+        }
+        if real.is_dir() {
+            return Ok(Dropped::Folder { project: self.admit(&real)? });
+        }
+        Ok(Dropped::File { path: real.display().to_string() })
+    }
+
+    /// A dropped file (not a folder: its contents stay out of reach unless it opens as a project).
+    fn is_dropped_file(&self, resolved: &Path) -> bool {
+        resolved.is_file() && self.dropped.lock().unwrap().iter().any(|d| d == resolved)
     }
 
     /// Reopens a folder from the recent list; anything else is refused.
@@ -114,7 +168,9 @@ impl Projects {
     /// `path` inside an open project, resolved; it must exist.
     pub fn existing(&self, path: &str) -> AppResult<PathBuf> {
         let resolved = dunce(Path::new(path).canonicalize().map_err(|_| AppError::msg(format!("Not found: {path}")))?);
-        self.inside(&resolved)?;
+        if !self.is_dropped_file(&resolved) {
+            self.inside(&resolved)?;
+        }
         Ok(resolved)
     }
 
@@ -150,6 +206,9 @@ impl Projects {
             Ok(real) => dunce(real),
             Err(_) => target,
         };
+        if self.is_dropped_file(&target) {
+            return Ok(target);
+        }
         let root = self.inside(&target)?;
         if target.strip_prefix(&root).ok().and_then(|rel| rel.components().next()).is_some_and(|c| c.as_os_str() == ".git") {
             return Err(AppError::msg("KlikVibe doesn't write inside .git"));

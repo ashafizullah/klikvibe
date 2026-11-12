@@ -13,7 +13,8 @@
   import { needsYou, type AttentionKind } from "../lib/attention.svelte";
   import { agentIn, terminalName } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
-  import { join, relative, shellQuote, TREE_DRAG } from "../lib/paths";
+  import { join, relative, shellQuote } from "../lib/paths";
+  import { DROP_ATTR, PATHS_EVENT } from "../lib/fileDrop";
   import { isMac, isWindows, toast } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { settings } from "../lib/settings.svelte";
@@ -423,23 +424,21 @@
     if (term) term.options.theme = theme;
   });
 
-  // ---- a file dragged from the file tree ----
+  // ---- files dropped from the tree, Finder or Explorer (fileDrop.ts) ----
 
-  let dropping = $state(false);
-  function dragOver(e: DragEvent) {
-    if (!e.dataTransfer?.types.includes(TREE_DRAG)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    dropping = true;
-  }
-  /** Types the path (from the project folder, as the shell and the agent see it), without Enter. */
-  function drop(e: DragEvent) {
-    dropping = false;
-    const path = e.dataTransfer?.getData(TREE_DRAG);
-    if (!path) return;
-    e.preventDefault();
-    const rel = relative(project.root, path);
-    paste(`${shellQuote(rel === null ? path : rel || ".", isWindows)} `);
+  /** Types the paths (from the project folder, as the shell and the agent see them), without Enter. */
+  function dropPaths(node: HTMLElement) {
+    const typed = (e: Event) => {
+      const paths = (e as CustomEvent<string[]>).detail;
+      const shown = paths.map((p) => {
+        const rel = relative(project.root, p);
+        return shellQuote(rel === null ? p : rel || ".", isWindows);
+      });
+      paste(`${shown.join(" ")} `);
+      term?.focus();
+    };
+    node.addEventListener(PATHS_EVENT, typed);
+    return { destroy: () => node.removeEventListener(PATHS_EVENT, typed) };
   }
 
   // ---- find in the output ----
@@ -557,7 +556,7 @@
   }
 </script>
 
-<div class="session" class:hidden={!visible} class:dropping role="presentation" ondragover={dragOver} ondragleave={(e) => !(e.currentTarget as Node).contains(e.relatedTarget as Node | null) && (dropping = false)} ondrop={drop}>
+<div class="session" class:hidden={!visible} {...{ [DROP_ATTR]: "" }} use:dropPaths>
   <div class="host" bind:this={host}></div>
   {#if finding}
     <div class="find" role="search">
@@ -581,7 +580,7 @@
     position: absolute;
     inset: 4px 8px 0;
   }
-  .session.dropping {
+  .session:global(.drop-target) {
     outline: 2px dashed color-mix(in srgb, var(--accent) 60%, transparent);
     outline-offset: -2px;
     border-radius: 6px;

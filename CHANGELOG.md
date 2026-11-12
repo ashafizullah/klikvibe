@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Drop files from Finder or Explorer on the window to open them in the editor, ready to edit and save, also files outside the project. Drop a folder to open it as a project. Dropped on a terminal, their paths are typed there.
+
 ## 0.7.14
 
 A fix for the command palette.

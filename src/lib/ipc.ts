@@ -159,6 +159,8 @@ export type TerminalEvent = { type: "data"; data: string } | { type: "exit"; cod
 export const ipc = {
   pickProject: () => invoke<Project | null>("pick_project"),
   openRecent: (root: string) => invoke<Project>("open_recent", { root }),
+  /** A path dropped on the window: a file to open, or a folder now open as a project. */
+  openDropped: (path: string) => invoke<{ kind: "file"; path: string } | { kind: "folder"; project: Project }>("open_dropped", { path }),
   recentProjects: () => invoke<RecentProject[]>("recent_projects"),
   forgetRecent: (root: string) => invoke<void>("forget_recent", { root }),
   takeLaunchProject: () => invoke<Project | null>("take_launch_project"),

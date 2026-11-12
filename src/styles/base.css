@@ -81,3 +81,25 @@ input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--accent);
 }
+
+/* A file dragged from the tree (fileDrop.ts): its name follows the pointer. */
+.path-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.25);
+}
+body.dragging-path,
+body.dragging-path * {
+  cursor: copy !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}

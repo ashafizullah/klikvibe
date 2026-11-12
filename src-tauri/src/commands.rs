@@ -44,6 +44,12 @@ pub fn open_recent(projects: State<'_, Projects>, root: String) -> AppResult<Pro
     projects.reopen(&root)
 }
 
+/// A file or folder the user dropped on the window (see projects.rs).
+#[tauri::command]
+pub fn open_dropped(projects: State<'_, Projects>, path: String) -> AppResult<crate::projects::Dropped> {
+    projects.open_dropped(&path)
+}
+
 #[tauri::command]
 pub fn recent_projects(projects: State<'_, Projects>) -> Vec<RecentProject> {
     projects.recent()

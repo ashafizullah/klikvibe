@@ -81,12 +81,14 @@ pub fn run() {
             tauri::async_runtime::spawn_blocking(move || responder.respond(media::serve(&app.state::<projects::Projects>(), &request)));
         })
         .manage(terminals)
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event
-                && !ask_to_quit(window.app_handle())
-            {
-                api.prevent_close();
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } if !ask_to_quit(window.app_handle()) => api.prevent_close(),
+            // Files dragged in from Finder or Explorer: the user chose these, so the
+            // window may open them (the drop event then reaches the page; see fileDrop.svelte.ts).
+            tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) => {
+                window.app_handle().state::<projects::Projects>().allow_dropped(paths)
             }
+            _ => {}
         })
         .on_menu_event(|app, event| {
             if event.id() == "quit" && ask_to_quit(app) {
@@ -133,6 +135,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::pick_project,
             commands::open_recent,
+            commands::open_dropped,
             commands::recent_projects,
             commands::forget_recent,
             commands::take_launch_project,

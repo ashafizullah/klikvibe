@@ -93,6 +93,7 @@ const en = {
   "tabs.keepMine": "Keep my edits",
   "tabs.binary": "This file isn't text, so it can't be shown here.",
   "tabs.tooLarge": "This file is too large to open here (over 5 MB).",
+  "drop.openProjectFirst": "Open a project first, then drop the file on it.",
 
   "editor.welcomeTitle": "Ready when your agent is",
   "editor.welcomeText": "Nothing is open yet. You don't need to read every line, but everything is one click away.",
