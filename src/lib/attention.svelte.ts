@@ -21,6 +21,21 @@ export type AttentionKind = "waiting" | "message" | "bell";
 const QUIET_BETWEEN = 30_000;
 const last = new Map<string, number>();
 
+/**
+ * The terminal the last notification was about, while KlikVibe was in the background: clicking
+ * the notification brings the window to the front, and that terminal comes with it. Not later
+ * than this, as the user may come back for something else by then.
+ */
+let notified: { at: number; open: () => void } | null = null;
+const OPEN_WITHIN = 5 * 60_000;
+
+/** The window came to the front: the terminal of a recent notification is shown. */
+export function openNotified() {
+  const n = notified;
+  notified = null;
+  if (n && Date.now() - n.at < OPEN_WITHIN) n.open();
+}
+
 let permission: Promise<boolean> | null = null;
 function allowed(): Promise<boolean> {
   permission ??= isPermissionGranted()
@@ -33,6 +48,7 @@ function allowed(): Promise<boolean> {
  * A terminal (`key`, unique per shell) in project `root` needs the user.
  * `seen`: the user is looking at it right now, so nothing is shown.
  * `session`: its session id, so a phone on KlikVibe Remote can open it.
+ * `open` brings that terminal in front, for when the user comes back from the notification.
  * True when the user is told here (so the terminal's tab gets its dot too).
  */
 export async function needsYou(
@@ -43,6 +59,7 @@ export async function needsYou(
   seen: boolean,
   session: string | null = null,
   kind: AttentionKind = "message",
+  open?: () => void,
 ): Promise<boolean> {
   if (seen) return false;
   const now = Date.now();
@@ -56,6 +73,7 @@ export async function needsYou(
   getCurrentWindow()
     .requestUserAttention(UserAttentionType.Informational)
     .catch(() => {});
+  if (open && !document.hasFocus()) notified = { at: now, open };
   allowed().then((ok) => ok && sendNotification({ title, body }));
   return true;
 }

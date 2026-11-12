@@ -1,6 +1,6 @@
 <script lang="ts">
   // Shells in the project folder: one for the agent, more for a dev server or tests.
-  import { useProject } from "../lib/project.svelte";
+  import { showProject, useProject } from "../lib/project.svelte";
   import { defaults, persist, settings } from "../lib/settings.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
   import { AGENTS, type AgentDef } from "../lib/agents";
@@ -108,6 +108,17 @@
 
   /** On screen: the open terminal, or both side by side. */
   const onScreen = (s: Shell) => (pair ? pair.includes(s.id) : s.id === active) && settings.showTerminal && shown;
+
+  /** The terminal a notification was about, in front: its project, the panel and its tab. */
+  function reveal(id: number) {
+    if (!shells.some((x) => x.id === id)) return;
+    showProject(project.root);
+    if (!settings.showTerminal) {
+      settings.showTerminal = true;
+      persist();
+    }
+    show(id);
+  }
 
   /** `id` beside the open terminal. */
   function beside(id: number) {
@@ -332,6 +343,25 @@
     openMenuBelow(e.currentTarget as Element, items);
   }
 
+  // ---- two side by side: the line between them ----
+
+  let bodyEl = $state<HTMLElement>();
+  const share = $derived(Math.min(0.8, Math.max(0.2, settings.terminalSplit)));
+
+  function dragSplit(e: PointerEvent) {
+    if (!bodyEl) return;
+    e.preventDefault();
+    const box = bodyEl.getBoundingClientRect();
+    const move = (ev: PointerEvent) => (settings.terminalSplit = Math.min(0.8, Math.max(0.2, (ev.clientX - box.left) / box.width)));
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      persist();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   function startDrag(e: PointerEvent) {
     const startY = e.clientY;
     const start = settings.terminalHeight;
@@ -446,20 +476,32 @@
       <Icon name={fill ? "close" : "down"} size={fill ? 14 : 16} />
     </button>
   </div>
-  <div class="body">
+  <div class="body" bind:this={bodyEl}>
+    {#if pair}
+      <div
+        class="divider"
+        role="separator"
+        aria-orientation="vertical"
+        title={t("layout.resizeHint")}
+        style:left="{share * 100}%"
+        onpointerdown={dragSplit}
+        ondblclick={() => ((settings.terminalSplit = defaults().terminalSplit), persist())}
+      ></div>
+    {/if}
     {#if cwd}
       {#each shells as s (s.id)}
         <div
           class="pane"
-          class:left={pair?.[0] === s.id}
           class:right={pair?.[1] === s.id}
           class:focus={!!pair && s.id === active}
           class:off={!onScreen(s)}
+          style:right={pair?.[0] === s.id ? `${(1 - share) * 100}%` : null}
+          style:left={pair?.[1] === s.id ? `${share * 100}%` : null}
           role="presentation"
           onfocusin={() => pair?.includes(s.id) && (active = s.id)}
           onpointerdown={() => pair?.includes(s.id) && (active = s.id)}
         >
-          <TerminalSession bind:this={refs[s.id]} focused={s.id === active} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} onwaiting={() => (s.waiting = true)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={onScreen(s)} onexit={() => (s.exited = true)} />
+          <TerminalSession bind:this={refs[s.id]} focused={s.id === active} onname={(n) => (s.auto = n)} onurl={(u) => foundUrl(s, u)} onwaiting={() => (s.waiting = true)} onreveal={() => reveal(s.id)} run={s.run} prefill={s.prefill} history={s.history} {cwd} visible={onScreen(s)} onexit={() => (s.exited = true)} />
         </div>
       {/each}
     {/if}
@@ -645,12 +687,17 @@
   .pane.off {
     visibility: hidden;
   }
-  .pane.left {
-    right: 50%;
-  }
   .pane.right {
-    left: 50%;
     border-left: 1px solid var(--line);
+  }
+  .divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 3;
+    width: 8px;
+    margin-left: -4px;
+    cursor: col-resize;
   }
   /* Side by side: a line over the one that has the keyboard. */
   .pane.focus::before {

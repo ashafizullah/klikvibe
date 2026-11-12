@@ -22,6 +22,9 @@
 - Terminal tabs can be dragged sideways into another order, as the project and file tabs can.
 - KlikVibe Remote: the phone gets the terminal's Prompts menu as you set it here, and offers it beside the keys: a prompt picked there goes in the box, ready to send. It follows your edits. Needs a phone app that knows it.
 - KlikVibe Remote: from the phone's Changes screen you can stage files, commit (what is staged, or everything) and push. Nothing there throws changes away. Needs a phone app that knows it.
+- Terminal: drag the line between two terminals side by side to give one more room; double-click it for half and half.
+- Clicking an agent's notification brings its terminal to the front: its project, the terminal panel and its tab.
+- KlikVibe Remote: the phone's diff can stage, unstage or discard one part of a file's changes, with Undo after a discard. Needs a phone app that knows it.
 
 ## 0.7.12
 

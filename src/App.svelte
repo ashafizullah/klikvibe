@@ -22,7 +22,7 @@
   import AlertDialog from "./components/AlertDialog.svelte";
   import { startMcp } from "./lib/mcp.svelte";
   import { togglePanel } from "./lib/layout";
-  import { seen } from "./lib/attention.svelte";
+  import { openNotified, seen } from "./lib/attention.svelte";
   import { restoreSession, saveSession } from "./lib/session.svelte";
   import { openSearch, pickFolder } from "./lib/commands.svelte";
   import CommandPalette from "./components/CommandPalette.svelte";
@@ -133,12 +133,18 @@
     }
   }
 
+  /** Back in front: the terminal of a notification just clicked, and the project's dot goes. */
+  function onFocus() {
+    openNotified();
+    if (workspace.active) seen(workspace.active);
+  }
+
   function beforeUnload(e: BeforeUnloadEvent) {
     if (workspace.projects.some((p) => p.dirty)) e.preventDefault();
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} onbeforeunload={beforeUnload} onfocus={() => workspace.active && seen(workspace.active)} />
+<svelte:window onkeydown={onKeydown} onbeforeunload={beforeUnload} onfocus={onFocus} />
 
 <div class="app">
   {#if workspace.projects.length}

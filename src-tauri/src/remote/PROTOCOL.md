@@ -88,6 +88,8 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 | `git.stage` / `git.unstage` | `req`, `root`, `paths` | Stages (or unstages) these changed files, paths as `git.status` lists them (any other path is refused). Answer: the same `t` with `ok: true`. Only with the `git.write` feature |
 | `git.commit` | `req`, `root`, `message` | Commits what is staged, or every change when nothing is (Commit all on the computer). `message`: not empty, at most 10000 bytes. Answer: `git.commit`, `ok: true`. Only with `git.write` |
 | `git.push` | `req`, `root` | Pushes the branch, publishing it to `origin` when it has no upstream yet. Answer: `git.push`, `ok: true`, or `error` with Git's message. Only with `git.write` |
+| `git.hunks` | `req`, `root`, `path` | Whether each hunk of that changed file's diff is staged. Answer: `git.hunks`, `staged: [bool]`. Only with the `git.hunk` feature |
+| `git.hunk` | `req`, `root`, `path`, `hunk`, `action` | One hunk of the file's diff, as `git.diff` showed it (from its `@@` line to the next): `action` `stage`, `unstage` or `discard`. A hunk no longer in the diff is refused. With `action: "restore"` and `patch` instead: puts back a discarded hunk (Undo). Answer: `git.hunk`, `ok: true`, and for `discard` the `patch` to restore it. Only with `git.hunk` |
 | `term.new` | `req`, `root`, `agent` | Opens a terminal tab in that open project, running `agent` (an `id` from `hello`'s `agents`) or, with `agent: null`, a plain shell. Answer: `term.new`. Only with the `term.new` feature |
 | `term.kill` | `req`, `id` | Closes that terminal's tab on the computer, ending its shell and what runs in it, as closing the tab there does. Answer: `term.kill`. Only with the `term.kill` feature |
 | `file.put` | `req`, `up`, `name`, `size`, `offset`, `data`, `last` | One chunk of an image to save on the computer (see [Uploads](#uploads)). Answer: `file.put`. Only with the `file.put` feature |
@@ -97,7 +99,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 
 | `t` | Fields | |
 |---|---|---|
-| `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents`, `prompts` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "term.kill", "file.put", "prompts", "git.write"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts. `prompts`: the terminal's Prompts menu as the user set it on the computer (strings, in its order), for the phone to offer as ready answers; at most 100 and 24 KiB of text in all. Only with the `prompts` feature |
+| `hello` | `v`, `name`, `os`, `app` (KlikVibe version), `features`, `agents`, `prompts` | `features`: what this desktop can do beyond the first version of the protocol, `["term.new", "term.kill", "file.put", "prompts", "git.write", "git.hunk"]` (absent from older desktops: a phone offers only what is listed). `agents`: `[{ id, label }]`, the agents the desktop can start (`{ "id": "claude", "label": "Claude Code" }`); empty until the window has reported them, just after the app starts. `prompts`: the terminal's Prompts menu as the user set it on the computer (strings, in its order), for the phone to offer as ready answers; at most 100 and 24 KiB of text in all. Only with the `prompts` feature |
 | `projects` | `projects: [Project]` | Also sent unasked whenever something changes |
 | `term.reset` | `id`, `cols`, `rows` | Clear the screen; the desktop's size (the phone never resizes the terminal). Also sent again, with the output so far, when the terminal is resized on the computer |
 | `term.data` | `id`, `data` (base64) | Raw output bytes, at most 32 KiB per message |
@@ -108,7 +110,7 @@ Every message has `t`, its type. Requests that expect an answer carry `req`, a n
 | `term.new` | `req`, `id` | The new terminal's id: it is in the project list already (a `projects` message follows), and can be opened with `term.open` |
 | `term.kill` | `req`, `id` | The terminal is closed (a `term.exit` and a `projects` message follow) |
 | `file.put` | `req`, `ok: true`, `path?` | A chunk was written. After the last one, `path`: where the image is on the computer (absolute) |
-| `git.stage`, `git.unstage`, `git.commit`, `git.push` | `req`, `ok: true` | Done; ask `git.status` again for the new state. Nothing throws changes away: the phone has no discard |
+| `git.stage`, `git.unstage`, `git.commit`, `git.push` | `req`, `ok: true` | Done; ask `git.status` again for the new state. Nothing here throws changes away; only `git.hunk` with `discard` does, one hunk at a time, with its Undo |
 | `prompts` | `prompts` | Sent unasked when the Prompts menu changes on the computer: the whole list again, as in `hello`. Only with the `prompts` feature |
 | `pong` | | |
 | `error` | `req?`, `id?`, `message` | The answer to a failed request (`req`), or about one terminal (`id`: it can't be opened or typed into). Also the answer to a request whose reply would not fit one message |

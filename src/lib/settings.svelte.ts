@@ -25,6 +25,8 @@ interface Stored {
   terminalHeight: number;
   /** The terminal column's width in the columns layout. */
   terminalWidth: number;
+  /** Two terminals side by side: the left one's share of the width. */
+  terminalSplit: number;
   /** The agent the terminal's quick button types and the MCP setup is shown for (an id from agents.ts). */
   agent: string;
   /** Run the local MCP server for the user's agent. */
@@ -71,6 +73,7 @@ export function defaults(): Stored {
     gitWidth: 320,
     terminalHeight: 280,
     terminalWidth: 560,
+    terminalSplit: 0.5,
     agent: "claude",
     mcpEnabled: false,
     fontSize: 13,

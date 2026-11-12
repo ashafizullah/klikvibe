@@ -22,6 +22,9 @@
 - Tab terminal bisa diseret ke samping untuk mengubah urutannya, sama seperti tab proyek dan tab file.
 - KlikVibe Remote: HP menerima menu Prompt terminal sesuai yang kamu atur di sini, dan menampilkannya di samping tombol-tombol keyboard: prompt yang dipilih masuk ke kotak ketik, siap dikirim. Ikut berubah saat kamu mengeditnya. Butuh versi app HP yang sudah mendukungnya.
 - KlikVibe Remote: dari layar Perubahan di HP kamu bisa stage file, commit (yang di-stage, atau semuanya), lalu push. Tidak ada yang bisa membuang perubahan dari sana. Butuh versi app HP yang sudah mendukungnya.
+- Terminal: seret garis di antara dua terminal yang berdampingan untuk memberi salah satunya ruang lebih; klik dua kali untuk kembali setengah-setengah.
+- Mengklik notifikasi agen membuka terminalnya: proyeknya, panel terminal, dan tab terminal itu.
+- KlikVibe Remote: diff di HP bisa stage, unstage, atau membuang satu bagian perubahan file, dengan Urungkan setelah membuang. Butuh versi app HP yang sudah mendukungnya.
 
 ## 0.7.12
 

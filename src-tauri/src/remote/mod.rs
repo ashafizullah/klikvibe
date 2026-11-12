@@ -191,7 +191,16 @@ impl session::Host for AppHost {
         serde_json::to_value(git::status(&root).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
     }
 
-    fn git_act(&self, root_str: &str, act: session::GitAct) -> Result<(), String> {
+    fn git_staged_hunks(&self, root: &str, path: &str) -> Result<Vec<bool>, String> {
+        let root = self.0.state::<Projects>().root(root).map_err(|e| e.to_string())?;
+        let status = git::status(&root).map_err(|e| e.to_string())?;
+        if !status.changes.iter().any(|c| c.path == path) {
+            return Err("Not a changed file".into());
+        }
+        git::staged_hunks(&root, path).map_err(|e| e.to_string())
+    }
+
+    fn git_act(&self, root_str: &str, act: session::GitAct) -> Result<Option<String>, String> {
         use session::GitAct;
         let root = self.0.state::<Projects>().root(root_str).map_err(|e| e.to_string())?;
         let status = git::status(&root).map_err(|e| e.to_string())?;
@@ -199,14 +208,19 @@ impl session::Host for AppHost {
         let listed = |paths: &[String]| {
             if paths.iter().all(|p| status.changes.iter().any(|c| &c.path == p)) { Ok(()) } else { Err("Not a changed file".to_string()) }
         };
+        let err = |e: crate::error::AppError| e.to_string();
         let r = match act {
-            GitAct::Stage(paths) => listed(&paths).and_then(|_| git::stage(&root, &paths).map_err(|e| e.to_string())),
-            GitAct::Unstage(paths) => listed(&paths).and_then(|_| git::unstage(&root, &paths).map_err(|e| e.to_string())),
+            GitAct::Stage(paths) => listed(&paths).and_then(|_| git::stage(&root, &paths).map_err(err)).map(|_| None),
+            GitAct::Unstage(paths) => listed(&paths).and_then(|_| git::unstage(&root, &paths).map_err(err)).map(|_| None),
             GitAct::Commit(message) => {
                 let all = !status.changes.iter().any(|c| c.staged);
-                git::commit(&root, &message, all).map(|_| ()).map_err(|e| e.to_string())
+                git::commit(&root, &message, all).map(|_| None).map_err(err)
             }
-            GitAct::Push => git::push(&root).map(|_| ()).map_err(|e| e.to_string()),
+            GitAct::Push => git::push(&root).map(|_| None).map_err(err),
+            GitAct::Hunk { path, hunk, action } => listed(std::slice::from_ref(&path))
+                .and_then(|_| git::hunk(&root, &path, &hunk, &action).map_err(err))
+                .map(|patch| (action == "discard").then_some(patch)),
+            GitAct::Restore(patch) => git::restore_hunk(&root, &patch).map(|_| None).map_err(err),
         };
         // The window's Git panel shows it at once.
         let _ = self.0.emit(GIT_CHANGED, json!({ "root": root_str }));

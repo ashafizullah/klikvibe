@@ -15,7 +15,7 @@ use tokio::sync::{broadcast, mpsc, oneshot};
 
 pub const VERSION: u32 = 1;
 /// What this desktop can do beyond the first version, in `hello`: a phone offers only these.
-const FEATURES: [&str; 5] = ["term.new", "term.kill", "file.put", "prompts", "git.write"];
+const FEATURES: [&str; 6] = ["term.new", "term.kill", "file.put", "prompts", "git.write", "git.hunk"];
 /// The longest commit message a phone may send.
 const MAX_COMMIT_MESSAGE: usize = 10_000;
 
@@ -27,6 +27,14 @@ pub enum GitAct {
     /// Commits what is staged, or every change when nothing is (as Commit all on the computer).
     Commit(String),
     Push,
+    /// One hunk of a file's diff (as `git.diff` showed it): "stage", "unstage" or "discard".
+    Hunk {
+        path: String,
+        hunk: String,
+        action: String,
+    },
+    /// Puts back a hunk that "discard" threw away (the patch its answer carried): Undo.
+    Restore(String),
 }
 /// How long the window has to open a terminal for `term.new`.
 const TERM_NEW_WAIT: Duration = Duration::from_secs(10);
@@ -53,8 +61,11 @@ pub trait Host: Send + Sync + 'static {
     fn git_status(&self, root: &str) -> Result<Value, String>;
     /// The working tree's diff of a changed file.
     fn git_diff(&self, root: &str, path: &str) -> Result<String, String>;
-    /// Stages, unstages, commits or pushes (never throws changes away). Runs Git, so slow.
-    fn git_act(&self, root: &str, act: GitAct) -> Result<(), String>;
+    /// Stages, unstages, commits, pushes, or acts on one hunk. Runs Git, so slow. A discarded
+    /// hunk's patch comes back, for its Undo.
+    fn git_act(&self, root: &str, act: GitAct) -> Result<Option<String>, String>;
+    /// Whether each hunk of a changed file's diff is staged.
+    fn git_staged_hunks(&self, root: &str, path: &str) -> Result<Vec<bool>, String>;
     /// Asks the window for a new terminal tab in an open project, running `agent` (an id the
     /// window reported, see `Hub::agents`) or a plain shell. The new terminal's id comes later.
     fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String>;
@@ -259,7 +270,19 @@ impl Session {
                     Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
                 }
             }
-            t @ ("git.stage" | "git.unstage" | "git.commit" | "git.push") => {
+            "git.hunks" => {
+                let (root, path) = (s("root"), s("path"));
+                let r = if self.hub.has_project(&root) {
+                    self.git(move |h| h.git_staged_hunks(&root, &path)).await
+                } else {
+                    Err("Project not open".into())
+                };
+                match r {
+                    Ok(staged) => self.send(json!({ "t": "git.hunks", "req": req, "staged": staged })).await,
+                    Err(e) => self.send(json!({ "t": "error", "req": req, "message": e })).await,
+                }
+            }
+            t @ ("git.stage" | "git.unstage" | "git.commit" | "git.push" | "git.hunk") => {
                 let t = t.to_string();
                 let root = s("root");
                 let paths = || -> Result<Vec<String>, String> {
@@ -286,6 +309,13 @@ impl Session {
                             Ok(GitAct::Commit(message))
                         }
                     }
+                    "git.hunk" => match s("action").as_str() {
+                        "restore" if !s("patch").is_empty() => Ok(GitAct::Restore(s("patch"))),
+                        a @ ("stage" | "unstage" | "discard") if !s("path").is_empty() && !s("hunk").is_empty() => {
+                            Ok(GitAct::Hunk { path: s("path"), hunk: s("hunk"), action: a.to_string() })
+                        }
+                        _ => Err("Unknown hunk action".to_string()),
+                    },
                     _ => Ok(GitAct::Push),
                 };
                 let act = act.and_then(|a| if self.hub.has_project(&root) { Ok(a) } else { Err("Project not open".into()) });
@@ -297,7 +327,8 @@ impl Session {
                             let r =
                                 tokio::task::spawn_blocking(move || host.git_act(&root, act)).await.unwrap_or_else(|e| Err(e.to_string()));
                             let reply = match r {
-                                Ok(()) => json!({ "t": t, "req": req, "ok": true }),
+                                Ok(Some(patch)) => json!({ "t": t, "req": req, "ok": true, "patch": patch }),
+                                Ok(None) => json!({ "t": t, "req": req, "ok": true }),
                                 Err(e) => json!({ "t": "error", "req": req, "message": e }),
                             };
                             let _ = tx.send(reply.to_string().into_bytes()).await;
@@ -524,12 +555,16 @@ mod tests {
         fn git_diff(&self, _root: &str, path: &str) -> Result<String, String> {
             Ok(if path == "big" { "é".repeat(MAX_DIFF) } else { format!("diff {path}") })
         }
-        fn git_act(&self, root: &str, act: GitAct) -> Result<(), String> {
+        fn git_act(&self, root: &str, act: GitAct) -> Result<Option<String>, String> {
             if act == GitAct::Push {
                 return Err("No remote".into());
             }
+            let patch = matches!(&act, GitAct::Hunk { action, .. } if action == "discard").then(|| "the patch".to_string());
             self.acts.lock().unwrap().push((root.into(), act));
-            Ok(())
+            Ok(patch)
+        }
+        fn git_staged_hunks(&self, _root: &str, path: &str) -> Result<Vec<bool>, String> {
+            Ok(if path == "a.ts" { vec![true, false] } else { vec![] })
         }
         fn term_new(&self, root: &str, agent: Option<&str>) -> Result<oneshot::Receiver<Result<String, String>>, String> {
             let (tx, rx) = oneshot::channel();
@@ -652,7 +687,7 @@ mod tests {
         say(json!({ "t": "hello", "v": 1, "name": "iPhone" })).await.unwrap();
         let h = next(&mut from_desktop).await;
         assert_eq!((h["t"].as_str(), h["name"].as_str(), h["v"].as_u64()), (Some("hello"), Some("Mac"), Some(1)));
-        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put", "prompts", "git.write"]));
+        assert_eq!(h["features"], json!(["term.new", "term.kill", "file.put", "prompts", "git.write", "git.hunk"]));
         assert_eq!(h["agents"], json!([]));
         assert_eq!(h["prompts"], json!([]));
         let p = next(&mut from_desktop).await;
@@ -783,11 +818,24 @@ mod tests {
         // Git's own failure comes back as the answer.
         say(json!({ "t": "git.push", "req": 6, "root": "/app" })).await.unwrap();
         assert_eq!(next(&mut from).await, json!({ "t": "error", "req": 6, "message": "No remote" }));
+        // One hunk: what is staged, then thrown away (with its patch, for Undo) and put back.
+        say(json!({ "t": "git.hunks", "req": 7, "root": "/app", "path": "a.ts" })).await.unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "git.hunks", "req": 7, "staged": [true, false] }));
+        say(json!({ "t": "git.hunk", "req": 8, "root": "/app", "path": "a.ts", "hunk": "@@ -1 +1 @@\n", "action": "discard" }))
+            .await
+            .unwrap();
+        assert_eq!(next(&mut from).await, json!({ "t": "git.hunk", "req": 8, "ok": true, "patch": "the patch" }));
+        say(json!({ "t": "git.hunk", "req": 9, "root": "/app", "action": "restore", "patch": "the patch" })).await.unwrap();
+        assert_eq!(next(&mut from).await["ok"], true);
+        say(json!({ "t": "git.hunk", "req": 10, "root": "/app", "path": "a.ts", "hunk": "@@", "action": "rm" })).await.unwrap();
+        assert_eq!(next(&mut from).await["t"], "error");
         assert_eq!(
             *host.acts.lock().unwrap(),
             vec![
                 ("/app".to_string(), GitAct::Stage(vec!["a.ts".into()])),
-                ("/app".to_string(), GitAct::Commit("Notes on the cart".into()))
+                ("/app".to_string(), GitAct::Commit("Notes on the cart".into())),
+                ("/app".to_string(), GitAct::Hunk { path: "a.ts".into(), hunk: "@@ -1 +1 @@\n".into(), action: "discard".into() }),
+                ("/app".to_string(), GitAct::Restore("the patch".into())),
             ]
         );
         drop(to);

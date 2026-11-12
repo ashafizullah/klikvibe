@@ -28,6 +28,7 @@
     onname,
     onurl,
     onwaiting,
+    onreveal,
     run,
     prefill,
     history,
@@ -42,6 +43,8 @@
     onurl: (url: string) => void;
     /** It needs the user (an agent waits, the bell, an agent's own notification) and they were told. */
     onwaiting?: () => void;
+    /** Bring this terminal in front (the user came back from its notification). */
+    onreveal?: () => void;
     /** A command to run once the shell has started (a script from the Scripts menu). */
     run?: string;
     /** Typed at the prompt once the shell has started, without Enter. */
@@ -102,7 +105,7 @@
   /** `kind` says what happened, for the phone's push (which never carries `message`). */
   async function tell(agent: string | null, message: string, kind: AttentionKind) {
     const name = agent ?? agentIn(session ? await ipc.terminalForeground(session).catch(() => null) : null) ?? t("terminal.title");
-    if (await needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind)) onwaiting?.();
+    if (await needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind, () => onreveal?.())) onwaiting?.();
   }
 
   /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
