@@ -13,10 +13,13 @@
   import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
+  import ScrollButton from "./ScrollButton.svelte";
+  import { StripScroll } from "../lib/stripScroll.svelte";
 
   /** `fill`: the terminal takes its whole area (a column) instead of a resizable height under the code. */
   let { shown, fill }: { shown: boolean; fill: boolean } = $props();
   const project = useProject();
+  const strip = new StripScroll();
 
   interface Shell {
     id: number;
@@ -271,9 +274,21 @@
     openMenuBelow(e.currentTarget as Element, items);
   }
 
-  function setAgent(e: Event) {
-    settings.agent = (e.currentTarget as HTMLSelectElement).value;
-    persist();
+  /** Picks the agent "Start agent" runs, and starts it. */
+  function agentMenu(e: MouseEvent) {
+    const items: MenuItem[] = AGENTS.map((a) => ({
+      label: a.label,
+      hint: a.command,
+      // An invisible check keeps the names lined up under the chosen one's.
+      icon: "check",
+      color: a.id === agent.id ? undefined : "transparent",
+      run: () => {
+        settings.agent = a.id;
+        persist();
+        runAgent();
+      },
+    }));
+    openMenuBelow((e.currentTarget as Element).parentElement!, items);
   }
 
   function startDrag(e: PointerEvent) {
@@ -305,38 +320,42 @@
 <section class="terminal" class:hidden={!settings.showTerminal} class:fill style:height={fill ? null : `${settings.terminalHeight}px`} aria-label={t("terminal.title")}>
   {#if !fill}<div class="grip" role="separator" aria-orientation="horizontal" onpointerdown={startDrag}></div>{/if}
   <div class="head">
-    <div class="shells">
-      {#each shells as s, i (s.id)}
-        <div class="shell" class:on={s.id === active} class:exited={s.exited}>
-          {#if renaming === s.id}
-            <input
-              class="shell-name"
-              bind:this={field}
-              bind:value={draft}
-              onkeydown={(e) => (e.key === "Enter" ? finishRename(true) : e.key === "Escape" ? finishRename(false) : null)}
-              onblur={() => finishRename(true)}
-              aria-label={t("terminal.rename")}
-              spellcheck="false"
-            />
-          {:else}
-            <button
-              class="shell-main ellipsis"
-              onclick={() => (active = s.id)}
-              ondblclick={() => rename(s, i)}
-              oncontextmenu={(e) => shellMenu(e, s, i)}
-              title={`${label(s, i)} · ${t("terminal.renameHint")}`}
-            >
-              {label(s, i)}
-            </button>
-          {/if}
-          {#if s.url}
-            <button class="shell-web" onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
-          {/if}
-          {#if shells.length > 1}
-            <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
-          {/if}
-        </div>
-      {/each}
+    <div class="tabs">
+      {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}
+      <div class="shells" bind:this={strip.el}>
+        {#each shells as s, i (s.id)}
+          <div class="shell" class:on={s.id === active} class:exited={s.exited}>
+            {#if renaming === s.id}
+              <input
+                class="shell-name"
+                bind:this={field}
+                bind:value={draft}
+                onkeydown={(e) => (e.key === "Enter" ? finishRename(true) : e.key === "Escape" ? finishRename(false) : null)}
+                onblur={() => finishRename(true)}
+                aria-label={t("terminal.rename")}
+                spellcheck="false"
+              />
+            {:else}
+              <button
+                class="shell-main ellipsis"
+                onclick={() => (active = s.id)}
+                ondblclick={() => rename(s, i)}
+                oncontextmenu={(e) => shellMenu(e, s, i)}
+                title={`${label(s, i)} · ${t("terminal.renameHint")}`}
+              >
+                {label(s, i)}
+              </button>
+            {/if}
+            {#if s.url}
+              <button class="shell-web" onclick={() => project.openPreview(s.url!)} title={`${t("preview.open")} · ${s.url}`} aria-label={t("preview.open")}><Icon name="globe" size={11} /></button>
+            {/if}
+            {#if shells.length > 1}
+              <button class="shell-close" onclick={() => close(s.id)} aria-label={t("terminal.close")} title={t("terminal.close")}><Icon name="close" size={10} /></button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+      {#if strip.overflow}<ScrollButton {strip} dir={1} />{/if}
       <button class="icon-btn add" onclick={() => add()} title={t("terminal.new")} aria-label={t("terminal.new")}><Icon name="plus" size={13} /></button>
     </div>
     <div class="spacer"></div>
@@ -347,12 +366,14 @@
       <button class="btn small" onclick={promptsMenu} title={t("prompts.hint")}>
         <Icon name="message-square-text" size={13} />{t("prompts.title")}
       </button>
-      <select class="field" value={settings.agent} onchange={setAgent} aria-label={t("terminal.agent")}>
-        {#each AGENTS as a (a.id)}<option value={a.id}>{a.label}</option>{/each}
-      </select>
-      <button class="btn primary small" onclick={runAgent} title={t("terminal.runAgentHint", { command: agent.command })}>
-        <Icon name="sparkles" size={13} />{t("terminal.runAgent")}
-      </button>
+      <div class="split">
+        <button class="btn primary small" onclick={runAgent} title={`${agent.label} · ${t("terminal.runAgentHint", { command: agent.command })}`}>
+          <Icon name="sparkles" size={13} />{t("terminal.runAgent")}
+        </button>
+        <button class="btn primary small pick" onclick={agentMenu} title={t("terminal.pickAgent")} aria-label={t("terminal.pickAgent")}>
+          <Icon name="down" size={13} />
+        </button>
+      </div>
     </div>
     <button
       class="icon-btn"
@@ -436,12 +457,22 @@
     background: var(--panel);
     border-bottom: 1px solid var(--line);
   }
+  .tabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
   .shells {
     display: flex;
     align-items: center;
     gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   .shell {
+    flex: none;
     display: flex;
     align-items: center;
     height: 22px;
@@ -499,13 +530,25 @@
     flex: 1;
   }
   .agent {
+    flex: none;
     display: flex;
     gap: 6px;
     align-items: center;
   }
-  .agent select {
-    height: 24px;
-    font-size: 11.5px;
+  .split {
+    display: flex;
+  }
+  .split .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  .pick {
+    padding: 0 5px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    box-shadow:
+      inset 1px 0 0 rgb(0 0 0 / 0.25),
+      inset 0 1px 0 rgb(255 255 255 / 0.28);
   }
   .small {
     height: 24px;

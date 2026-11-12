@@ -11,8 +11,6 @@ const id: Record<Key, string> = {
 
   "home.start": "Mulai",
   "home.open": "Buka folder",
-  "home.agents": "Bisa dipakai dengan",
-  "home.agentsHint": "Jalankan agen Anda di terminal bawaan. KlikVibe menampilkan apa yang diubahnya saat bekerja.",
   "home.title": "Proyek",
   "home.tagline": "Editor ringan untuk vibe coding: kode, Git, dan terminal dalam satu jendela",
   "home.heroTitle": "Biarkan agen menulis. Anda tetap mengawasi.",
@@ -79,6 +77,8 @@ const id: Record<Key, string> = {
   "crumbs.revealFolder": "Tampilkan folder ini di Files",
   "crumbs.revealFile": "Tampilkan di Files",
   "tabs.close": "Tutup",
+  "tabs.scrollLeft": "Geser ke kiri",
+  "tabs.scrollRight": "Geser ke kanan",
   "tabs.save": "Simpan",
   "tabs.wrap": "Bungkus baris panjang",
   "tabs.discardTitle": "Buang perubahan di {name}?",
@@ -402,8 +402,8 @@ const id: Record<Key, string> = {
   "terminal.close": "Tutup terminal",
   "terminal.show": "Tampilkan terminal",
   "terminal.hide": "Sembunyikan terminal",
-  "terminal.agent": "Agen",
   "terminal.runAgent": "Jalankan agen",
+  "terminal.pickAgent": "Pilih agen yang dijalankan",
   "terminal.runAgentHint": "Mengetik “{command}” di terminal; tekan Enter untuk menjalankannya",
   "terminal.exited": "Shell sudah berhenti. Buka terminal baru untuk melanjutkan.",
 };

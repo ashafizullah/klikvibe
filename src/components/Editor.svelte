@@ -17,8 +17,11 @@
   import { hasSource } from "../lib/media";
   import { fileIcon } from "../lib/fileIcons";
   import { moveItem, reorder } from "../lib/reorder";
+  import { StripScroll } from "../lib/stripScroll.svelte";
+  import ScrollButton from "./ScrollButton.svelte";
 
   const project = useProject();
+  const strip = new StripScroll();
   const tab = $derived(project.activeTab());
   const rel = $derived(tab ? relative(project.root, tab.path) : null);
   const ICON = { file: "code", diff: "diff", commit: "commit", commitFile: "diff", preview: "globe" } as const;
@@ -116,18 +119,22 @@
 
 <section class="editor">
   {#if project.tabs.length}
-    <div class="tabs" role="tablist" use:reorder={(from, to) => moveItem(project.tabs, from, to)}>
-      {#each project.tabs as tb (tb.id)}
-        <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1" data-reorder>
-          <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
-            <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
-            <span class="tab-name ellipsis">{tb.title}</span>
-          </button>
-          <button class="tab-close" data-no-reorder class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
-            <span class="dot"></span><Icon name="close" size={12} />
-          </button>
-        </div>
-      {/each}
+    <div class="tabbar">
+      {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}
+      <div class="tabs" role="tablist" bind:this={strip.el} use:reorder={(from, to) => moveItem(project.tabs, from, to)}>
+        {#each project.tabs as tb (tb.id)}
+          <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1" data-reorder>
+            <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
+              <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
+              <span class="tab-name ellipsis">{tb.title}</span>
+            </button>
+            <button class="tab-close" data-no-reorder class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
+              <span class="dot"></span><Icon name="close" size={12} />
+            </button>
+          </div>
+        {/each}
+      </div>
+      {#if strip.overflow}<ScrollButton {strip} dir={1} />{/if}
     </div>
   {/if}
 
@@ -243,13 +250,20 @@
     /* A tall terminal squeezes this area; nothing in it may spill over the terminal. */
     overflow: hidden;
   }
-  .tabs {
+  .tabbar {
     height: 34px;
     flex: none;
     display: flex;
-    overflow-x: auto;
+    align-items: center;
     background: var(--panel);
     border-bottom: 1px solid var(--line);
+  }
+  .tabs {
+    height: 100%;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    overflow-x: auto;
     scrollbar-width: none;
   }
   .tab:global(.dragging) {

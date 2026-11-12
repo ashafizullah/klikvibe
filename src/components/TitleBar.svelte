@@ -11,9 +11,12 @@
   import { remote } from "../lib/remote.svelte";
   import { attention } from "../lib/attention.svelte";
   import { moveItem, reorder } from "../lib/reorder";
+  import { StripScroll } from "../lib/stripScroll.svelte";
+  import ScrollButton from "./ScrollButton.svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
 
   const project = $derived(currentProject());
+  const strip = new StripScroll();
 
   // macOS hides the window buttons in full screen, so the bar needn't leave room for them.
   let fullscreen = $state(false);
@@ -67,21 +70,25 @@
 
 <header class="bar" class:mac={isMac && !fullscreen} data-tauri-drag-region>
   <button class="icon-btn" class:on={!project} onclick={() => showProject(null)} title={t("bar.home")} aria-label={t("bar.home")}><Icon name="home" size={15} /></button>
-  <div class="projects" role="tablist" data-tauri-drag-region use:reorder={(from, to) => moveItem(workspace.projects, from, to)}>
-    {#each workspace.projects as p, i (p.root)}
-      {@const on = p.root === workspace.active}
-      <div class="ptab" class:on role="tab" aria-selected={on} tabindex="-1" data-reorder>
-        <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
-          <Icon name="project" size={13} />
-          <span class="name ellipsis">{p.current.name}</span>
-          {#if attention.has(p.root)}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
-          {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
-        </button>
-        <button class="ptab-close" data-no-reorder class:dirty={p.dirty} onclick={() => closeProject(p)} title={t("bar.closeProject")} aria-label={t("bar.closeProject")}>
-          <span class="unsaved"></span><Icon name="close" size={11} />
-        </button>
-      </div>
-    {/each}
+  <div class="ptabs" data-tauri-drag-region>
+    {#if strip.overflow}<ScrollButton {strip} dir={-1} size={28} />{/if}
+    <div class="projects" role="tablist" data-tauri-drag-region bind:this={strip.el} use:reorder={(from, to) => moveItem(workspace.projects, from, to)}>
+      {#each workspace.projects as p, i (p.root)}
+        {@const on = p.root === workspace.active}
+        <div class="ptab" class:on role="tab" aria-selected={on} tabindex="-1" data-reorder>
+          <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
+            <Icon name="project" size={13} />
+            <span class="name ellipsis">{p.current.name}</span>
+            {#if attention.has(p.root)}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
+            {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
+          </button>
+          <button class="ptab-close" data-no-reorder class:dirty={p.dirty} onclick={() => closeProject(p)} title={t("bar.closeProject")} aria-label={t("bar.closeProject")}>
+            <span class="unsaved"></span><Icon name="close" size={11} />
+          </button>
+        </div>
+      {/each}
+    </div>
+    {#if strip.overflow}<ScrollButton {strip} dir={1} size={28} />{/if}
     <button class="icon-btn add" class:on={!project} onclick={() => showProject(null)} title={`${t("bar.openAnother")} (${mod}T)`} aria-label={t("bar.openAnother")}>
       <Icon name="plus" size={14} />
     </button>
@@ -147,6 +154,12 @@
   }
   .bar.mac {
     padding-left: 80px;
+  }
+  .ptabs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
   }
   .projects {
     display: flex;

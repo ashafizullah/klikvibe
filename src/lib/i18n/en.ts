@@ -9,8 +9,6 @@ const en = {
 
   "home.start": "Start",
   "home.open": "Open folder",
-  "home.agents": "Works with",
-  "home.agentsHint": "Run your agent in the built-in terminal. KlikVibe shows what it changes as it works.",
   "home.title": "Projects",
   "home.tagline": "A light editor for vibe coding: code, Git and terminal in one window",
   "home.heroTitle": "Let the agent write. Keep an eye on it.",
@@ -77,6 +75,8 @@ const en = {
   "crumbs.revealFolder": "Show this folder in Files",
   "crumbs.revealFile": "Show in Files",
   "tabs.close": "Close",
+  "tabs.scrollLeft": "Scroll left",
+  "tabs.scrollRight": "Scroll right",
   "tabs.save": "Save",
   "tabs.wrap": "Wrap long lines",
   "tabs.discardTitle": "Discard changes to {name}?",
@@ -400,8 +400,8 @@ const en = {
   "terminal.close": "Close terminal",
   "terminal.show": "Show terminal",
   "terminal.hide": "Hide terminal",
-  "terminal.agent": "Agent",
   "terminal.runAgent": "Start agent",
+  "terminal.pickAgent": "Choose the agent to start",
   "terminal.runAgentHint": "Types “{command}” in the terminal; press Enter to run it",
   "terminal.exited": "The shell has exited. Open a new terminal to continue.",
 };

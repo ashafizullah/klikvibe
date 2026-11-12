@@ -3,7 +3,6 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { errorText, ipc, type RecentProject } from "../lib/ipc";
   import { openProject, workspace } from "../lib/project.svelte";
-  import { AGENTS } from "../lib/agents";
   import { copyText, isMac, mod, openMenu, reveal, revealLabel, toast, ui } from "../lib/ui.svelte";
   import { checkForUpdates, updates } from "../lib/updates.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -86,14 +85,6 @@
         </span>
       </button>
     </nav>
-
-    <span class="label section">{t("home.agents")}</span>
-    <ul class="agents">
-      {#each AGENTS as a (a.id)}
-        <li title={a.command}>{a.label}</li>
-      {/each}
-    </ul>
-    <p class="agents-hint">{t("home.agentsHint")}</p>
 
     <div class="grow"></div>
     <div class="foot">
@@ -233,27 +224,6 @@
   }
   .nav-hint {
     font: 10.5px var(--mono);
-    color: var(--muted);
-  }
-  .agents {
-    list-style: none;
-    margin: 0;
-    padding: 2px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    font-size: 11px;
-  }
-  .agents li {
-    padding: 2px 8px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--text);
-  }
-  .agents-hint {
-    margin: 8px 16px 0;
-    font-size: 10.5px;
-    line-height: 1.45;
     color: var(--muted);
   }
   .grow {
