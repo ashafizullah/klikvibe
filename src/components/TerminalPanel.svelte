@@ -3,7 +3,7 @@
   import { useProject } from "../lib/project.svelte";
   import { persist, settings } from "../lib/settings.svelte";
   import { isLastPanel, togglePanel } from "../lib/layout";
-  import { AGENTS, agentById, type AgentDef } from "../lib/agents";
+  import { AGENTS, type AgentDef } from "../lib/agents";
   import { sessionHeld } from "../lib/session.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { openMenu, openMenuBelow, toast, ui, type MenuItem } from "../lib/ui.svelte";
@@ -13,6 +13,7 @@
   import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
   import TerminalSession from "./TerminalSession.svelte";
+  import { promptList } from "../lib/prompts.svelte";
   import ScrollButton from "./ScrollButton.svelte";
   import { StripScroll } from "../lib/stripScroll.svelte";
 
@@ -78,8 +79,6 @@
   let active = $state(start?.active ?? 1);
   const refs = $state<Record<number, TerminalSession>>({});
   const cwd = project.root;
-  const agent = $derived(agentById(settings.agent));
-
   /** `auto`: its name until one is read from what runs in it. */
   function add(run?: string, auto: string | null = null) {
     const s = shell(run);
@@ -127,11 +126,6 @@
     delete refs[id];
     if (!shells.length) add();
     else if (active === id) active = shells[Math.max(0, i - 1)].id;
-  }
-
-  function runAgent() {
-    // Only types the command: the user presses Enter and runs the agent themselves.
-    refs[active]?.type(agent.command);
   }
 
   const isAgent = (s: Shell) => s.auto !== null && AGENTS.some((a) => a.label === s.auto);
@@ -261,34 +255,14 @@
     toast(t("preview.found", { url }), "ok", { label: t("preview.open"), run: () => project.openPreview(url) }, 10_000);
   }
 
-  const BUILT_IN = ["prompts.fixTests", "prompts.review", "prompts.explain", "prompts.commitMessage", "prompts.simpler"] as const;
-
   function promptsMenu(e: MouseEvent) {
+    const list = promptList().filter((p) => p.trim());
     const items: MenuItem[] = [
-      ...BUILT_IN.map((k) => ({ label: t(k), run: () => askAgent(t(k)) })),
-      ...(settings.prompts.length ? ["sep" as const] : []),
-      ...settings.prompts.map((p) => ({ label: p, run: () => askAgent(p) })),
-      "sep",
+      ...list.map((p) => ({ label: p, run: () => askAgent(p) })),
+      ...(list.length ? ["sep" as const] : []),
       { label: t("prompts.edit"), run: () => (ui.dialog = "prompts") },
     ];
     openMenuBelow(e.currentTarget as Element, items);
-  }
-
-  /** Picks the agent "Start agent" runs, and starts it. */
-  function agentMenu(e: MouseEvent) {
-    const items: MenuItem[] = AGENTS.map((a) => ({
-      label: a.label,
-      hint: a.command,
-      // An invisible check keeps the names lined up under the chosen one's.
-      icon: "check",
-      color: a.id === agent.id ? undefined : "transparent",
-      run: () => {
-        settings.agent = a.id;
-        persist();
-        runAgent();
-      },
-    }));
-    openMenuBelow((e.currentTarget as Element).parentElement!, items);
   }
 
   function startDrag(e: PointerEvent) {
@@ -364,14 +338,6 @@
       <button class="btn small" onclick={promptsMenu} title={t("prompts.hint")}>
         <Icon name="message-square-text" size={13} />{t("prompts.title")}
       </button>
-      <div class="split">
-        <button class="btn primary small" onclick={runAgent} title={`${agent.label} · ${t("terminal.runAgentHint", { command: agent.command })}`}>
-          <Icon name="sparkles" size={13} />{t("terminal.runAgent")}
-        </button>
-        <button class="btn primary small pick" onclick={agentMenu} title={t("terminal.pickAgent")} aria-label={t("terminal.pickAgent")}>
-          <Icon name="down" size={13} />
-        </button>
-      </div>
     </div>
     <button
       class="icon-btn"
@@ -542,21 +508,6 @@
     display: flex;
     gap: 6px;
     align-items: center;
-  }
-  .split {
-    display: flex;
-  }
-  .split .btn:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-  .pick {
-    padding: 0 5px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    box-shadow:
-      inset 1px 0 0 rgb(0 0 0 / 0.25),
-      inset 0 1px 0 rgb(255 255 255 / 0.28);
   }
   .small {
     height: 24px;

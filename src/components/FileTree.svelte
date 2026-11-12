@@ -37,8 +37,11 @@
     ]);
   }
 
-  function collapse() {
-    project.expanded.clear();
+  /** Some folder is open: the button closes them all, else it opens them. */
+  const anyOpen = $derived(project.expanded.size > 0);
+  function toggleAll() {
+    if (anyOpen) project.expanded.clear();
+    else project.expandAll();
   }
 
   // ---- search ----
@@ -161,7 +164,9 @@
     <button class="icon-btn" onclick={() => project.newEntry(root, false)} title={t("files.newFileTitle")} aria-label={t("files.newFileTitle")}><Icon name="file-plus" size={13} /></button>
     <button class="icon-btn" onclick={() => project.newEntry(root, true)} title={t("files.newFolderTitle")} aria-label={t("files.newFolderTitle")}><Icon name="folder-plus" size={13} /></button>
     <button class="icon-btn" onclick={refresh} title={t("tree.refresh")} aria-label={t("tree.refresh")}><Icon name="refresh" size={13} /></button>
-    <button class="icon-btn" onclick={collapse} title={t("tree.collapse")} aria-label={t("tree.collapse")}><Icon name="down" size={13} /></button>
+    <button class="icon-btn" onclick={toggleAll} title={anyOpen ? t("tree.collapse") : t("tree.expand")} aria-label={anyOpen ? t("tree.collapse") : t("tree.expand")}>
+      <Icon name={anyOpen ? "collapse-all" : "expand-all"} size={13} />
+    </button>
   </div>
 
   <div class="search">
@@ -206,7 +211,7 @@
       {#each entries as entry (entry.path)}
         <TreeNode {entry} depth={0} {now} />
       {:else}
-        <p class="empty-note">{t("tree.empty")}</p>
+        <p class="empty-note centered">{t("tree.empty")}</p>
       {/each}
     {:else if mode === "names"}
       {#if project.allFiles === null}
@@ -319,6 +324,16 @@
     flex: 1;
     overflow: auto;
     padding: 4px 0 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .items > :global(*) {
+    flex: none;
+  }
+  /* An empty project: the note sits in the middle of the panel. */
+  .items > .centered {
+    margin: auto;
+    text-align: center;
   }
   .hint {
     margin: 2px 12px 6px;

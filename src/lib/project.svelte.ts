@@ -17,6 +17,9 @@ import { persist, settings } from "./settings.svelte";
 import { treeKey } from "./grid";
 import type { AgentDef } from "./agents";
 
+/** Folders "Expand all" opens at most, so a huge project doesn't flood the tree. */
+const EXPAND_LIMIT = 300;
+
 /** commitFile: one file's changes in a commit; preview: a dev server's page (path is its address). */
 export type TabKind = "file" | "diff" | "commit" | "commitFile" | "preview";
 
@@ -441,6 +444,27 @@ export class ProjectState {
       toast(errorText(e), "error");
     } finally {
       this.loadDir(dirName(path));
+    }
+  }
+
+  /**
+   * Opens the folders under `dir`, level by level, leaving out the ones .gitignore
+   * leaves out (node_modules, build output) and stopping after EXPAND_LIMIT folders.
+   */
+  async expandAll(dir = this.root) {
+    let level = [dir];
+    let opened = 0;
+    while (level.length && opened < EXPAND_LIMIT && !this.closed) {
+      await Promise.all(level.filter((d) => !this.tree.has(d)).map((d) => this.loadDir(d)));
+      const next: string[] = [];
+      for (const d of level)
+        for (const e of this.tree.get(d) ?? [])
+          if (e.dir && !e.ignored && opened < EXPAND_LIMIT) {
+            this.expanded.add(e.path);
+            next.push(e.path);
+            opened++;
+          }
+      level = next;
     }
   }
 

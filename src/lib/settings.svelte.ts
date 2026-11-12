@@ -32,8 +32,10 @@ interface Stored {
   checkpoints: boolean;
   /** Checkpoints kept per project, the oldest going first; 0 keeps them all. */
   checkpointLimit: number;
-  /** The user's own prompts for the terminal's Prompts menu. */
+  /** The user's own prompts, under the built-in ones in the terminal's Prompts menu (until promptList is set). */
   prompts: string[];
+  /** The whole Prompts menu once the user edited or removed one; null: built-in + prompts (see prompts.svelte.ts). */
+  promptList: string[] | null;
   /** Tell the user when an agent in a terminal waits for them (see attention.svelte.ts). */
   notifyAgents: boolean;
   /** Diffs side by side (old left, new right) or in one column. */
@@ -70,6 +72,7 @@ function load(): Stored {
     diffView: "split",
     notifyAgents: true,
     prompts: [],
+    promptList: null,
     checkpoints: true,
     checkpointLimit: 100,
     lastVersion: "",
