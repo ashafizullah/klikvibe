@@ -67,6 +67,11 @@ pub fn forget_recent(projects: State<'_, Projects>, root: String) {
 }
 
 #[tauri::command]
+pub fn clear_recent(projects: State<'_, Projects>) {
+    projects.clear_recent()
+}
+
+#[tauri::command]
 pub fn take_launch_project(projects: State<'_, Projects>) -> Option<Project> {
     projects.launch.lock().unwrap().take()
 }

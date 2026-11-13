@@ -159,6 +159,15 @@ impl Projects {
         self.save(&recent);
     }
 
+    /// Empties the recent list, except projects open now: the session restore
+    /// reopens those through it on the next launch.
+    pub fn clear_recent(&self) {
+        let open: Vec<String> = self.open.lock().unwrap().iter().map(|r| r.display().to_string()).collect();
+        let mut recent = self.recent.lock().unwrap();
+        recent.retain(|r| open.contains(r));
+        self.save(&recent);
+    }
+
     /// The open project root that is exactly `root`.
     pub fn root(&self, root: &str) -> AppResult<PathBuf> {
         let wanted = dunce(Path::new(root).canonicalize().map_err(|_| AppError::msg("Project folder not found"))?);

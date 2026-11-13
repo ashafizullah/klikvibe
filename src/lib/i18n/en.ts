@@ -17,6 +17,9 @@ const en = {
   "home.recentEmpty": "Projects you open show up here.",
   "home.missing": "Folder not found",
   "home.forget": "Remove from list",
+  "home.clear": "Clear",
+  "home.clearTitle": "Clear recent projects?",
+  "home.clearConfirm": "The list is emptied. Projects open now stay on it, and no folder is touched.",
 
   "bar.home": "Projects",
   "bar.openAnother": "Open another project",

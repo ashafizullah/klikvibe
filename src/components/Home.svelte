@@ -3,7 +3,7 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { errorText, ipc, type RecentProject } from "../lib/ipc";
   import { openProject, workspace } from "../lib/project.svelte";
-  import { copyText, isMac, mod, openMenu, reveal, revealLabel, toast, ui } from "../lib/ui.svelte";
+  import { confirm, copyText, isMac, mod, openMenu, reveal, revealLabel, toast, ui } from "../lib/ui.svelte";
   import { checkForUpdates, updates } from "../lib/updates.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -57,6 +57,15 @@
 
   async function forget(r: RecentProject) {
     await ipc.forgetRecent(r.root).catch(() => {});
+    load();
+  }
+
+  // Projects open now stay on the list (the session restore reopens them through it).
+  const clearable = $derived(recent.some((r) => !workspace.projects.some((p) => p.root === r.root)));
+
+  async function clearAll() {
+    if (!(await confirm({ title: t("home.clearTitle"), message: t("home.clearConfirm"), confirm: t("home.clear"), danger: true }))) return;
+    await ipc.clearRecent().catch((e) => toast(errorText(e), "error"));
     load();
   }
 </script>
@@ -124,7 +133,12 @@
       </section>
 
       <section>
-        <h2 class="label">{t("home.recent")}</h2>
+        <div class="section-head">
+          <h2 class="label">{t("home.recent")}</h2>
+          {#if clearable}
+            <button class="clear" onclick={clearAll}><Icon name="trash" size={11} />{t("home.clear")}</button>
+          {/if}
+        </div>
         {#if recent.length}
           <div class="list">
             {#each recent as r, i (r.root)}
@@ -354,8 +368,30 @@
     font-size: 12px;
     color: var(--muted);
   }
-  section > .label {
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin-bottom: 12px;
+  }
+  .section-head .label {
+    margin: 0;
+  }
+  .clear {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .clear:hover {
+    background: var(--panel-2);
+    color: var(--danger);
   }
   .list {
     display: flex;

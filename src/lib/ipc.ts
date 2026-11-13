@@ -164,6 +164,7 @@ export const ipc = {
   openDropped: (path: string) => invoke<{ kind: "file"; path: string } | { kind: "folder"; project: Project }>("open_dropped", { path }),
   recentProjects: () => invoke<RecentProject[]>("recent_projects"),
   forgetRecent: (root: string) => invoke<void>("forget_recent", { root }),
+  clearRecent: () => invoke<void>("clear_recent"),
   takeLaunchProject: () => invoke<Project | null>("take_launch_project"),
   watchProject: (root: string) => invoke<void>("watch_project", { root }),
   unwatchProject: (root: string) => invoke<void>("unwatch_project", { root }),

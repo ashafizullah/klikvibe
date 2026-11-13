@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Home has a Clear button for the recent projects list. Projects open right now stay on it.
+
 ## 0.7.16
 
 See at a glance where your agents run.

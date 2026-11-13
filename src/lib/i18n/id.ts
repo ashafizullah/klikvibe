@@ -19,6 +19,9 @@ const id: Record<Key, string> = {
   "home.recentEmpty": "Proyek yang Anda buka akan muncul di sini.",
   "home.missing": "Folder tidak ditemukan",
   "home.forget": "Hapus dari daftar",
+  "home.clear": "Bersihkan",
+  "home.clearTitle": "Bersihkan proyek terakhir?",
+  "home.clearConfirm": "Daftar dikosongkan. Proyek yang sedang terbuka tetap ada, dan tidak ada folder yang diubah.",
 
   "bar.home": "Daftar proyek",
   "bar.openAnother": "Buka proyek lain",

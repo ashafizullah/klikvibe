@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Beranda punya tombol Bersihkan untuk daftar proyek terakhir. Proyek yang sedang terbuka tetap ada di daftar.
+
 ## 0.7.16
 
 Lihat sekilas di mana agenmu berjalan.
