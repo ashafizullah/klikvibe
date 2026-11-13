@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.18
+
+A terminal that fits its panel from the first launch.
 
 - The terminal no longer runs past the bottom of its panel on a first launch, or after the window moves to another screen.
 

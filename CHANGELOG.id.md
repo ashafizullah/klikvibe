@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.18
+
+Terminal pas di panelnya sejak pertama dibuka.
 
 - Terminal tidak lagi melewati batas bawah panel saat KlikVibe pertama dibuka, atau setelah jendela dipindah ke layar lain.
 
