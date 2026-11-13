@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Home has a Clear button for the recent projects list. Projects open right now stay on it.
+- Right-click a folder in Files to expand or collapse everything inside it, without touching the rest of the tree.
 
 ## 0.7.16
 

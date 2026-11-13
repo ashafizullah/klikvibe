@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Beranda punya tombol Bersihkan untuk daftar proyek terakhir. Proyek yang sedang terbuka tetap ada di daftar.
+- Klik kanan folder di Files untuk membuka atau menutup semua isinya, tanpa mengubah folder lain.
 
 ## 0.7.16
 

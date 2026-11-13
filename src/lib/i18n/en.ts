@@ -119,6 +119,8 @@ const en = {
   "menu.open": "Open",
   "menu.expand": "Expand",
   "menu.collapse": "Collapse",
+  "menu.expandAll": "Expand all inside",
+  "menu.collapseAll": "Collapse all inside",
   "menu.close": "Close",
   "menu.closeOthers": "Close others",
   "menu.closeRight": "Close to the right",

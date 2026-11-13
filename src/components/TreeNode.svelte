@@ -44,6 +44,14 @@
         { label: t("ask.agent"), icon: "sparkles", color: "var(--accent)", run: () => project.askAgent?.(`@${rel}/ `) },
         "sep",
         { label: open ? t("menu.collapse") : t("menu.expand"), run: () => project.toggleDir(entry.path) },
+        {
+          label: t("menu.expandAll"),
+          run: () => {
+            project.expanded.add(entry.path);
+            project.expandAll(entry.path);
+          },
+        },
+        { label: t("menu.collapseAll"), disabled: !project.anyOpenIn(entry.path), run: () => project.collapseAll(entry.path) },
         ...manage,
         "sep",
         ...where,

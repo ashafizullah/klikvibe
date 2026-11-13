@@ -121,6 +121,8 @@ const id: Record<Key, string> = {
   "menu.open": "Buka",
   "menu.expand": "Buka folder",
   "menu.collapse": "Tutup folder",
+  "menu.expandAll": "Buka semua isinya",
+  "menu.collapseAll": "Tutup semua isinya",
   "menu.close": "Tutup",
   "menu.closeOthers": "Tutup yang lain",
   "menu.closeRight": "Tutup yang di kanan",

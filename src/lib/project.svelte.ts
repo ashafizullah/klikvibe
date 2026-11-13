@@ -474,6 +474,17 @@ export class ProjectState {
     }
   }
 
+  /** Closes `dir` and every folder under it. */
+  collapseAll(dir: string) {
+    for (const p of [...this.expanded]) if (relative(dir, p) !== null) this.expanded.delete(p);
+  }
+
+  /** Whether `dir` or any folder under it is open. */
+  anyOpenIn(dir: string): boolean {
+    for (const p of this.expanded) if (relative(dir, p) !== null) return true;
+    return false;
+  }
+
   toggleDir(path: string) {
     if (this.expanded.has(path)) {
       this.expanded.delete(path);
