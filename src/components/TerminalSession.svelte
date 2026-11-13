@@ -289,9 +289,11 @@
   let exited = $state(false);
   let cleanup: (() => void) | null = null;
 
+  const FONT = '"IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace';
+
   onMount(() => {
     const xterm = new Terminal({
-      fontFamily: '"IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace',
+      fontFamily: FONT,
       fontSize: settings.terminalFontSize,
       cursorBlink: true,
       allowProposedApi: true,
@@ -391,8 +393,23 @@
       if (session) ipc.terminalWrite(session, d).catch(() => {});
     });
     const resize = xterm.onResize(({ cols, rows }) => session && ipc.terminalResize(session, cols, rows).catch(() => {}));
+    // Fit again when the space changes, and when xterm measures its cells again on its own (shown
+    // after opening hidden, moved to a screen with another pixel ratio, the font below arrived):
+    // the rows keep the old count and run past the bottom otherwise. Both change the screen's size.
     const observer = new ResizeObserver(() => host.offsetParent && fitAddon.fit());
     observer.observe(host);
+    const screen = xterm.element?.querySelector(".xterm-screen");
+    if (screen) observer.observe(screen);
+    // On a first launch IBM Plex Mono may still be loading: xterm measured a fallback font and
+    // never notices the real one, so make it measure again (a different fontFamily string does).
+    const probe = `${settings.terminalFontSize}px "IBM Plex Mono"`;
+    if (!document.fonts.check(probe))
+      document.fonts
+        .load(probe)
+        .then(() => {
+          if (!disposed) xterm.options.fontFamily = `${FONT}, monospace`;
+        })
+        .catch(() => {});
 
     cleanup = () => {
       disposed = true;

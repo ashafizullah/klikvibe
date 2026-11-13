@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Terminal tidak lagi melewati batas bawah panel saat KlikVibe pertama dibuka, atau setelah jendela dipindah ke layar lain.
+
 ## 0.7.17
 
 Daftar lebih rapi: bersihkan proyek terakhir, buka atau tutup isi satu folder sekaligus.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The terminal no longer runs past the bottom of its panel on a first launch, or after the window moves to another screen.
+
 ## 0.7.17
 
 Tidier lists: clear your recent projects, open or close a whole folder at once.
