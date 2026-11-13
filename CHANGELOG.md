@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.17
+
+Tidier lists: clear your recent projects, open or close a whole folder at once.
 
 - Home has a Clear button for the recent projects list. Projects open right now stay on it.
 - Right-click a folder in Files to expand or collapse everything inside it, without touching the rest of the tree.

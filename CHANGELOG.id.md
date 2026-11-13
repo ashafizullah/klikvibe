@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.17
+
+Daftar lebih rapi: bersihkan proyek terakhir, buka atau tutup isi satu folder sekaligus.
 
 - Beranda punya tombol Bersihkan untuk daftar proyek terakhir. Proyek yang sedang terbuka tetap ada di daftar.
 - Klik kanan folder di Files untuk membuka atau menutup semua isinya, tanpa mengubah folder lain.
