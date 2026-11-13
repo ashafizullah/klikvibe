@@ -21,6 +21,7 @@ const en = {
   "bar.home": "Projects",
   "bar.openAnother": "Open another project",
   "bar.closeProject": "Close project",
+  "bar.agents": "Terminals running an agent: {count}",
   "bar.files": "Files",
   "bar.git": "Git",
   "bar.code": "Code",

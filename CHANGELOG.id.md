@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Tab proyek menampilkan berapa terminal yang sedang menjalankan agen (Claude Code, Codex, ...). Shell biasa atau dev server tidak dihitung, dan tandanya hilang saat agennya ditutup.
+
 ## 0.7.15
 
 Seret file dari Finder atau Explorer, seperti di editor lain.

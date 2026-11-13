@@ -206,6 +206,10 @@
     tick().then(() => refs[target.id]?.paste(text));
   }
   project.askAgent = askAgent;
+  // The project tab shows how many terminals run an agent; a plain shell or a dev server doesn't count.
+  $effect(() => {
+    project.agents = shells.filter((s) => !s.exited && isAgent(s)).length;
+  });
   const terminals = () =>
     shells.map((s, i) => ({ index: i + 1, name: label(s, i), active: s.id === active, agent: isAgent(s), tail: (n: number) => refs[s.id]?.tail(n) ?? "" }));
   project.terminals = terminals;
@@ -293,6 +297,7 @@
     clearInterval(saver);
     window.removeEventListener("pagehide", saveNow);
     if (project.askAgent === askAgent) project.askAgent = null;
+    project.agents = 0;
     if (project.terminals === terminals) project.terminals = null;
     if (project.newTerminal === newTerminal) project.newTerminal = null;
     if (project.findInTerminal === findInTerminal) project.findInTerminal = null;

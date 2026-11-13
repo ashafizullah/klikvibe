@@ -112,6 +112,8 @@ export class ProjectState {
   private filesTimer: ReturnType<typeof setTimeout> | null = null;
   /** The project's terminals and their output, for the MCP tools; set by TerminalPanel. */
   terminals: (() => { index: number; name: string; active: boolean; agent: boolean; tail: (lines: number) => string }[]) | null = null;
+  /** How many of its terminals run an agent right now (the project tab's badge); set by TerminalPanel. */
+  agents = $state(0);
   /** Pastes text into the terminal running an agent (else the active one); set by TerminalPanel. */
   askAgent: ((text: string) => void) | null = null;
   /** The terminals as KlikVibe Remote shows them on the phone; set by TerminalPanel. */

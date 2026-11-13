@@ -80,6 +80,7 @@
           <button class="ptab-main" onclick={() => showProject(p.root)} onauxclick={(e) => onAux(e, p)} oncontextmenu={(e) => projectMenu(e, p)} title={i < 9 ? `${p.root} (${mod}${i + 1})` : p.root}>
             <Icon name="project" size={13} />
             <span class="name ellipsis">{p.current.name}</span>
+            {#if p.agents}<span class="agents" title={t("bar.agents", { count: p.agents })}><Icon name="sparkles" size={10} />{p.agents}</span>{/if}
             {#if attention.has(p.root)}<span class="waiting" title={t("notify.dot")}><Icon name="bell" size={11} /></span>{/if}
             {#if p.git?.changes.length}<span class="dot" title={t("git.changesCount", { count: p.git.changes.length })}></span>{/if}
           </button>
@@ -221,6 +222,19 @@
     border-radius: 50%;
     background: var(--accent);
     flex: none;
+  }
+  .agents {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex: none;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+    font: 600 10.5px var(--mono);
+    font-variant-numeric: tabular-nums;
   }
   .waiting {
     display: inline-flex;

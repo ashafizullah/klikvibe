@@ -23,6 +23,7 @@ const id: Record<Key, string> = {
   "bar.home": "Daftar proyek",
   "bar.openAnother": "Buka proyek lain",
   "bar.closeProject": "Tutup proyek",
+  "bar.agents": "Terminal yang menjalankan agen: {count}",
   "bar.files": "File",
   "bar.git": "Git",
   "bar.code": "Kode",

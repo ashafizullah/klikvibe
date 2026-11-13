@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Project tabs show how many terminals run an agent (Claude Code, Codex, ...) right now. A plain shell or a dev server doesn't count, and the badge goes away when the agent quits.
+
 ## 0.7.15
 
 Drag files in from Finder or Explorer, as in other editors.
