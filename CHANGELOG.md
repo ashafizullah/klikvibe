@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.16
+
+See at a glance where your agents run.
 
 - Project tabs show how many terminals run an agent (Claude Code, Codex, ...) right now. A plain shell or a dev server doesn't count, and the badge goes away when the agent quits.
 

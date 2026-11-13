@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.16
+
+Lihat sekilas di mana agenmu berjalan.
 
 - Tab proyek menampilkan berapa terminal yang sedang menjalankan agen (Claude Code, Codex, ...). Shell biasa atau dev server tidak dihitung, dan tandanya hilang saat agennya ditutup.
 
