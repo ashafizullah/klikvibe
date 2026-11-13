@@ -34,6 +34,36 @@ export function relativeLoose(root: string, path: string): string | null {
   return path.replace(/\\/g, "/").replace(/\/+$/, "").slice(base.length + 1);
 }
 
+export type Crumb = { name: string; path: string; last: boolean };
+
+/** The breadcrumb of a file outside the projects: "~" (the home folder) or the top of the disk ("/", "C:"),
+ *  then each folder, then the file. */
+export function outsideCrumbs(path: string, home: string | null): Crumb[] {
+  const sep = /^[a-zA-Z]:\\/.test(path) ? "\\" : "/";
+  const h = home?.replace(/[\\/]+$/, "");
+  const crumbs: { name: string; path: string }[] = [];
+  let at: string;
+  let rest: string;
+  if (h && path.startsWith(h + sep)) {
+    crumbs.push({ name: "~", path: h });
+    at = h;
+    rest = path.slice(h.length + 1);
+  } else if (sep === "/") {
+    crumbs.push({ name: "/", path: "/" });
+    at = "";
+    rest = path.slice(1);
+  } else {
+    at = path.slice(0, 2);
+    crumbs.push({ name: at, path: at + sep });
+    rest = path.slice(3);
+  }
+  for (const name of rest.split(sep).filter(Boolean)) {
+    at = `${at}${sep}${name}`;
+    crumbs.push({ name, path: at });
+  }
+  return crumbs.map((c, i) => ({ ...c, last: i === crumbs.length - 1 }));
+}
+
 export function baseName(path: string): string {
   return path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? path;
 }

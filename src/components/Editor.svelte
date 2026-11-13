@@ -4,7 +4,7 @@
   import { relative } from "../lib/paths";
   import { persist, settings } from "../lib/settings.svelte";
   import { copyText, mod, openMenu, openMenuBelow, reveal, revealLabel, toast, type MenuItem } from "../lib/ui.svelte";
-  import { join } from "../lib/paths";
+  import { join, outsideCrumbs } from "../lib/paths";
   import { fileUrl, forgeName } from "../lib/forge";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import { t } from "../lib/i18n/index.svelte";
@@ -41,6 +41,19 @@
     const parts = rel.split("/");
     return parts.map((name, i) => ({ name, path: join(project.root, parts.slice(0, i + 1).join("/")), last: i === parts.length - 1 }));
   });
+
+  /** A file from outside the projects (dropped from Finder or Explorer): its whole path, from "~". */
+  let home = $state<string | null>(null);
+  ipc.homeDir().then((h) => (home = h)).catch(() => {});
+  const outside = $derived(tab?.kind === "file" && rel === null ? outsideCrumbs(tab.path, home) : []);
+
+  /** A breadcrumb of a file outside the projects: where it is, and its path (its folder isn't listed: it's not a project). */
+  function outsideMenu(el: Element, path: string) {
+    openMenuBelow(el, [
+      { label: revealLabel(), run: () => reveal(path) },
+      { label: t("menu.copyPath"), run: () => copyText(path) },
+    ]);
+  }
 
   /** A folder's files and folders, to open one (or show a folder in the tree). */
   async function folderMenu(el: Element, dir: string) {
@@ -172,6 +185,23 @@
             </button>
           {/if}
         {/each}
+      </nav>
+    {/if}
+    {#if outside.length}
+      <nav class="crumbs" aria-label={t("crumbs.label")}>
+        {#each outside as c, i (c.path)}
+          {#if i}<Icon name="right" size={11} class="crumb-sep" />{/if}
+          <button
+            class="crumb"
+            class:file={c.last}
+            onclick={(e) => outsideMenu(e.currentTarget, c.path)}
+            oncontextmenu={(e) => (e.preventDefault(), outsideMenu(e.currentTarget as Element, c.path))}
+            title={c.path}
+          >
+            {#if c.last}<Icon name={fileIcon(c.name).icon} color={fileIcon(c.name).color} size={12} />{/if}{c.name}
+          </button>
+        {/each}
+        <span class="outside">{t("crumbs.outside")}</span>
       </nav>
     {/if}
     {#if tab.kind === "file" && tab.changedOnDisk}
@@ -401,6 +431,15 @@
   }
   .crumb.file {
     color: var(--text);
+  }
+  .outside {
+    flex: none;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10.5px;
   }
   .status {
     height: 26px;

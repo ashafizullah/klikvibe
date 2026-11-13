@@ -44,6 +44,12 @@ pub fn open_recent(projects: State<'_, Projects>, root: String) -> AppResult<Pro
     projects.reopen(&root)
 }
 
+/// The home folder, shown as "~" in the path of a file outside the projects.
+#[tauri::command]
+pub fn home_dir() -> Option<String> {
+    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(|h| h.to_string_lossy().into_owned())
+}
+
 /// A file or folder the user dropped on the window (see projects.rs).
 #[tauri::command]
 pub fn open_dropped(projects: State<'_, Projects>, path: String) -> AppResult<crate::projects::Dropped> {

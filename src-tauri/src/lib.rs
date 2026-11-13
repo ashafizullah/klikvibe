@@ -136,6 +136,7 @@ pub fn run() {
             commands::pick_project,
             commands::open_recent,
             commands::open_dropped,
+            commands::home_dir,
             commands::recent_projects,
             commands::forget_recent,
             commands::take_launch_project,

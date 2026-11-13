@@ -59,6 +59,10 @@ async function openDropped(path: string) {
 export function startFileDrop() {
   // macOS and Linux report the position in CSS pixels, Windows in device pixels.
   const scale = isWindows ? devicePixelRatio : 1;
+  // Never let the page itself take a dropped file: WebKit would open it in place of the app.
+  const stop = (e: DragEvent) => e.preventDefault();
+  window.addEventListener("dragover", stop);
+  window.addEventListener("drop", stop);
   return getCurrentWebview().onDragDropEvent(async ({ payload }) => {
     if (payload.type === "leave") return unhover();
     const x = payload.position.x / scale;

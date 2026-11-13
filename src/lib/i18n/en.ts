@@ -76,6 +76,7 @@ const en = {
   "crumbs.label": "File path",
   "crumbs.revealFolder": "Show this folder in Files",
   "crumbs.revealFile": "Show in Files",
+  "crumbs.outside": "outside the project",
   "tabs.close": "Close",
   "tabs.scrollLeft": "Scroll left",
   "tabs.scrollRight": "Scroll right",

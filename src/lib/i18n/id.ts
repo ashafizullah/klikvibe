@@ -78,6 +78,7 @@ const id: Record<Key, string> = {
   "crumbs.label": "Path file",
   "crumbs.revealFolder": "Tampilkan folder ini di Files",
   "crumbs.revealFile": "Tampilkan di Files",
+  "crumbs.outside": "di luar proyek",
   "tabs.close": "Tutup",
   "tabs.scrollLeft": "Geser ke kiri",
   "tabs.scrollRight": "Geser ke kanan",
