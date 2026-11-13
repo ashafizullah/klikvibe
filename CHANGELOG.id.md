@@ -1,8 +1,11 @@
 # Catatan perubahan
 
-## Belum dirilis
+## 0.7.15
+
+Seret file dari Finder atau Explorer, seperti di editor lain.
 
 - Seret file dari Finder atau Explorer ke jendela untuk membukanya di editor, siap diedit dan disimpan, termasuk file di luar proyek. Seret folder untuk membukanya sebagai proyek. Kalau dijatuhkan di terminal, path-nya diketik di sana.
+- File dari luar proyek menampilkan path lengkapnya di atas editor (mulai dari ~, folder home), dengan tanda "di luar proyek". Klik salah satu bagiannya untuk menampilkannya di Finder atau menyalin path-nya.
 
 ## 0.7.14
 

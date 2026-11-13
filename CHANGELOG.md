@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.7.15
+
+Drag files in from Finder or Explorer, as in other editors.
 
 - Drop files from Finder or Explorer on the window to open them in the editor, ready to edit and save, also files outside the project. Drop a folder to open it as a project. Dropped on a terminal, their paths are typed there.
+- A file from outside the project shows its whole path above the editor (from ~, your home folder), marked "outside the project". Click a part to show it in Finder or copy its path.
 
 ## 0.7.14
 
