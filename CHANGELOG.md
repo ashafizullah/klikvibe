@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.20
+
+Browse files without piling up tabs.
 
 - Preview tabs, as in VS Code: a single click on a file (in Files, search results or the Git panel) opens it in an italic tab that the next single-clicked file replaces. Edit, save or double-click it and it stays. Turn it off from the command palette.
 

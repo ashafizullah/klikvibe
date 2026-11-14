@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.20
+
+Telusuri file tanpa tab menumpuk.
 
 - Tab pratinjau, seperti di VS Code: klik sekali pada file (di Files, hasil pencarian atau panel Git) membukanya di tab bergaya miring yang akan diganti oleh file berikutnya yang diklik sekali. Edit, simpan atau klik dua kali agar tabnya tetap terbuka. Bisa dimatikan dari command palette.
 
