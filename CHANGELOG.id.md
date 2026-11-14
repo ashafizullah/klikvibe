@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Tab pratinjau, seperti di VS Code: klik sekali pada file (di Files, hasil pencarian atau panel Git) membukanya di tab bergaya miring yang akan diganti oleh file berikutnya yang diklik sekali. Edit, simpan atau klik dua kali agar tabnya tetap terbuka. Bisa dimatikan dari command palette.
+
 ## 0.7.19
 
 Lihat bagian proyek mana yang berubah: file dikelompokkan per folder di panel Git.

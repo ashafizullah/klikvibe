@@ -84,6 +84,7 @@ const id: Record<Key, string> = {
   "crumbs.revealFile": "Tampilkan di Files",
   "crumbs.outside": "di luar proyek",
   "tabs.close": "Tutup",
+  "tabs.previewHint": "Pratinjau: file berikutnya yang diklik akan menggantikannya. Klik dua kali atau edit untuk mempertahankannya.",
   "tabs.scrollLeft": "Geser ke kiri",
   "tabs.scrollRight": "Geser ke kanan",
   "tabs.save": "Simpan",
@@ -460,6 +461,8 @@ const id: Record<Key, string> = {
   "palette.openRecent": "Buka {name}",
   "palette.notifyOn": "Beri tahu saat agen menunggu",
   "palette.notifyOff": "Berhenti memberi tahu saat agen menunggu",
+  "palette.previewTabsOn": "Klik sekali membuka tab pratinjau (diganti file berikutnya)",
+  "palette.previewTabsOff": "Klik sekali membuka tab yang tetap terbuka",
   "palette.language": "Bahasa: English",
 };
 

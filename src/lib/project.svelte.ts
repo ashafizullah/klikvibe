@@ -44,6 +44,9 @@ export interface Tab {
   loading: boolean;
   /** Shown as a preview (image, video, audio, PDF) instead of as text. */
   media: MediaKind | null;
+  /** Opened with a single click: the next file opened that way takes its place, until it is
+   *  edited, saved or double-clicked (VS Code's preview tabs; settings.previewTabs). */
+  preview: boolean;
 }
 
 /** How long a file stays marked as "just changed" in the tree. */
@@ -54,7 +57,7 @@ export const isDirty = (tab: Tab) => tab.kind === "file" && tab.text !== tab.sav
 const lastLines = (s: string) => s.trim().split("\n").slice(-3).join("\n");
 
 function newTab(kind: TabKind, id: string, title: string, path: string): Tab {
-  return { id, kind, title, path, text: "", saved: "", eol: "\n", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null };
+  return { id, kind, title, path, text: "", saved: "", eol: "\n", binary: false, tooLarge: false, changedOnDisk: false, revision: 0, loading: true, media: null, preview: false };
 }
 
 function selectLines(view: EditorView, line: number, endLine: number) {
@@ -497,12 +500,28 @@ export class ProjectState {
   // ---- tabs ----
 
   /** Opens (or shows) a tab; the returned object is the reactive one in the list. */
-  private show(tab: Tab): { tab: Tab; fresh: boolean } {
+  private show(tab: Tab, preview = false): { tab: Tab; fresh: boolean } {
+    preview &&= settings.previewTabs;
     const existing = this.tabs.find((t) => t.id === tab.id);
     this.active = tab.id;
-    if (existing) return { tab: existing, fresh: false };
+    if (existing) {
+      // Opened for good (not with a single click): it stays.
+      if (!preview) existing.preview = false;
+      return { tab: existing, fresh: false };
+    }
+    tab.preview = preview;
+    const old = preview ? this.tabs.findIndex((t) => t.preview && !isDirty(t)) : -1;
+    if (old >= 0) {
+      this.tabs[old] = tab;
+      return { tab: this.tabs[old], fresh: true };
+    }
     this.tabs.push(tab);
     return { tab: this.tabs[this.tabs.length - 1], fresh: true };
+  }
+
+  /** Keeps a preview tab open (double-clicked, edited or saved). */
+  keepTab(tab: Tab) {
+    tab.preview = false;
   }
 
   /** `quiet`: a file that can't be read just closes (restoring a session). */
@@ -551,9 +570,10 @@ export class ProjectState {
     tab.revision++;
   }
 
-  async openFile(path: string, quiet = false) {
+  /** `preview`: a single click, see Tab.preview. */
+  async openFile(path: string, quiet = false, preview = false) {
     this.markSeen(path);
-    const { tab, fresh } = this.show(newTab("file", `file:${path}`, baseName(path), path));
+    const { tab, fresh } = this.show(newTab("file", `file:${path}`, baseName(path), path), preview);
     if (!fresh) return;
     tab.media = mediaKind(path);
     if (tab.media) tab.loading = false;
@@ -588,10 +608,10 @@ export class ProjectState {
     await this.readInto(tab);
   }
 
-  async openDiff(change: Change) {
+  async openDiff(change: Change, preview = false) {
     const path = join(this.root, change.path);
     this.markSeen(path);
-    const { tab } = this.show(newTab("diff", `diff:${change.path}`, baseName(change.path), path));
+    const { tab } = this.show(newTab("diff", `diff:${change.path}`, baseName(change.path), path), preview);
     await this.loadDiff(tab, change.path);
   }
 
@@ -646,9 +666,9 @@ export class ProjectState {
   }
 
   /** One file's changes in a commit, in a tab. */
-  async openCommitFile(commit: Pick<Commit, "hash" | "short">, file: CommitFile) {
+  async openCommitFile(commit: Pick<Commit, "hash" | "short">, file: CommitFile, preview = false) {
     const id = `commitfile:${commit.hash}:${file.path}`;
-    const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.local)));
+    const { tab, fresh } = this.show(newTab("commitFile", id, `${baseName(file.path)} @ ${commit.short}`, join(this.root, file.local)), preview);
     if (!fresh) return;
     try {
       tab.text = await ipc.gitCommitFileDiff(this.root, commit.hash, file.path, file.from);
@@ -692,6 +712,7 @@ export class ProjectState {
       this.ownWrites.set(tab.path, Date.now());
       await ipc.writeFile(tab.path, toDisk(text, tab.eol));
       tab.saved = text;
+      tab.preview = false;
       tab.changedOnDisk = false;
     } catch (e) {
       toast(errorText(e), "error");

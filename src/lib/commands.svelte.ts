@@ -158,6 +158,13 @@ export function commands(recent: RecentProject[]): Command[] {
     icon: settings.notifyAgents ? "bell-off" : "bell",
     run: () => ((settings.notifyAgents = !settings.notifyAgents), persist()),
   });
+  add({
+    id: "app.previewTabs",
+    group: g.app,
+    label: settings.previewTabs ? t("palette.previewTabsOff") : t("palette.previewTabsOn"),
+    icon: "file",
+    run: () => ((settings.previewTabs = !settings.previewTabs), persist()),
+  });
   for (const [choice, icon] of [["dark", "moon"], ["light", "sun"], ["system", "monitor"]] as const)
     if (settings.theme !== choice) add({ id: `app.theme.${choice}`, group: g.app, label: `${t("theme.label")}: ${t(`theme.${choice}`)}`, icon, run: () => setTheme(choice) });
   add({ id: "app.language", group: g.app, label: t("palette.language"), icon: "globe", run: () => setLocale(i18n.locale === "en" ? "id" : "en") });

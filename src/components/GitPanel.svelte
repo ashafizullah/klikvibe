@@ -241,7 +241,7 @@
 {#snippet changeRow(c: Change, inIndex: boolean, grouped: boolean)}
   {@const p = split(c.path, grouped)}
   <div class="change" class:grouped>
-    <button class="change-main" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
+    <button class="change-main" onclick={() => project.openDiff(c, true)} ondblclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
       <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
       {@render typeIcon(p.name)}
       <span class="name ellipsis">{p.name}</span>
@@ -282,7 +282,7 @@
       {#if !heads || !folded.has(key)}
         {#each g.items as f (f.path)}
           {@const p = split(f.path, heads)}
-          <button class="file" class:grouped={heads} onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
+          <button class="file" class:grouped={heads} onclick={() => project.openCommitFile(c, f, true)} ondblclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
             <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
             {@render typeIcon(p.name)}
             <span class="name ellipsis">{p.name}</span>

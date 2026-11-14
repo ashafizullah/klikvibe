@@ -91,7 +91,8 @@
   class:fresh
   class:ignored
   style:padding-left="{8 + depth * 14}px"
-  onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path))}
+  onclick={() => (entry.dir ? project.toggleDir(entry.path) : project.openFile(entry.path, false, true))}
+  ondblclick={() => !entry.dir && project.openFile(entry.path)}
   oncontextmenu={menu}
   title={entry.path}
   use:dragPath={entry.path}

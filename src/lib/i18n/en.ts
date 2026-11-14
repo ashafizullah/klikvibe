@@ -82,6 +82,7 @@ const en = {
   "crumbs.revealFile": "Show in Files",
   "crumbs.outside": "outside the project",
   "tabs.close": "Close",
+  "tabs.previewHint": "Preview: the next file you click replaces it. Double-click or edit it to keep it open.",
   "tabs.scrollLeft": "Scroll left",
   "tabs.scrollRight": "Scroll right",
   "tabs.save": "Save",
@@ -458,6 +459,8 @@ const en = {
   "palette.openRecent": "Open {name}",
   "palette.notifyOn": "Tell me when an agent waits",
   "palette.notifyOff": "Stop telling me when an agent waits",
+  "palette.previewTabsOn": "Single click opens a preview tab (replaced by the next file)",
+  "palette.previewTabsOff": "Single click opens a tab that stays",
   "palette.language": "Language: Bahasa Indonesia",
 };
 

@@ -64,7 +64,10 @@
           size.of(fontTheme(settings.fontSize)),
           readOnly.of(EditorState.readOnly.of(tab.kind !== "file")),
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) tab.text = u.state.doc.toString();
+            if (!u.docChanged) return;
+            tab.text = u.state.doc.toString();
+            // Edited: a preview tab stays open (a reload from disk leaves it unedited).
+            if (tab.text !== tab.saved) tab.preview = false;
           }),
         ],
       }),

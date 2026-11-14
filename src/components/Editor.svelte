@@ -137,10 +137,10 @@
       {#if strip.overflow}<ScrollButton {strip} dir={-1} />{/if}
       <div class="tabs" role="tablist" bind:this={strip.el} use:reorder={(from, to) => moveItem(project.tabs, from, to)}>
         {#each project.tabs as tb (tb.id)}
-          <div class="tab" class:on={tb.id === project.active} role="tab" aria-selected={tb.id === project.active} tabindex="-1" data-reorder>
-            <button class="tab-main" onclick={() => (project.active = tb.id)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
+          <div class="tab" class:on={tb.id === project.active} class:preview={tb.preview} role="tab" aria-selected={tb.id === project.active} tabindex="-1" data-reorder>
+            <button class="tab-main" onclick={() => (project.active = tb.id)} ondblclick={() => project.keepTab(tb)} onauxclick={(e) => onAux(e, tb.id)} oncontextmenu={(e) => tabMenu(e, tb)} title={tb.path}>
               <Icon name={tabIcon(tb).icon} color={tabIcon(tb).color} size={13} />
-              <span class="tab-name ellipsis">{tb.title}</span>
+              <span class="tab-name ellipsis" title={tb.preview ? t("tabs.previewHint") : undefined}>{tb.title}</span>
             </button>
             <button class="tab-close" data-no-reorder class:dirty={isDirty(tb)} onclick={() => project.closeTab(tb.id)} aria-label={t("tabs.close")} title={t("tabs.close")}>
               <span class="dot"></span><Icon name="close" size={12} />
@@ -309,6 +309,10 @@
     max-width: 220px;
     border-right: 1px solid var(--line);
     color: var(--muted);
+  }
+  /* A preview tab (single click): the next one opened that way replaces it. */
+  .tab.preview .tab-name {
+    font-style: italic;
   }
   .tab.on {
     background: var(--canvas);

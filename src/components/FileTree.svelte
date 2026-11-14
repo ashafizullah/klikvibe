@@ -120,7 +120,7 @@
 
   async function open(path: string, line = 0) {
     const abs = join(root, path);
-    await project.openFile(abs);
+    await project.openFile(abs, false, true);
     if (line) project.revealLines(`file:${abs}`, line);
   }
 

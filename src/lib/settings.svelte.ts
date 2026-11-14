@@ -46,6 +46,8 @@ interface Stored {
   promptList: string[] | null;
   /** Tell the user when an agent in a terminal waits for them (see attention.svelte.ts). */
   notifyAgents: boolean;
+  /** A single click opens a file in a preview tab, which the next one replaces (as in VS Code). */
+  previewTabs: boolean;
   /** Diffs side by side (old left, new right) or in one column. */
   diffView: "split" | "unified";
   /** The history (and its graph) shows every branch, not only the current one. */
@@ -83,6 +85,7 @@ export function defaults(): Stored {
     historyAll: false,
     diffView: "split",
     notifyAgents: true,
+    previewTabs: true,
     prompts: [],
     promptList: null,
     checkpoints: true,

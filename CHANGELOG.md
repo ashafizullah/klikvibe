@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Preview tabs, as in VS Code: a single click on a file (in Files, search results or the Git panel) opens it in an italic tab that the next single-clicked file replaces. Edit, save or double-click it and it stays. Turn it off from the command palette.
+
 ## 0.7.19
 
 See which part of the project changed: files grouped by folder in the Git panel.
