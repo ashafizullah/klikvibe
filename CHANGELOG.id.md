@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.19
+
+Lihat bagian proyek mana yang berubah: file dikelompokkan per folder di panel Git.
 
 - Changes, History dan Checkpoints mengelompokkan file di bawah folder teratasnya (backend, frontend, ...). Klik folder untuk melipatnya; di Changes, stage atau unstage satu folder sekaligus dari barisnya.
 

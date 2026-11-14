@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.19
+
+See which part of the project changed: files grouped by folder in the Git panel.
 
 - Changes, History and Checkpoints group files under their top folder (backend, frontend, ...). Click a folder to fold it; in Changes, stage or unstage a whole folder from its row.
 
