@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changes, History and Checkpoints group files under their top folder (backend, frontend, ...). Click a folder to fold it; in Changes, stage or unstage a whole folder from its row.
+
 ## 0.7.18
 
 A terminal that fits its panel from the first launch.

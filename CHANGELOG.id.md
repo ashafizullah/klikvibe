@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Changes, History dan Checkpoints mengelompokkan file di bawah folder teratasnya (backend, frontend, ...). Klik folder untuk melipatnya; di Changes, stage atau unstage satu folder sekaligus dari barisnya.
+
 ## 0.7.18
 
 Terminal pas di panelnya sejak pertama dibuka.

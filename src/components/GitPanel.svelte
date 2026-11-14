@@ -16,6 +16,8 @@
   import { persist, settings } from "../lib/settings.svelte";
   import GraphCell, { graphWidth, laneColor, laneX } from "./GraphCell.svelte";
   import Segmented from "./Segmented.svelte";
+  import { SvelteSet } from "svelte/reactivity";
+  import { byTopFolder, type FolderGroup } from "../lib/groups";
 
   const project = useProject();
 
@@ -176,10 +178,20 @@
     ]);
   }
 
-  const split = (path: string) => {
+  // `grouped`: under a top-folder heading, which already names that folder.
+  const split = (path: string, grouped = false) => {
     const i = path.lastIndexOf("/");
-    return i < 0 ? { name: path, dir: "" } : { name: path.slice(i + 1), dir: path.slice(0, i) };
+    if (i < 0) return { name: path, dir: "" };
+    const dir = path.slice(0, i);
+    const j = dir.indexOf("/");
+    return { name: path.slice(i + 1), dir: grouped ? (j < 0 ? "" : dir.slice(j + 1)) : dir };
   };
+
+  /** Folder groups folded shut: "staged:<folder>", "working:<folder>", "<commit>:<folder>". */
+  const folded = new SvelteSet<string>();
+  const toggleFold = (key: string) => (folded.has(key) ? folded.delete(key) : folded.add(key));
+  /** Headings only when some file is in a folder. */
+  const headed = (groups: FolderGroup<unknown>[]) => groups.length > 1 || (groups.length === 1 && groups[0].folder !== "");
 </script>
 
 <!-- The file's type, as in the file tree. -->
@@ -188,9 +200,47 @@
   <Icon name={fi.icon} color={fi.color} size={13} class="type-icon" />
 {/snippet}
 
-{#snippet changeRow(c: Change, inIndex: boolean)}
-  {@const p = split(c.path)}
-  <div class="change">
+{#snippet folderHead(key: string, folder: string, count: number, action?: { icon: string; label: string; run: () => unknown })}
+  {@const open = !folded.has(key)}
+  <div class="folder-head">
+    <button class="folder-main" onclick={() => toggleFold(key)} aria-expanded={open} title={folder || t("git.topLevel")}>
+      <Icon name={open ? "down" : "right"} size={11} />
+      <Icon name="folder" size={13} class="folder-icon" />
+      <span class="ellipsis">{folder || t("git.topLevel")}</span>
+      <span class="folder-count">{count}</span>
+    </button>
+    {#if action}
+      <span class="row-actions">
+        <button class="icon-btn" onclick={action.run} title={action.label} aria-label={action.label}><Icon name={action.icon} size={13} /></button>
+      </span>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet changeGroups(list: Change[], inIndex: boolean)}
+  {@const groups = byTopFolder(list)}
+  {@const heads = headed(groups)}
+  {#each groups as g (g.folder)}
+    {@const key = `${inIndex ? "staged" : "working"}:${g.folder}`}
+    {#if heads}
+      {@render folderHead(
+        key,
+        g.folder,
+        g.items.length,
+        inIndex
+          ? { icon: "minus", label: t("git.unstageFolder"), run: () => project.unstage(g.items.map((c) => c.path)) }
+          : { icon: "plus", label: t("git.stageFolder"), run: () => project.stage(g.items.map((c) => c.path)) },
+      )}
+    {/if}
+    {#if !heads || !folded.has(key)}
+      {#each g.items as c (c.path)}{@render changeRow(c, inIndex, heads)}{/each}
+    {/if}
+  {/each}
+{/snippet}
+
+{#snippet changeRow(c: Change, inIndex: boolean, grouped: boolean)}
+  {@const p = split(c.path, grouped)}
+  <div class="change" class:grouped>
     <button class="change-main" onclick={() => project.openDiff(c)} oncontextmenu={(e) => changeMenu(e, c)} title={c.from ? `${c.from} → ${c.path}` : c.path}>
       <span class="unseen" class:on={project.isUnseen(c.path)} title={project.isUnseen(c.path) ? t("unseen.dot") : undefined}></span>
       {@render typeIcon(p.name)}
@@ -224,19 +274,27 @@
   {:else if files === "error"}
     <p class="files-note">{t("git.filesError")}</p>
   {:else}
-    {#each files as f (f.path)}
-      {@const p = split(f.path)}
-      <button class="file" onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
-        <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
-        {@render typeIcon(p.name)}
-        <span class="name ellipsis">{p.name}</span>
-        <span class="dir ellipsis">{p.dir}</span>
-        {#if f.added !== null}
-          <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
-        {:else}
-          <span class="lines">{t("git.binary")}</span>
-        {/if}
-      </button>
+    {@const groups = byTopFolder(files)}
+    {@const heads = headed(groups)}
+    {#each groups as g (g.folder)}
+      {@const key = `${c.hash}:${g.folder}`}
+      {#if heads}{@render folderHead(key, g.folder, g.items.length)}{/if}
+      {#if !heads || !folded.has(key)}
+        {#each g.items as f (f.path)}
+          {@const p = split(f.path, heads)}
+          <button class="file" class:grouped={heads} onclick={() => project.openCommitFile(c, f)} title={f.from ? `${f.from} → ${f.path}` : f.path}>
+            <span class="git-mark {f.kind}" title={t(`git.kind.${f.kind}` as Key)}>{MARK[f.kind]}</span>
+            {@render typeIcon(p.name)}
+            <span class="name ellipsis">{p.name}</span>
+            <span class="dir ellipsis">{p.dir}</span>
+            {#if f.added !== null}
+              <span class="lines add">+{f.added}</span><span class="lines del">−{f.removed}</span>
+            {:else}
+              <span class="lines">{t("git.binary")}</span>
+            {/if}
+          </button>
+        {/each}
+      {/if}
     {:else}
       <p class="files-note">{t("git.noFileChanges")}</p>
     {/each}
@@ -331,7 +389,7 @@
             <span>{t("git.staged")}</span><span class="count-badge">{staged.length}</span>
             <button class="btn ghost tiny" onclick={() => project.unstage(staged.map((c) => c.path))}>{t("git.unstageAll")}</button>
           </div>
-          {#each staged as c (c.path)}{@render changeRow(c, true)}{/each}
+          {@render changeGroups(staged, true)}
           {#if working.length}
             <div class="section">
               <span>{t("git.changes")}</span><span class="count-badge">{working.length}</span>
@@ -339,11 +397,11 @@
             </div>
           {/if}
         {/if}
-        {#each working as c (c.path)}
-          {@render changeRow(c, false)}
-        {:else}
-          {#if !staged.length}<p class="empty-note clean"><Icon name="check" size={14} />{t("git.clean")}</p>{/if}
-        {/each}
+        {#if working.length}
+          {@render changeGroups(working, false)}
+        {:else if !staged.length}
+          <p class="empty-note clean"><Icon name="check" size={14} />{t("git.clean")}</p>
+        {/if}
       </div>
     {:else if project.gitTab === "checkpoints"}
       <div class="cp-head">
@@ -559,6 +617,7 @@
     opacity: 0;
   }
   .change:hover .row-actions,
+  .folder-head:hover .row-actions,
   .row-actions:focus-within {
     opacity: 1;
   }
@@ -585,6 +644,56 @@
     text-transform: none;
     letter-spacing: 0;
     font-family: var(--sans);
+  }
+  .change.grouped .change-main {
+    padding-left: 30px;
+  }
+  .folder-head {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding-right: 10px;
+  }
+  .folder-head:hover {
+    background: var(--panel-2);
+  }
+  .folder-main {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 4px 0 12px;
+    border: none;
+    border-radius: 5px;
+    background: none;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+  }
+  .folder-main :global(svg) {
+    flex: none;
+    color: var(--muted);
+  }
+  .folder-main :global(.folder-icon) {
+    color: var(--accent);
+  }
+  .folder-count {
+    flex: none;
+    margin-left: 2px;
+    font: 10.5px var(--mono);
+    color: var(--muted);
+  }
+  .files .folder-head {
+    padding-right: 0;
+  }
+  .files .folder-main {
+    padding-left: 4px;
+  }
+  .file.grouped {
+    padding-left: 24px;
   }
   .change:hover,
   .commit-row:hover {
