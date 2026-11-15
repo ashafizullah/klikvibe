@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Prompt yang dipilih dari menu Prompts di terminal masuk ke terminal yang sedang dibuka, bukan ke terminal lain yang menjalankan agen.
+
 ## 0.7.20
 
 Telusuri file tanpa tab menumpuk.

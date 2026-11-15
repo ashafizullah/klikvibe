@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A prompt picked from the terminal's Prompts menu goes into the terminal in front, not into another terminal that runs an agent.
+
 ## 0.7.20
 
 Browse files without piling up tabs.

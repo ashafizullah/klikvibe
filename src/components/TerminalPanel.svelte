@@ -193,9 +193,12 @@
 
   const isAgent = (s: Shell) => s.auto !== null && AGENTS.some((a) => a.label === s.auto);
 
-  /** Pastes into the terminal that runs an agent (the active one first), else the active terminal. */
-  function askAgent(text: string) {
-    const target = shells.find((s) => s.id === active && isAgent(s)) ?? shells.find(isAgent) ?? shells.find((s) => s.id === active);
+  /** Pastes into the terminal that runs an agent (the active one first), else the active terminal.
+   *  `here`: into the active terminal, whatever runs in it (the panel's own Prompts menu). */
+  function askAgent(text: string, here = false) {
+    const target = here
+      ? shells.find((s) => s.id === active)
+      : (shells.find((s) => s.id === active && isAgent(s)) ?? shells.find(isAgent) ?? shells.find((s) => s.id === active));
     if (!target) return;
     show(target.id);
     if (!settings.showTerminal) {
@@ -341,7 +344,8 @@
   function promptsMenu(e: MouseEvent) {
     const list = promptList().filter((p) => p.trim());
     const items: MenuItem[] = [
-      ...list.map((p) => ({ label: p, run: () => askAgent(p) })),
+      // The user picked from this terminal's toolbar: it goes into the terminal in front, not an agent elsewhere.
+      ...list.map((p) => ({ label: p, run: () => askAgent(p, true) })),
       ...(list.length ? ["sep" as const] : []),
       { label: t("prompts.edit"), run: () => (ui.dialog = "prompts") },
     ];
