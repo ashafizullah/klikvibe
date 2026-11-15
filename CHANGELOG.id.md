@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.21
+
+Prompt masuk ke terminal tempat Anda memilihnya.
 
 - Prompt yang dipilih dari menu Prompts di terminal masuk ke terminal yang sedang dibuka, bukan ke terminal lain yang menjalankan agen.
 

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.21
+
+Prompts land where you picked them.
 
 - A prompt picked from the terminal's Prompts menu goes into the terminal in front, not into another terminal that runs an agent.
 
