@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Closing a project asks first, so a stray click or middle-click no longer stops its terminals.
+
 ## 0.7.21
 
 Prompts land where you picked them.

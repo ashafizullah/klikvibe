@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { closeProject, currentProject, showProject, workspace, type ProjectState } from "../lib/project.svelte";
+  import { closeProject, confirmCloseProjects, currentProject, showProject, workspace, type ProjectState } from "../lib/project.svelte";
   import { persist, settings } from "../lib/settings.svelte";
   import { copyText, isMac, mod, openMenu, reveal, revealLabel, ui } from "../lib/ui.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -43,9 +43,11 @@
   // In the order the panels sit on screen.
   const PANELS = $derived(columns ? [TERMINAL, ...CODE_AND_GIT] : [...CODE_AND_GIT, TERMINAL]);
 
-  /** Closes projects one by one; stops when the user keeps unsaved edits in one. */
+  /** Closes projects one by one, after asking once; stops when the user keeps unsaved edits in one. */
   async function closeMany(list: ProjectState[]) {
-    for (const p of list) if (!(await closeProject(p))) return;
+    const many = list.length > 1;
+    if (many && !(await confirmCloseProjects(list.length))) return;
+    for (const p of list) if (!(await closeProject(p, false, many))) return;
   }
 
   function projectMenu(e: MouseEvent, p: ProjectState) {

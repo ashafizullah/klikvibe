@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Menutup proyek sekarang minta konfirmasi dulu, jadi salah klik tidak lagi menghentikan terminalnya.
+
 ## 0.7.21
 
 Prompt masuk ke terminal tempat Anda memilihnya.

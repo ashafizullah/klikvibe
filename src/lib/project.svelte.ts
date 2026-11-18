@@ -975,11 +975,24 @@ export async function confirmQuit(): Promise<boolean> {
   return !dirty.length || confirmDiscard(dirty);
 }
 
-/** Closes a project tab (and its terminals); false when the user keeps unsaved edits. `force`:
- *  the user already chose to throw them away (see `confirmQuit`). */
-export async function closeProject(p: ProjectState, force = false): Promise<boolean> {
-  const dirty = p.tabs.filter(isDirty);
-  if (!force && dirty.length && !(await confirmDiscard(dirty, p.current.name))) return false;
+/** Asks once before several projects are closed together. */
+export function confirmCloseProjects(count: number): Promise<boolean> {
+  return confirm({ title: t("tabs.closeProjectsTitle", { count }), message: t("tabs.closeProjectsBody"), confirm: t("tabs.closeProjects") });
+}
+
+/** Closes a project tab (and its terminals) after asking; false when the user keeps it open.
+ *  `force`: the user already chose to throw unsaved edits away (see `confirmQuit`). `asked`: the
+ *  user already agreed to close it, so only unsaved edits still ask. */
+export async function closeProject(p: ProjectState, force = false, asked = false): Promise<boolean> {
+  if (!force) {
+    const dirty = p.tabs.filter(isDirty);
+    if (dirty.length) {
+      if (!(await confirmDiscard(dirty, p.current.name))) return false;
+    } else if (!asked) {
+      const ok = await confirm({ title: t("tabs.closeProjectTitle", { name: p.current.name }), message: t("tabs.closeProjectBody"), confirm: t("bar.closeProject") });
+      if (!ok) return false;
+    }
+  }
   const i = workspace.projects.indexOf(p);
   if (i < 0) return true;
   workspace.projects.splice(i, 1);
@@ -1052,7 +1065,7 @@ export async function removeTask(p: ProjectState, merged = false) {
   });
   if (!ok) return;
   const root = p.root;
-  if (!(await closeProject(p))) return;
+  if (!(await closeProject(p, false, true))) return;
   try {
     await ipc.worktreeRemove(root, root, dirty);
     toast(t("tasks.removed"), "ok");
