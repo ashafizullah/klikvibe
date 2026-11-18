@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.22
+
+No more closing a project by accident.
 
 - Closing a project asks first, so a stray click or middle-click no longer stops its terminals.
 

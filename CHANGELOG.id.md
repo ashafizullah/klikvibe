@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.22
+
+Proyek tidak lagi tertutup karena salah klik.
 
 - Menutup proyek sekarang minta konfirmasi dulu, jadi salah klik tidak lagi menghentikan terminalnya.
 
