@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Claude Code's notifications keep working if a later version shows another spinner in its title.
+
 ## 0.7.23
 
 No more repeated "waiting for you" notifications from an idle Claude Code.

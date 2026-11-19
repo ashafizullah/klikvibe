@@ -156,11 +156,13 @@ export function agentIn(commandLine: string | null): string | null {
 /**
  * What an agent's terminal title says about it. Claude Code puts a spinner in front of its title
  * while it works ("◐ Fix the login", braille dots in older versions) and "✳" once it is done or
- * waits for the user. Null for any other title.
+ * waits for the user. Any other single symbol and a space counts as a spinner too, so a new one in
+ * a later version doesn't leave its notifications silent. Null for any other title (a shell's
+ * "~/app", "user@host: ~", "vim notes.md").
  */
 export function titleState(title: string): "busy" | "idle" | null {
-  if (/^✳️?\s/.test(title)) return "idle";
-  if (/^[◐◓◑◒⠁-⣿]\s/.test(title)) return "busy";
+  if (/^✳\uFE0F?\s/u.test(title)) return "idle";
+  if (/^[^\p{L}\p{N}\p{Z}\p{Cc}~/.\\:\-]\uFE0F?\s/u.test(title)) return "busy";
   return null;
 }
 

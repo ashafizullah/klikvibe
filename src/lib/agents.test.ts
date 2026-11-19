@@ -57,6 +57,16 @@ test("Claude Code's title says whether it works", () => {
   expect(titleState("⠂ Fix the login")).toBe("busy");
   expect(titleState("✳ Fix the login")).toBe("idle");
   expect(titleState("✳ Claude Code")).toBe("idle");
+  // A spinner Claude Code might use later.
+  expect(titleState("✻ Fix the login")).toBe("busy");
+  expect(titleState("· Fix the login")).toBe("busy");
+  expect(titleState("✳️ Fix the login")).toBe("idle");
+  // Shells and other programs.
+  expect(titleState("user@host: ~")).toBeNull();
+  expect(titleState("~ zsh")).toBeNull();
+  expect(titleState("- zsh")).toBeNull();
+  expect(titleState("/ path")).toBeNull();
+  expect(titleState("1 file")).toBeNull();
   expect(titleState("vim notes.md")).toBeNull();
   expect(titleState("~/Projects/app")).toBeNull();
   expect(titleState("")).toBeNull();

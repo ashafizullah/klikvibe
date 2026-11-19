@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## Unreleased
+
+- Notifikasi Claude Code tetap jalan kalau versi berikutnya memakai simbol putar lain di judulnya.
+
 ## 0.7.23
 
 Tidak ada lagi notifikasi "menunggu kamu" berulang dari Claude Code yang sedang diam.
