@@ -1,5 +1,11 @@
 # Catatan perubahan
 
+## 0.7.23
+
+Tidak ada lagi notifikasi "menunggu kamu" berulang dari Claude Code yang sedang diam.
+
+- Selesainya Claude Code sekarang dikenali dari judul terminalnya sendiri, bukan dari outputnya yang berhenti. Status line yang menggambar ulang tiap detik (jam, hitung mundur) tidak lagi mengirim notifikasi yang sama berulang kali ke Mac dan HP selagi Claude menunggu, dan tidak lagi menghalangi notifikasi yang sebenarnya.
+
 ## 0.7.22
 
 Proyek tidak lagi tertutup karena salah klik.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.23
+
+No more repeated "waiting for you" notifications from an idle Claude Code.
+
+- Claude Code is now known to be done from its own terminal title, not from its output going quiet. A status line that redraws every second (a clock, a countdown) no longer sends the same notification again and again to the Mac and the phone while Claude waits, nor keeps the real one from coming.
+
 ## 0.7.22
 
 No more closing a project by accident.

@@ -2450,7 +2450,7 @@ dependencies = [
 
 [[package]]
 name = "klikvibe"
-version = "0.7.22"
+version = "0.7.23"
 dependencies = [
  "arboard",
  "axum",
