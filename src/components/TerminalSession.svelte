@@ -11,7 +11,7 @@
   import { useProject } from "../lib/project.svelte";
   import { findLinks, projectPath, type TermLink } from "../lib/termLinks";
   import { needsYou, type AttentionKind } from "../lib/attention.svelte";
-  import { agentIn, terminalName } from "../lib/agents";
+  import { agentById, agentIn, terminalName, titleState } from "../lib/agents";
   import { devServerUrl } from "../lib/scripts";
   import { join, relative, shellQuote } from "../lib/paths";
   import { DROP_ATTR, PATHS_EVENT } from "../lib/fileDrop";
@@ -78,12 +78,21 @@
   const QUIET = 6000;
   /** A burst shorter than this (a command's output, typing) isn't an agent at work. */
   const BUSY = 3000;
+  const CLAUDE = agentById("claude").label;
   const key = `${project.root}#${Math.random().toString(36).slice(2)}`;
   let lastInput = 0;
   let lastOutput = 0;
   let burstStart = 0;
   let burstNotified = true;
   let burstNamed = true;
+  /**
+   * Claude Code says in its title whether it works (titleState): then that, not the output, tells
+   * when it is done. Its screen keeps drawing while it waits (a status line with a clock redraws
+   * every second), and a pause in that output (the Mac idle, the window in the background) looked
+   * like a new burst of work ending, so it was announced again and again.
+   */
+  let titled = false;
+  let titleBusy = false;
 
   /** Names the terminal after what runs in front of it (Unix; the shell itself gives no name). */
   async function refreshName() {
@@ -109,9 +118,19 @@
     if (await needsYou(key, project.root, `${name} · ${project.current.name}`, message, visible && document.hasFocus(), session, kind, () => onreveal?.())) onwaiting?.();
   }
 
-  /** The bell, agents' own notifications (OSC 9 and 777), and an agent going quiet after working. */
+  /**
+   * The bell, agents' own notifications (OSC 9 and 777), Claude Code's title going from working to
+   * done, and another agent going quiet after working.
+   */
   function watchForAgent(xterm: Terminal) {
     const bell = xterm.onBell(() => tell(null, t("notify.bell"), "bell"));
+    const title = xterm.onTitleChange((text) => {
+      const state = titleState(text);
+      titled ||= state !== null;
+      if (state === null) return;
+      if (titleBusy && state === "idle") tell(null, t("notify.waiting"), "waiting");
+      titleBusy = state === "busy";
+    });
     // OSC 9 "message" (iTerm2); "9;4;…" is a progress report, not a message.
     const osc9 = xterm.parser.registerOscHandler(9, (data) => {
       if (/^\d+;/.test(data)) return false;
@@ -136,10 +155,12 @@
       if (burstNotified || lastOutput - burstStart < BUSY) return;
       burstNotified = true;
       const agent = agentIn(await ipc.terminalForeground(session).catch(() => null));
-      if (agent) tell(agent, t("notify.waiting"), "waiting");
+      // Claude Code with its title is told about above, when the title says it is done.
+      if (agent && !(titled && agent === CLAUDE)) tell(agent, t("notify.waiting"), "waiting");
     }, 2000);
     return () => {
       bell.dispose();
+      title.dispose();
       osc9.dispose();
       osc777.dispose();
       clearInterval(timer);

@@ -153,6 +153,17 @@ export function agentIn(commandLine: string | null): string | null {
   return null;
 }
 
+/**
+ * What an agent's terminal title says about it. Claude Code puts a spinner in front of its title
+ * while it works ("◐ Fix the login", braille dots in older versions) and "✳" once it is done or
+ * waits for the user. Null for any other title.
+ */
+export function titleState(title: string): "busy" | "idle" | null {
+  if (/^✳️?\s/.test(title)) return "idle";
+  if (/^[◐◓◑◒⠁-⣿]\s/.test(title)) return "busy";
+  return null;
+}
+
 const SHELLS = new Set(["zsh", "bash", "fish", "sh", "dash", "ksh", "tcsh", "nu", "pwsh", "powershell", "cmd.exe"]);
 const RUNTIMES = new Set(["node", "bun", "deno", "python", "python3", "ruby", "php", "java"]);
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AGENTS, agentById, agentIn, clientName, terminalName } from "./agents";
+import { AGENTS, agentById, agentIn, clientName, terminalName, titleState } from "./agents";
 
 const info = { url: "http://127.0.0.1:47825/mcp", token: "secret123" };
 
@@ -49,4 +49,15 @@ test("names a terminal after what runs in it", () => {
   expect(terminalName("bash deploy.sh")).toBe("bash deploy.sh");
   expect(terminalName(null)).toBeNull();
   expect(terminalName("some-really-long-command-name --with flags")!.length).toBeLessThanOrEqual(24);
+});
+
+test("Claude Code's title says whether it works", () => {
+  expect(titleState("◐ Claude Code")).toBe("busy");
+  expect(titleState("◑ Fix the login")).toBe("busy");
+  expect(titleState("⠂ Fix the login")).toBe("busy");
+  expect(titleState("✳ Fix the login")).toBe("idle");
+  expect(titleState("✳ Claude Code")).toBe("idle");
+  expect(titleState("vim notes.md")).toBeNull();
+  expect(titleState("~/Projects/app")).toBeNull();
+  expect(titleState("")).toBeNull();
 });
