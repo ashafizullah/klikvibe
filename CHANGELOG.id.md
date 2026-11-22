@@ -1,6 +1,8 @@
 # Catatan perubahan
 
-## Unreleased
+## 0.7.24
+
+Notifikasi Claude Code siap untuk simbol putarnya yang berikutnya.
 
 - Notifikasi Claude Code tetap jalan kalau versi berikutnya memakai simbol putar lain di judulnya.
 

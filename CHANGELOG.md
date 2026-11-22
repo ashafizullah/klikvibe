@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.24
+
+Claude Code's notifications ready for its next spinner.
 
 - Claude Code's notifications keep working if a later version shows another spinner in its title.
 
